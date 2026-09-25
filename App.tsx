@@ -1,31 +1,17 @@
-import { StatusBar } from "expo-status-bar";
-import { StyleSheet, Text, View } from "react-native";
-import { TamaguiProvider } from "tamagui";
-import { Provider } from "react-redux";
-import { store } from "./src/store";
+import HomeScreen from "./src/screens/events/HomeScreen";
 
 export default function App() {
-  return (
-    <Provider store={store}>
-      <View style={styles.container}>
-        <Text style={styles.title}>Project Base Nhóm 03</Text>
-        <Text>...</Text>
-        <StatusBar style="auto" />
-      </View>
-    </Provider>
-  );
+  return <HomeScreen />;
 }
 
-const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#fff",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  title: {
-    fontSize: 20,
-    fontWeight: "bold",
-    marginBottom: 10,
-  },
-});
+// import FilterScreen from "./src/screens/events/FilterScreen";
+
+// export default function App() {
+//   return <FilterScreen />;
+// }
+
+// import EventDetailScreen from "./src/screens/events/EventDetailScreen";
+
+// export default function App() {
+//   return <EventDetailScreen />;
+// }
