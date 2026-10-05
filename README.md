@@ -9,3 +9,5 @@ B2: Tạo nhánh mới cho riêng mình nha
 git checkout -b feature/(tên của mng)
 
 B3: code xong commit lên như bình thường
+
+LQB: npx expo install expo-notifications
