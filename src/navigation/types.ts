@@ -10,6 +10,8 @@ export type MainStackParamList = {
   MySchedule: undefined;
   Notification: undefined;
   Feedback: undefined;
+  Filter: undefined;
+  RegistrationSuccess: { eventId?: string; eventTitle?: string } | undefined;
 };
 
 export type HomeScreenProps = NativeStackScreenProps<MainStackParamList, 'Home'>;
@@ -18,3 +20,5 @@ export type ProfileScreenProps = NativeStackScreenProps<MainStackParamList, 'Pro
 export type MyScheduleScreenProps = NativeStackScreenProps<MainStackParamList, 'MySchedule'>;
 export type NotificationScreenProps = NativeStackScreenProps<MainStackParamList, 'Notification'>;
 export type FeedbackScreenProps = NativeStackScreenProps<MainStackParamList, 'Feedback'>;
+export type FilterScreenProps = NativeStackScreenProps<MainStackParamList, 'Filter'>;
+export type RegistrationSuccessScreenProps = NativeStackScreenProps<MainStackParamList, 'RegistrationSuccess'>;

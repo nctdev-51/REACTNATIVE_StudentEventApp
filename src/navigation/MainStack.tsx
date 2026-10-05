@@ -8,6 +8,8 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 import MyScheduleScreen from '../screens/schedule/MyScheduleScreen';
 import NotificationReminderScreen from '../screens/notifications/NotificationReminderScreen';
 import FeedbackScreen from '../screens/events/FeedbackScreen';
+import FilterScreen from '../screens/events/FilterScreen';
+import RegistrationSuccessScreen from '../screens/events/RegistrationSuccessScreen';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
@@ -83,6 +85,25 @@ export default function MainStack() {
         component={FeedbackScreen}
         options={{
           headerShown: false,
+        }}
+      />
+      {/* Bộ lọc sự kiện */}
+      <Stack.Screen
+        name="Filter"
+        component={FilterScreen}
+        options={{
+          headerShown: false,
+          presentation: 'modal',
+        }}
+      />
+
+      {/* Đăng ký thành công */}
+      <Stack.Screen
+        name="RegistrationSuccess"
+        component={RegistrationSuccessScreen}
+        options={{
+          headerShown: false,
+          gestureEnabled: false,
         }}
       />
     </Stack.Navigator>

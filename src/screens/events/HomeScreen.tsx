@@ -5,7 +5,9 @@ import {
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView, useSafeAreaInsets } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../navigation/types";
@@ -43,11 +45,15 @@ export default function HomeScreen({ userName = "Nguyễn Văn A" }: HomeScreenP
   const featuredEvent = eventsData[0];
   const upcomingEvents = filteredEvents.slice(1);
 
+  const insets = useSafeAreaInsets();
+
   return (
+    <SafeAreaView style={styles.safeArea}>
+      <StatusBar barStyle="dark-content" backgroundColor="#ffffff" />
     <ScrollView
       style={styles.container}
       showsVerticalScrollIndicator={false}
-      contentContainerStyle={styles.content}
+      contentContainerStyle={[styles.content, { paddingTop: insets.top + 16 }]}
     >
       {/* Header */}
       <View style={styles.header}>
@@ -188,17 +194,21 @@ export default function HomeScreen({ userName = "Nguyễn Văn A" }: HomeScreenP
         </View>
       )}
     </ScrollView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#ffffff",
+  },
   container: {
     flex: 1,
     backgroundColor: "#ffffff",
   },
   content: {
     paddingHorizontal: 16,
-    paddingTop: 50,
     paddingBottom: 40,
   },
   header: {

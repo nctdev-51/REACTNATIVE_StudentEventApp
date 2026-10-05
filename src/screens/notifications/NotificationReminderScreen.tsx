@@ -1,19 +1,3 @@
-
-
-
-
-
-
-
-
-
-// Hết token, chưa gửi được thông báo do expo go SDK 53+ không hỗ trợ remote push notifications 
-// => phải dùng local => chưa fix được để chạy trên điện thoại
-
-
-
-
-
 import React, { useEffect, useState } from 'react';
 import {
   View,
@@ -28,6 +12,9 @@ import {
 } from 'react-native';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/types';
 
 // Configure notification behavior when app is in foreground
 Notifications.setNotificationHandler({
@@ -176,6 +163,7 @@ export default function NotificationReminderScreen({
   notification = DEFAULT_NOTIFICATION,
   onNotificationPress,
 }: NotificationReminderScreenProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [permissionGranted, setPermissionGranted] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('Đang kiểm tra quyền thông báo...');
 
@@ -297,6 +285,20 @@ export default function NotificationReminderScreen({
       <StatusBar barStyle="dark-content" backgroundColor={BACKGROUND} />
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
+        {/* Nút Back + Header */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại"
+          >
+            <Text style={styles.backArrow}>‹</Text>
+            <Text style={styles.backLabel}>Quay lại</Text>
+          </TouchableOpacity>
+        </View>
+
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.headerIconCircle}>
@@ -402,8 +404,33 @@ const styles = StyleSheet.create({
   },
   container: {
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 24 : 12,
+    paddingTop: 4,
     paddingBottom: 32,
+  },
+  // Top bar with back button
+  topBar: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    marginBottom: 8,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  backArrow: {
+    fontSize: 26,
+    color: ACCENT_COLOR,
+    fontWeight: '300',
+    lineHeight: 28,
+    marginRight: 4,
+  },
+  backLabel: {
+    fontSize: 15,
+    color: ACCENT_COLOR,
+    fontWeight: '500',
   },
 
   // Header

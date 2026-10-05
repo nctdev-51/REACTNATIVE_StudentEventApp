@@ -9,7 +9,11 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -599,10 +603,47 @@ export default function MyScheduleScreen({
   onEventPress,
   onFilterPress,
 }: MyScheduleScreenProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [activeFilter, setActiveFilter] = useState<ScheduleTabFilter>(initialFilter);
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
 
   const filteredEvents = events.filter((e) => e.status === activeFilter);
+
+  // Wire up bottom tab navigation
+  const handleTabPress = (tab: TabKey) => {
+    setActiveTab(tab);
+    switch (tab) {
+      case 'home':
+        navigation.navigate('Home');
+        break;
+      case 'schedule':
+        break; // already here
+      case 'checkin':
+        navigation.navigate('CheckIn');
+        break;
+      case 'profile':
+        navigation.navigate('Profile');
+        break;
+    }
+  };
+
+  // Handle event card press: navigate to EventDetail
+  const handleEventPress = (event: RegisteredEvent) => {
+    if (onEventPress) {
+      onEventPress(event);
+    } else {
+      navigation.navigate('EventDetail', { eventId: event.id, title: event.title });
+    }
+  };
+
+  // Handle filter press
+  const handleFilterPress = () => {
+    if (onFilterPress) {
+      onFilterPress();
+    } else {
+      Alert.alert('Bộ lọc', 'Tính năng bộ lọc đang được phát triển.');
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -613,7 +654,7 @@ export default function MyScheduleScreen({
         <Text style={styles.headerTitle}>Lịch của tôi</Text>
         <TouchableOpacity
           style={styles.filterButton}
-          onPress={onFilterPress}
+          onPress={handleFilterPress}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Bộ lọc"
@@ -663,7 +704,7 @@ export default function MyScheduleScreen({
       >
         {filteredEvents.length > 0 ? (
           filteredEvents.map((item) => (
-            <EventCard key={item.id} event={item} onPress={onEventPress} />
+            <EventCard key={item.id} event={item} onPress={handleEventPress} />
           ))
         ) : (
           <View style={styles.emptyState}>
@@ -673,7 +714,7 @@ export default function MyScheduleScreen({
       </ScrollView>
 
       {/* ── Bottom Navigation Bar ───────────────────────────────────────── */}
-      <BottomTabBar activeTab={activeTab} onTabPress={setActiveTab} />
+      <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
     </SafeAreaView>
   );
 }
