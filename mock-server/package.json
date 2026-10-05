@@ -1,0 +1,13 @@
+{
+  "name": "mock-server",
+  "version": "1.0.0",
+  "description": "Mock REST API server using json-server for StudentEventApp",
+  "main": "db.json",
+  "scripts": {
+    "start": "json-server db.json --port 3000 --host 0.0.0.0",
+    "watch": "json-server --watch db.json --port 3000 --host 0.0.0.0"
+  },
+  "dependencies": {
+    "json-server": "^0.17.4"
+  }
+}

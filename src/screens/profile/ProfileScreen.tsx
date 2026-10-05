@@ -9,7 +9,11 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -580,6 +584,7 @@ export default function ProfileScreen({
   initialTheme = 'Sáng',
   initialTab = 'profile',
 }: ProfileScreenProps) {
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [currentTheme, setCurrentTheme] = useState<'Sáng' | 'Tối'>(initialTheme);
   const [imageError, setImageError] = useState<boolean>(false);
@@ -587,6 +592,25 @@ export default function ProfileScreen({
   // Toggle theme locally for responsive UI feedback
   const handleToggleTheme = () => {
     setCurrentTheme((prev) => (prev === 'Sáng' ? 'Tối' : 'Sáng'));
+  };
+
+  // Wire up bottom tab navigation
+  const handleTabPress = (tab: TabKey) => {
+    setActiveTab(tab);
+    switch (tab) {
+      case 'home':
+        navigation.navigate('Home');
+        break;
+      case 'schedule':
+        navigation.navigate('MySchedule');
+        break;
+      case 'checkin':
+        navigation.navigate('CheckIn');
+        break;
+      case 'profile':
+        // Already on profile, do nothing
+        break;
+    }
   };
 
   return (
@@ -656,14 +680,17 @@ export default function ProfileScreen({
           <MenuItem
             icon={<CalendarIcon color="#334155" />}
             label="Lịch sử tham gia"
+            onPress={() => navigation.navigate('MySchedule')}
           />
           <MenuItem
             icon={<UserOutlineIcon color="#334155" />}
             label="Thông tin cá nhân"
+            onPress={() => Alert.alert('Thông tin cá nhân', 'Tính năng đang được phát triển.')}
           />
           <MenuItem
             icon={<SettingsCogIcon color="#334155" />}
             label="Cài đặt"
+            onPress={() => Alert.alert('Cài đặt', 'Tính năng đang được phát triển.')}
           />
           <MenuItem
             icon={<MoonCrescentIcon color="#334155" />}
@@ -675,12 +702,22 @@ export default function ProfileScreen({
             icon={<LogoutIcon color={DANGER_COLOR} />}
             label="Đăng xuất"
             isLast
+            onPress={() =>
+              Alert.alert(
+                'Đăng xuất',
+                'Bạn có chắc muốn đăng xuất khỏi tài khoản không?',
+                [
+                  { text: 'Hủy', style: 'cancel' },
+                  { text: 'Đăng xuất', style: 'destructive', onPress: () => navigation.navigate('Home') },
+                ]
+              )
+            }
           />
         </View>
       </ScrollView>
 
       {/* ── Bottom navigation bar ───────────────────────────────────────── */}
-      <BottomTabBar activeTab={activeTab} onTabPress={setActiveTab} />
+      <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
     </SafeAreaView>
   );
 }

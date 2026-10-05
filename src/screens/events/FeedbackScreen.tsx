@@ -10,7 +10,11 @@ import {
   SafeAreaView,
   Platform,
   StatusBar,
+  Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/types';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -115,7 +119,8 @@ const starStyles = StyleSheet.create({
 // ---------------------------------------------------------------------------
 
 export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreenProps) {
-  // Mockup shows 4 stars selected initially
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  // Mô phỏng bắt đầu với 4 sao
   const [rating, setRating] = useState<number>(4);
   const [comment, setComment] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
@@ -130,6 +135,18 @@ export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreen
         showsVerticalScrollIndicator={false}
       >
         {/* ── Header ─────────────────────────────────────────────────────── */}
+        <View style={styles.topBar}>
+          <TouchableOpacity
+            style={styles.backButton}
+            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Quay lại"
+          >
+            <Text style={styles.backArrow}>‹</Text>
+            <Text style={styles.backLabel}>Quay lại</Text>
+          </TouchableOpacity>
+        </View>
         <Text style={styles.header}>Đánh giá sự kiện</Text>
 
         {/* ── Event Info ─────────────────────────────────────────────────── */}
@@ -186,12 +203,17 @@ export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreen
 
         {/* ── Submit button (UI interaction only, no backend) ─────────────── */}
         <TouchableOpacity
-          style={styles.submitButton}
+          style={[styles.submitButton, rating === 0 && styles.submitButtonDisabled]}
           activeOpacity={0.85}
+          disabled={rating === 0}
           accessibilityRole="button"
           accessibilityLabel="Gửi đánh giá"
           onPress={() => {
-            // Client UI-only interaction: no submit/auth simulation
+            Alert.alert(
+              '✅ Gửi thành công!',
+              `Cảm ơn bạn đã đánh giá "${event.title}" với ${rating} sao. Phản hồi của bạn giúp chúng tôi cải thiện hơn!`,
+              [{ text: 'OK', onPress: () => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home') }]
+            );
           }}
         >
           <Text style={styles.submitText}>Gửi đánh giá</Text>
@@ -212,7 +234,7 @@ const styles = StyleSheet.create({
   },
   scroll: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 4,
     paddingBottom: 40,
   },
 
@@ -327,5 +349,34 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: '600',
     color: '#FFFFFF',
+  },
+  submitButtonDisabled: {
+    backgroundColor: '#94A3B8',
+    elevation: 0,
+    shadowOpacity: 0,
+  },
+  // Top Bar / Back button
+  topBar: {
+    paddingVertical: 8,
+    marginBottom: 4,
+  },
+  backButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    alignSelf: 'flex-start',
+    paddingVertical: 4,
+    paddingHorizontal: 2,
+  },
+  backArrow: {
+    fontSize: 26,
+    color: ACCENT_COLOR,
+    fontWeight: '300',
+    lineHeight: 28,
+    marginRight: 4,
+  },
+  backLabel: {
+    fontSize: 15,
+    color: ACCENT_COLOR,
+    fontWeight: '500',
   },
 });
