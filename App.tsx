@@ -7,7 +7,7 @@ import { NavigationContainer } from '@react-navigation/native';
 
 import { store } from './src/store';
 import tamaguiConfig from './tamagui.config';
-import MainStack from './src/navigation/MainStack';
+import RootNavigator from './src/navigation/RootNavigator';
 
 export default function App() {
   return (
@@ -16,7 +16,7 @@ export default function App() {
         <SafeAreaProvider>
           <NavigationContainer>
             <StatusBar style="auto" />
-            <MainStack />
+            <RootNavigator />
           </NavigationContainer>
         </SafeAreaProvider>
       </TamaguiProvider>

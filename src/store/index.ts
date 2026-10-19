@@ -1,14 +1,21 @@
-import { configureStore } from "@reduxjs/toolkit";
+import { configureStore } from '@reduxjs/toolkit';
+import authReducer from '../features/auth/authSlice';
+import eventsReducer from '../features/events/eventsSlice';
+import feedbacksReducer from '../features/events/feedbacksSlice';
+import registrationsReducer from '../features/check-in/registrationsSlice';
+import notificationsReducer from '../features/notifications/notificationsSlice';
 
 export const store = configureStore({
   reducer: {
-    // Placeholder reducer until actual feature slices are added.
-    // Replace or add your feature slice reducers here (e.g., auth, checkIn, events).
-    _placeholder: (state = {}) => state,
+    auth: authReducer,
+    events: eventsReducer,
+    feedbacks: feedbacksReducer,
+    registrations: registrationsReducer,
+    notifications: notificationsReducer,
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
-      serializableCheck: false,
+      serializableCheck: false, // cho phép Date trong state
     }),
 });
 

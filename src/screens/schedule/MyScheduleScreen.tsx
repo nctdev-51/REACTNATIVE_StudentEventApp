@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   View,
   Text,
@@ -10,10 +10,15 @@ import {
   Platform,
   StatusBar,
   Alert,
+  ActivityIndicator,
+  RefreshControl,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
+import { fetchEvents } from '../../features/events/eventsSlice';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -55,38 +60,7 @@ const BORDER_COLOR = '#F1F5F9';
 const BADGE_BG = '#FEF3C7';
 const BADGE_TEXT = '#D97706';
 
-const DEFAULT_EVENTS: RegisteredEvent[] = [
-  {
-    id: '1',
-    title: 'Workshop React Native',
-    date: '20/09/2026',
-    time: '08:00',
-    location: 'Hội trường A',
-    imageUrl: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?w=400&q=80',
-    daysLeft: 2,
-    status: 'upcoming',
-  },
-  {
-    id: '2',
-    title: 'Ngày hội việc làm sinh viên',
-    date: '22/09/2026',
-    time: '08:30',
-    location: 'Sân trường',
-    imageUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80',
-    daysLeft: 4,
-    status: 'upcoming',
-  },
-  {
-    id: '3',
-    title: 'Seminar kỹ năng thuyết trình',
-    date: '25/09/2026',
-    time: '13:30',
-    location: 'Phòng B201',
-    imageUrl: 'https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=400&q=80',
-    daysLeft: 7,
-    status: 'upcoming',
-  },
-];
+const DEFAULT_EVENTS: RegisteredEvent[] = [];
 
 // ---------------------------------------------------------------------------
 // Vector-style Custom Icons (Using pure React Native Views)
@@ -597,17 +571,95 @@ const cardStyles = StyleSheet.create({
 // ---------------------------------------------------------------------------
 
 export default function MyScheduleScreen({
-  events = DEFAULT_EVENTS,
+  events: propEvents,
   initialFilter = 'upcoming',
   initialTab = 'schedule',
   onEventPress,
   onFilterPress,
 }: MyScheduleScreenProps) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const dispatch = useAppDispatch();
+
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const { myRegistrations, loading: regLoading } = useAppSelector((state) => state.registrations);
+  const { list: eventsList, loading: eventsLoading } = useAppSelector((state) => state.events);
+
   const [activeFilter, setActiveFilter] = useState<ScheduleTabFilter>(initialFilter);
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
 
-  const filteredEvents = events.filter((e) => e.status === activeFilter);
+  const loadData = useCallback(async () => {
+    if (currentUser?._id) {
+      await dispatch(fetchMyRegistrations(currentUser._id));
+    }
+    await dispatch(fetchEvents());
+  }, [dispatch, currentUser?._id]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
+
+  const handleRefresh = async () => {
+    setRefreshing(true);
+    await loadData();
+    setRefreshing(false);
+  };
+
+  // Convert real registrations + events into RegisteredEvent format
+  const backendEvents: RegisteredEvent[] = useMemo(() => {
+    if (!myRegistrations || myRegistrations.length === 0) return [];
+
+    return myRegistrations
+      .filter((r) => r.status !== 'cancelled')
+      .map((r) => {
+        const rawEventId = typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId as any)._id : r.eventId;
+        const populatedEvent = typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId as any) : null;
+        const matchedEvent = populatedEvent || eventsList.find((e) => e._id === rawEventId);
+
+        let dateStr = 'Sắp diễn ra';
+        let timeStr = '08:00';
+        let daysLeft: number | undefined = undefined;
+        let isPast = r.status === 'checked_in';
+
+        if (matchedEvent?.time?.start) {
+          const startDate = new Date(matchedEvent.time.start);
+          const now = new Date();
+          const diffDays = Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
+          daysLeft = diffDays > 0 ? diffDays : 0;
+
+          const day = String(startDate.getDate()).padStart(2, '0');
+          const month = String(startDate.getMonth() + 1).padStart(2, '0');
+          const year = startDate.getFullYear();
+          const hours = String(startDate.getHours()).padStart(2, '0');
+          const minutes = String(startDate.getMinutes()).padStart(2, '0');
+
+          dateStr = `${day}/${month}/${year}`;
+          timeStr = `${hours}:${minutes}`;
+
+          if (matchedEvent.time.end && new Date(matchedEvent.time.end) < now) {
+            isPast = true;
+          }
+        }
+
+        const fallbackImage =
+          'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80';
+
+        return {
+          id: matchedEvent?._id || rawEventId,
+          title: matchedEvent?.title || 'Sự kiện đã đăng ký',
+          date: dateStr,
+          time: timeStr,
+          location: matchedEvent?.location || 'Trường ĐH Công nghiệp TP.HCM',
+          imageUrl: matchedEvent?.images?.[0] || fallbackImage,
+          daysLeft: isPast ? undefined : daysLeft,
+          status: isPast ? 'past' : 'upcoming',
+        };
+      });
+  }, [myRegistrations, eventsList]);
+
+  // Use props if explicitly passed and not empty, otherwise use real backend events
+  const allEvents = propEvents && propEvents.length > 0 ? propEvents : backendEvents;
+  const filteredEvents = allEvents.filter((e) => e.status === activeFilter);
 
   // Wire up bottom tab navigation
   const handleTabPress = (tab: TabKey) => {
@@ -641,9 +693,11 @@ export default function MyScheduleScreen({
     if (onFilterPress) {
       onFilterPress();
     } else {
-      Alert.alert('Bộ lọc', 'Tính năng bộ lọc đang được phát triển.');
+      Alert.alert('Bộ lọc', 'Lọc sự kiện theo thời gian hoặc khoa viện.');
     }
   };
+
+  const isLoading = (regLoading || eventsLoading) && allEvents.length === 0;
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -701,14 +755,33 @@ export default function MyScheduleScreen({
         style={styles.scrollList}
         contentContainerStyle={styles.scrollContent}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={handleRefresh}
+            colors={[ACCENT_COLOR]}
+            tintColor={ACCENT_COLOR}
+          />
+        }
       >
-        {filteredEvents.length > 0 ? (
+        {isLoading ? (
+          <View style={{ paddingVertical: 40, alignItems: 'center' }}>
+            <ActivityIndicator size="large" color={ACCENT_COLOR} />
+            <Text style={{ marginTop: 12, color: TEXT_SECONDARY, fontSize: 14 }}>
+              Đang tải lịch sự kiện...
+            </Text>
+          </View>
+        ) : filteredEvents.length > 0 ? (
           filteredEvents.map((item) => (
             <EventCard key={item.id} event={item} onPress={handleEventPress} />
           ))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>Chưa có sự kiện nào trong danh sách</Text>
+            <Text style={styles.emptyText}>
+              {activeFilter === 'upcoming'
+                ? 'Bạn chưa có sự kiện nào sắp diễn ra'
+                : 'Bạn chưa tham gia sự kiện nào'}
+            </Text>
           </View>
         )}
       </ScrollView>
