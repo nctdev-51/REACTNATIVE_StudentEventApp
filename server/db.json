@@ -246,6 +246,15 @@
       "registeredAt": "2026-08-01T09:30:00.000Z",
       "checkInTime": "2026-08-10T08:15:30.000Z",
       "checkOutTime": "2026-08-20T16:55:00.000Z"
+    },
+    {
+      "eventId": "66f1e2020000000000000002",
+      "userId": "66f1a1010000000000000001",
+      "participantRole": "attendee",
+      "status": "registered",
+      "id": "6adf71560ed48ed7cdf82e8d",
+      "_id": "6adf71560ed48ed7cdf82e8d",
+      "createdAt": "2026-10-26T15:27:18.154Z"
     }
   ],
   "feedbacks": [
