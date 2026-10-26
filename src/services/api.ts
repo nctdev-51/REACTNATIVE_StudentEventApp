@@ -1,5 +1,5 @@
-import axios, { AxiosInstance } from 'axios';
-import { Platform } from 'react-native';
+import axios, { AxiosInstance } from "axios";
+import { Platform } from "react-native";
 import {
   User,
   Event,
@@ -11,7 +11,7 @@ import {
   AuthResponse,
   CreateRegistrationPayload,
   CreateFeedbackPayload,
-} from '../types';
+} from "../types";
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
@@ -21,7 +21,7 @@ import {
  * - iOS / Web: localhost
  * - Thiết bị thật: đổi DEV_LAN_IP thành IP LAN của máy tính
  */
-export const DEV_LAN_IP = '192.168.1.100';
+export const DEV_LAN_IP = "192.168.1.100";
 
 export const BASE_URL: string = Platform.select({
   android: `http://10.0.2.2:5000/api`,
@@ -35,8 +35,8 @@ export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
   timeout: 10_000,
   headers: {
-    'Content-Type': 'application/json',
-    Accept: 'application/json',
+    "Content-Type": "application/json",
+    Accept: "application/json",
   },
 });
 
@@ -63,10 +63,10 @@ apiClient.interceptors.response.use(
   (error) => {
     if (error?.response?.status === 401) {
       // Token hết hạn — authSlice sẽ xử lý logout
-      console.warn('[API] Unauthorized 401 — token có thể đã hết hạn');
+      console.warn("[API] Unauthorized 401 — token có thể đã hết hạn");
     }
     return Promise.reject(error);
-  }
+  },
 );
 
 /**
@@ -94,11 +94,11 @@ function mapBackendAuth(responseData: any): AuthResponse {
 
   const user: User = {
     _id: rawUser._id,
-    studentId: rawUser.studentId ?? '',
-    fullName: rawUser.name ?? rawUser.fullName ?? '',
+    studentId: rawUser.studentId ?? "",
+    fullName: rawUser.name ?? rawUser.fullName ?? "",
     email: rawUser.email,
     point: rawUser.point ?? 0,
-    role: rawUser.role === 'admin' ? 'admin' : 'student',
+    role: rawUser.role === "admin" ? "admin" : "student",
     faculty: rawUser.faculty ?? undefined,
     avatarUrl: rawUser.avatar ?? rawUser.avatarUrl ?? undefined,
     phone: rawUser.phone ?? undefined,
@@ -115,11 +115,11 @@ function mapBackendUser(responseData: any): User {
   const rawUser = responseData.data?.user ?? responseData.data ?? responseData;
   return {
     _id: rawUser._id,
-    studentId: rawUser.studentId ?? '',
-    fullName: rawUser.name ?? rawUser.fullName ?? '',
+    studentId: rawUser.studentId ?? "",
+    fullName: rawUser.name ?? rawUser.fullName ?? "",
     email: rawUser.email,
     point: rawUser.point ?? 0,
-    role: rawUser.role === 'admin' ? 'admin' : 'student',
+    role: rawUser.role === "admin" ? "admin" : "student",
     faculty: rawUser.faculty ?? undefined,
     avatarUrl: rawUser.avatar ?? rawUser.avatarUrl ?? undefined,
     phone: rawUser.phone ?? undefined,
@@ -150,9 +150,9 @@ function unwrapOne<T>(responseData: any): T {
  * Backend trả: { success, message, data: { user, accessToken, refreshToken } }
  */
 export const login = async (
-  credentials: AuthCredentials
+  credentials: AuthCredentials,
 ): Promise<AuthResponse> => {
-  const res = await apiClient.post('/auth/login', credentials);
+  const res = await apiClient.post("/auth/login", credentials);
   return mapBackendAuth(res.data);
 };
 
@@ -161,7 +161,7 @@ export const login = async (
  * Backend trả: { success, message, data: { user, accessToken, refreshToken } }
  */
 export const register = async (
-  payload: RegisterPayload
+  payload: RegisterPayload,
 ): Promise<AuthResponse> => {
   // Map RegisterPayload → backend expects { name, email, password, studentId }
   const body = {
@@ -171,7 +171,7 @@ export const register = async (
     studentId: payload.studentId,
     faculty: payload.faculty,
   };
-  const res = await apiClient.post('/auth/register', body);
+  const res = await apiClient.post("/auth/register", body);
   return mapBackendAuth(res.data);
 };
 
@@ -180,7 +180,7 @@ export const register = async (
  * Backend trả: { success, data: { user } }
  */
 export const getCurrentUser = async (): Promise<User> => {
-  const res = await apiClient.get('/auth/me');
+  const res = await apiClient.get("/auth/me");
   return mapBackendUser(res.data);
 };
 
@@ -188,13 +188,13 @@ export const getCurrentUser = async (): Promise<User> => {
  * PUT /api/auth/me — cập nhật profile
  */
 export const updateProfile = async (
-  data: Partial<Pick<User, 'fullName' | 'studentId' | 'avatarUrl'>>
+  data: Partial<Pick<User, "fullName" | "studentId" | "avatarUrl">>,
 ): Promise<User> => {
   const body: any = {};
   if (data.fullName !== undefined) body.name = data.fullName;
   if (data.studentId !== undefined) body.studentId = data.studentId;
   if (data.avatarUrl !== undefined) body.avatar = data.avatarUrl;
-  const res = await apiClient.put('/auth/me', body);
+  const res = await apiClient.put("/auth/me", body);
   return mapBackendUser(res.data);
 };
 
@@ -203,16 +203,19 @@ export const updateProfile = async (
  */
 export const changePassword = async (
   currentPassword: string,
-  newPassword: string
+  newPassword: string,
 ): Promise<void> => {
-  await apiClient.put('/auth/change-password', { currentPassword, newPassword });
+  await apiClient.put("/auth/change-password", {
+    currentPassword,
+    newPassword,
+  });
 };
 
 /**
  * POST /api/auth/logout
  */
 export const logout = async (): Promise<void> => {
-  await apiClient.post('/auth/logout');
+  await apiClient.post("/auth/logout");
 };
 
 // ─── Events ───────────────────────────────────────────────────────────────────
@@ -221,7 +224,7 @@ export const getEvents = async (params?: {
   category?: string;
   status?: string;
 }): Promise<Event[]> => {
-  const res = await apiClient.get('/events', { params });
+  const res = await apiClient.get("/events", { params });
   return unwrapList<Event>(res.data);
 };
 
@@ -233,31 +236,31 @@ export const getEventById = async (id: string): Promise<Event> => {
 // ─── Registrations ────────────────────────────────────────────────────────────
 
 export const getRegistrationsByUser = async (
-  userId: string
+  userId: string,
 ): Promise<Registration[]> => {
-  const res = await apiClient.get('/registrations', { params: { userId } });
+  const res = await apiClient.get("/registrations", { params: { userId } });
   return unwrapList<Registration>(res.data);
 };
 
 export const getRegistrationsByEvent = async (
-  eventId: string
+  eventId: string,
 ): Promise<Registration[]> => {
-  const res = await apiClient.get('/registrations', { params: { eventId } });
+  const res = await apiClient.get("/registrations", { params: { eventId } });
   return unwrapList<Registration>(res.data);
 };
 
 export const registerEvent = async (
-  data: CreateRegistrationPayload
+  data: CreateRegistrationPayload,
 ): Promise<Registration> => {
-  const res = await apiClient.post('/registrations', data);
+  const res = await apiClient.post("/registrations", data);
   return unwrapOne<Registration>(res.data);
 };
 
 export const checkIn = async (
-  registrationId: string
+  registrationId: string,
 ): Promise<Registration> => {
   const res = await apiClient.patch(`/registrations/${registrationId}`, {
-    status: 'checked_in',
+    status: "checked_in",
     checkInTime: new Date().toISOString(),
   });
   return unwrapOne<Registration>(res.data);
@@ -268,15 +271,15 @@ export const qrCheckIn = async (payload: {
   userId?: string;
   studentId?: string;
 }): Promise<any> => {
-  const res = await apiClient.post('/registrations/check-in', payload);
+  const res = await apiClient.post("/registrations/check-in", payload);
   return res.data;
 };
 
 export const cancelRegistration = async (
-  registrationId: string
+  registrationId: string,
 ): Promise<Registration> => {
   const res = await apiClient.patch(`/registrations/${registrationId}`, {
-    status: 'cancelled',
+    status: "cancelled",
   });
   return unwrapOne<Registration>(res.data);
 };
@@ -284,30 +287,30 @@ export const cancelRegistration = async (
 // ─── Feedbacks ────────────────────────────────────────────────────────────────
 
 export const getFeedbacksByEvent = async (
-  eventId: string
+  eventId: string,
 ): Promise<Feedback[]> => {
-  const res = await apiClient.get('/feedbacks', { params: { eventId } });
+  const res = await apiClient.get("/feedbacks", { params: { eventId } });
   return unwrapList<Feedback>(res.data);
 };
 
 export const createFeedback = async (
-  data: CreateFeedbackPayload
+  data: CreateFeedbackPayload,
 ): Promise<Feedback> => {
-  const res = await apiClient.post('/feedbacks', data);
+  const res = await apiClient.post("/feedbacks", data);
   return unwrapOne<Feedback>(res.data);
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────
 
 export const getNotificationsByUser = async (
-  userId: string
+  userId: string,
 ): Promise<Notification[]> => {
-  const res = await apiClient.get('/notifications', { params: { userId } });
+  const res = await apiClient.get("/notifications", { params: { userId } });
   return unwrapList<Notification>(res.data);
 };
 
 export const markNotificationAsRead = async (
-  notificationId: string
+  notificationId: string,
 ): Promise<Notification> => {
   const res = await apiClient.patch(`/notifications/${notificationId}`, {
     isRead: true,
@@ -318,7 +321,7 @@ export const markNotificationAsRead = async (
 // ─── Users (legacy — dùng nếu cần admin) ─────────────────────────────────────
 
 export const getUsers = async (): Promise<User[]> => {
-  const res = await apiClient.get('/users');
+  const res = await apiClient.get("/users");
   return unwrapList<User>(res.data);
 };
 
