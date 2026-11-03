@@ -10,7 +10,7 @@ const middlewares = jsonServer.defaults({
   logger: true,
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "studenteventapp_secret_key_2026";
 
 // ─── Core Middlewares ──────────────────────────────────────────────────────────
@@ -244,10 +244,23 @@ server.put(["/api/auth/me", "/auth/me"], (req, res) => {
   });
 });
 
+// Helper: Haversine distance in meters
+const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
+  const R = 6371000;
+  const toRad = (deg) => (deg * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+  return Math.round(R * c);
+};
+
 // ─── Custom Check-In Endpoint ─────────────────────────────────────────────────
 // POST /api/registrations/check-in & /registrations/check-in
 server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, res) => {
-  const { eventId, userId, studentId } = req.body;
+  const { eventId, userId, studentId, userLocation } = req.body;
 
   if (!eventId) {
     return res.status(400).json({
@@ -266,6 +279,33 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
       success: false,
       message: "Sự kiện không tồn tại hoặc đã bị hủy",
     });
+  }
+
+  // Anti-Fake Check-in: Kiểm tra toạ độ GPS nếu sự kiện có toạ độ
+  if (event.coordinates && event.coordinates.latitude && event.coordinates.longitude) {
+    if (!userLocation || userLocation.latitude === undefined || userLocation.longitude === undefined) {
+      return res.status(400).json({
+        success: false,
+        message: "Sự kiện này yêu cầu xác thực vị trí (GPS) để chống check-in giả mạo. Vui lòng cấp quyền vị trí trên thiết bị.",
+      });
+    }
+
+    const distance = calculateDistanceMeters(
+      userLocation.latitude,
+      userLocation.longitude,
+      event.coordinates.latitude,
+      event.coordinates.longitude
+    );
+
+    const MAX_ALLOWED_DISTANCE_METERS = 500;
+    if (distance > MAX_ALLOWED_DISTANCE_METERS) {
+      const distText = distance < 1000 ? distance + "m" : (distance / 1000).toFixed(1) + "km";
+      return res.status(403).json({
+        success: false,
+        message: "Vị trí không hợp lệ! Bạn đang cách địa điểm sự kiện " + distText + " (vượt quá bán kính cho phép " + MAX_ALLOWED_DISTANCE_METERS + "m). Vui lòng có mặt tại địa điểm để điểm danh.",
+        distanceMeters: distance,
+      });
+    }
   }
 
   let user = null;
@@ -304,6 +344,7 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
       registeredAt: now,
       checkInTime: now,
       checkOutTime: null,
+      checkInLocation: userLocation || null,
     };
     router.db.get("registrations").push(registration).write();
   } else {
@@ -318,7 +359,7 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
     router.db
       .get("registrations")
       .find({ id: registration.id })
-      .assign({ status: "checked_in", checkInTime: now })
+      .assign({ status: "checked_in", checkInTime: now, checkInLocation: userLocation || null })
       .write();
     registration = router.db.get("registrations").find({ id: registration.id }).value();
   }

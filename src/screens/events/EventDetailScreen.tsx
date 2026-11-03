@@ -13,6 +13,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { MainStackParamList } from "../../navigation/types";
 import AISummary from "../../components/ai/AISummary";
+import AdminLocationModal from "../../components/events/AdminLocationModal";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { fetchEventById, clearSelectedEvent } from "../../features/events/eventsSlice";
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
@@ -46,6 +47,7 @@ export default function EventDetailScreen() {
     (r) => r.eventId === eventId && r.status !== 'cancelled'
   );
   const isRegistered = !!existingReg;
+  const [adminModalVisible, setAdminModalVisible] = useState(false);
 
   useEffect(() => {
     if (eventId) {
@@ -152,8 +154,26 @@ export default function EventDetailScreen() {
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>📍</Text>
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Địa điểm tổ chức</Text>
+              <View style={styles.locationHeaderRow}>
+                <Text style={styles.infoLabel}>Địa điểm tổ chức</Text>
+                <TouchableOpacity
+                  style={styles.adminEditBtn}
+                  onPress={() => setAdminModalVisible(true)}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.adminEditBtnText}>⚙️ Cài đặt GPS (Admin)</Text>
+                </TouchableOpacity>
+              </View>
               <Text style={styles.infoValue}>{event.location}</Text>
+              {event.coordinates ? (
+                <Text style={styles.coordsValue}>
+                  🌐 Toạ độ: {event.coordinates.latitude.toFixed(4)}, {event.coordinates.longitude.toFixed(4)} (Bán kính 500m)
+                </Text>
+              ) : (
+                <Text style={styles.coordsWarning}>
+                  ⚠️ Chưa cấu hình toạ độ GPS Anti-Fake
+                </Text>
+              )}
             </View>
           </View>
 
@@ -236,6 +256,16 @@ export default function EventDetailScreen() {
           )}
         </View>
       </View>
+      <AdminLocationModal
+        visible={adminModalVisible}
+        onClose={() => setAdminModalVisible(false)}
+        event={event}
+        onSuccess={(_newLoc, _newCoords) => {
+          if (eventId) {
+            dispatch(fetchEventById(eventId));
+          }
+        }}
+      />
     </ScrollView>
   );
 }
@@ -395,4 +425,35 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   backBtnText: { color: "#fff", fontWeight: "600" },
+  locationHeaderRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 4,
+  },
+  adminEditBtn: {
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+  },
+  adminEditBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4338CA",
+  },
+  coordsValue: {
+    fontSize: 12,
+    color: "#059669",
+    marginTop: 4,
+    fontWeight: "500",
+  },
+  coordsWarning: {
+    fontSize: 12,
+    color: "#D97706",
+    marginTop: 4,
+    fontStyle: "italic",
+  },
 });

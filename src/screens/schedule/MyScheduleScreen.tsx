@@ -701,7 +701,7 @@ export default function MyScheduleScreen({
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={BACKGROUND} />
+      <StatusBar barStyle="dark-content" />
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <View style={styles.header}>

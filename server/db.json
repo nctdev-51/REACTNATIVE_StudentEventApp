@@ -77,7 +77,11 @@
         "benefits": "Cộng 10 điểm rèn luyện, cấp giấy chứng nhận tham gia, cơ hội nhận học bổng và kết nối doanh nghiệp."
       },
       "status": "upcoming",
-      "createdAt": "2026-09-10T08:00:00.000Z"
+      "createdAt": "2026-09-10T08:00:00.000Z",
+      "coordinates": {
+        "latitude": 10.8221,
+        "longitude": 106.6876
+      }
     },
     {
       "id": "66f1e2020000000000000002",
@@ -103,7 +107,11 @@
         "benefits": "Cộng 8 điểm rèn luyện, tài liệu độc quyền và thực hành trực tiếp với chuyên gia."
       },
       "status": "ongoing",
-      "createdAt": "2026-09-05T09:00:00.000Z"
+      "createdAt": "2026-09-05T09:00:00.000Z",
+      "coordinates": {
+        "latitude": 10.8225,
+        "longitude": 106.688
+      }
     },
     {
       "id": "66f1e2030000000000000003",
@@ -129,7 +137,11 @@
         "benefits": "Cộng 15 điểm rèn luyện cho VĐV/Cổ động viên tích cực, huy chương và cúp vô địch."
       },
       "status": "upcoming",
-      "createdAt": "2026-09-01T10:00:00.000Z"
+      "createdAt": "2026-09-01T10:00:00.000Z",
+      "coordinates": {
+        "latitude": 10.8502,
+        "longitude": 106.654
+      }
     },
     {
       "id": "66f1e2040000000000000004",
@@ -155,7 +167,11 @@
         "benefits": "Cộng 20 điểm rèn luyện, giải thưởng tiền mặt và hỗ trợ ươm mầm dự án."
       },
       "status": "completed",
-      "createdAt": "2026-07-20T08:00:00.000Z"
+      "createdAt": "2026-07-20T08:00:00.000Z",
+      "coordinates": {
+        "latitude": 10.8218,
+        "longitude": 106.6873
+      }
     },
     {
       "id": "66f1e2050000000000000005",
@@ -181,7 +197,11 @@
         "benefits": "Cộng 15 điểm rèn luyện, quà tặng bồi dưỡng sức khỏe và giấy chứng nhận hiến máu nhân đạo."
       },
       "status": "completed",
-      "createdAt": "2026-06-20T08:00:00.000Z"
+      "createdAt": "2026-06-20T08:00:00.000Z",
+      "coordinates": {
+        "latitude": 10.823,
+        "longitude": 106.6882
+      }
     },
     {
       "id": "66f1e2060000000000000006",
@@ -207,7 +227,11 @@
         "benefits": "Tiếp cận doanh nghiệp, phỏng vấn nhanh, tìm vị trí thực tập và cộng điểm rèn luyện."
       },
       "status": "upcoming",
-      "createdAt": "2026-09-15T08:00:00.000Z"
+      "createdAt": "2026-09-15T08:00:00.000Z",
+      "coordinates": {
+        "latitude": 10.8223,
+        "longitude": 106.6878
+      }
     }
   ],
   "registrations": [
@@ -252,9 +276,9 @@
       "userId": "66f1a1010000000000000001",
       "participantRole": "attendee",
       "status": "registered",
-      "id": "6adf71560ed48ed7cdf82e8d",
-      "_id": "6adf71560ed48ed7cdf82e8d",
-      "createdAt": "2026-10-26T15:27:18.154Z"
+      "id": "6ae03e31060e337a59925c69",
+      "_id": "6ae03e31060e337a59925c69",
+      "createdAt": "2026-10-27T06:01:21.847Z"
     }
   ],
   "feedbacks": [

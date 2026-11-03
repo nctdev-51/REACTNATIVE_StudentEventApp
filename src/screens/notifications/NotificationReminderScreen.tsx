@@ -282,7 +282,7 @@ export default function NotificationReminderScreen({
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={BACKGROUND} />
+      <StatusBar barStyle="dark-content" />
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Nút Back + Header */}

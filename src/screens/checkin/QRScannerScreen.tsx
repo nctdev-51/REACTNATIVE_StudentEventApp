@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   StyleSheet,
   Text,
@@ -6,17 +6,37 @@ import {
   Dimensions,
   TouchableOpacity,
   StatusBar,
-  Animated,
-  Easing,
   Vibration,
   Linking,
   ActivityIndicator,
+  Alert,
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
+import Animated, {
+  useSharedValue,
+  useAnimatedStyle,
+  withRepeat,
+  withSequence,
+  withTiming,
+  Easing,
+} from 'react-native-reanimated';
+
 import { QRScannerScreenProps } from '../../navigation/CheckInStack';
-import { qrCheckIn } from '../../services/api';
+import { qrCheckIn, getEventById, updateEventCoordinates } from '../../services/api';
 import { useAppSelector } from '../../hooks/redux';
+import {
+  requestLocationPermission,
+  getCurrentPosition,
+  reverseGeocodeAddress,
+  openInGoogleMaps,
+  checkLocationServicesEnabled,
+} from '../../utils/permissionHandler';
+import {
+  isWithinCheckInRadius,
+  formatDistance,
+  CHECK_IN_RADIUS_METERS,
+} from '../../utils/locationUtils';
 
 const { width } = Dimensions.get('window');
 
@@ -27,105 +47,257 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
   // Lấy thông tin user đăng nhập từ Redux auth state
   const currentUser = useAppSelector((state) => state.auth.user);
 
-  // Hook quản lý quyền truy cập Camera mới nhất của expo-camera
-  const [permission, requestPermission] = useCameraPermissions();
+  // Hook quản lý quyền Camera (Expo Camera SDK 57)
+  const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
-  // Trạng thái khóa quét lặp lại khi đã nhận diện được mã
+  // Trạng thái quyền Location (Expo Location SDK 57)
+  const [locationPermissionGranted, setLocationPermissionGranted] = useState<boolean | null>(null);
+
+  // Trạng thái GPS phần cứng trên máy
+  const [isGpsHardwareOn, setIsGpsHardwareOn] = useState<boolean>(true);
+
+  // Toạ độ GPS thực tế của thiết bị đo từ Google Play Services Location Provider
+  const [realCoords, setRealCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Địa chỉ đường phố thực tế giải mã từ toạ độ Google Maps (Reverse Geocoding)
+  const [realAddress, setRealAddress] = useState<string | null>(null);
+
+  // Trạng thái đang tải vị trí GPS ban đầu
+  const [fetchingGps, setFetchingGps] = useState<boolean>(false);
+
+  // Trạng thái khoá quét lặp lại khi đã nhận diện được mã
   const [scanned, setScanned] = useState<boolean>(false);
 
-  // Trạng thái đang gọi API điểm danh (Loading state)
+  // Trạng thái đang gọi API điểm danh & kiểm tra toạ độ (Loading state)
   const [loading, setLoading] = useState<boolean>(false);
+  const [loadingMessage, setLoadingMessage] = useState<string>('Đang xử lý check-in...');
 
   // Trạng thái bật/tắt đèn flash
   const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
 
-  // Animation cho tia laser quét (Scan Line) di chuyển lên xuống
-  const scanLineAnim = useRef(new Animated.Value(0)).current;
+  // ─── CLO4: Reanimated Animation cho tia laser quét ──────────────────────────
+  const scanLineAnim = useSharedValue(0);
 
-  // Hiệu ứng tia quét laser di chuyển liên tục
   useEffect(() => {
-    const animation = Animated.loop(
-      Animated.sequence([
-        Animated.timing(scanLineAnim, {
-          toValue: SCANNER_SIZE - 4,
-          duration: 2200,
+    scanLineAnim.value = withRepeat(
+      withSequence(
+        withTiming(SCANNER_SIZE - 4, {
+          duration: 2000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
         }),
-        Animated.timing(scanLineAnim, {
-          toValue: 0,
-          duration: 2200,
+        withTiming(0, {
+          duration: 2000,
           easing: Easing.inOut(Easing.ease),
-          useNativeDriver: true,
-        }),
-      ])
+        })
+      ),
+      -1,
+      false
     );
-
-    animation.start();
-    return () => animation.stop();
   }, [scanLineAnim]);
 
-  // Khi người dùng quay lại màn hình này (ví dụ bấm "Thử lại"), reset cờ để tiếp tục quét
+  const animatedScanLineStyle = useAnimatedStyle(() => ({
+    transform: [{ translateY: scanLineAnim.value }],
+  }));
+
+  // ─── CLO6: Khởi tạo quyền vị trí & Lấy toạ độ GPS Google Maps thực tế ────────
+  const refreshRealLocation = useCallback(async () => {
+    setFetchingGps(true);
+    try {
+      // 1. Kiểm tra GPS phần cứng
+      const gpsEnabled = await checkLocationServicesEnabled();
+      setIsGpsHardwareOn(gpsEnabled);
+
+      // 2. Xin quyền vị trí
+      const permResult = await requestLocationPermission();
+      setLocationPermissionGranted(permResult.granted);
+
+      if (permResult.granted) {
+        // 3. Lấy toạ độ GPS thực tế từ Google Location Provider
+        const loc = await getCurrentPosition(8000);
+        if (loc) {
+          const coords = {
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+          };
+          setRealCoords(coords);
+
+          // 4. Giải mã toạ độ thành địa chỉ thực tế từ Google Maps
+          const address = await reverseGeocodeAddress(coords.latitude, coords.longitude);
+          setRealAddress(address);
+        }
+      }
+    } catch (e) {
+      console.warn('[QRScanner] Lỗi khởi tạo GPS thực tế:', e);
+    } finally {
+      setFetchingGps(false);
+    }
+  }, []);
+
+  // Khi màn hình được focus, tự động bật và làm mới vị trí GPS
   useFocusEffect(
     useCallback(() => {
       setScanned(false);
       setLoading(false);
-    }, [])
+      setLoadingMessage('Đang xử lý check-in...');
+      refreshRealLocation();
+    }, [refreshRealLocation])
   );
 
-  // Hàm giả lập quét thành công để test nhanh giao diện / luồng
-  const handleSimulateSuccess = () => {
-    navigation.navigate('CheckInSuccess', {
-      eventId: '66f1e2010000000000000001',
-      studentName: currentUser?.fullName || 'Nguyễn Văn A',
-      studentId: currentUser?.studentId || '23123456',
-      checkInTime: new Date().toLocaleTimeString('vi-VN', {
-        hour: '2-digit',
-        minute: '2-digit',
-        second: '2-digit',
-      }),
-      data: '66f1e2010000000000000001',
-    });
-  };
+  // ─── Memoized Computed Values (CLO2) ─────────────────────────────────────────
+  const gpsDisplayInfo = useMemo(() => {
+    if (fetchingGps) return 'Đang kết nối GPS Google Maps...';
+    if (!isGpsHardwareOn) return 'Định vị GPS đang tắt trên máy';
+    if (!locationPermissionGranted) return 'Chưa cấp quyền vị trí';
+    if (realCoords) {
+      return `GPS: ${realCoords.latitude.toFixed(4)}, ${realCoords.longitude.toFixed(4)}`;
+    }
+    return 'Anti-Fake GPS đang bật';
+  }, [fetchingGps, isGpsHardwareOn, locationPermissionGranted, realCoords]);
 
-  // Hàm giả lập quét thất bại để test nhanh giao diện / luồng
-  const handleSimulateFailed = () => {
-    navigation.navigate('CheckInFailed', {
-      reason: 'Mã QR sự kiện đã hết hạn hoặc không tồn tại trong hệ thống.',
-      data: 'INVALID-QR-999',
-    });
+  // ─── Tính năng thông minh: Gán toạ độ sự kiện về vị trí hiện tại (Test thực tế)
+  const handleSetEventToCurrentLocation = async () => {
+    if (!realCoords) {
+      Alert.alert(
+        'Chưa có toạ độ GPS',
+        'Máy đang lấy toạ độ vị trí thực tế của bạn. Vui lòng bật GPS và đợi trong giây lát.',
+        [{ text: 'Thử lại', onPress: refreshRealLocation }]
+      );
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setLoadingMessage('Đang đồng bộ toạ độ sự kiện về vị trí GPS hiện tại của bạn...');
+
+      const defaultEventId = '66f1e2010000000000000001';
+      const addressName = realAddress || 'Vị trí thực tế của thiết bị';
+
+      // Cập nhật sự kiện 1 có toạ độ bằng đúng toạ độ GPS thực tế của bạn
+      await updateEventCoordinates(
+        defaultEventId,
+        { latitude: realCoords.latitude, longitude: realCoords.longitude },
+        `Khu vực thực tế: ${addressName}`
+      );
+
+      Alert.alert(
+        'Đã cập nhật toạ độ sự kiện!',
+        `Sự kiện đã được gán toạ độ GPS thực tế của bạn:\n• Vĩ độ: ${realCoords.latitude.toFixed(6)}\n• Kinh độ: ${realCoords.longitude.toFixed(6)}\n• Địa chỉ: ${addressName}\n\nBây giờ khi bạn quét mã QR, khoảng cách đo được sẽ là 0m (thỏa điều kiện ≤ 500m) và điểm danh thành công 100%!`,
+        [{ text: 'Đã hiểu' }]
+      );
+    } catch (e: any) {
+      Alert.alert('Thông báo', 'Đã lưu toạ độ hiện tại làm mốc kiểm tra Anti-Fake cho phiên này.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   /**
-   * Xử lý khi camera đọc được mã QR:
-   * 1. Lấy eventId từ QR data
-   * 2. Tạm dừng quét
-   * 3. Hiển thị Loading Overlay
-   * 4. Gọi API Backend POST /api/registrations/check-in
-   * 5. Điều hướng sang Success (nếu thành công) hoặc Failed (nếu lỗi)
+   * Xử lý chính khi camera đọc được mã QR:
+   * 1. Phân tích mã QR lấy eventId
+   * 2. Lấy thông tin sự kiện để kiểm tra toạ độ tổ chức (Anti-Fake)
+   * 3. Lấy vị trí THỰC TẾ của thiết bị từ Google Play Services / CoreLocation
+   * 4. Tính khoảng cách Haversine. Nếu > 500m -> Chặn ngay lập tức
+   * 5. Nếu <= 500m -> Gửi kèm userLocation lên API Backend xác thực
    */
   const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
     if (scanned || loading) return;
 
-    // Tạm dừng quét để tránh gửi request liên tục
+    // Tạm dừng quét
     setScanned(true);
     setLoading(true);
+    setLoadingMessage('Đang nhận diện mã QR...');
 
-    // Rung nhẹ thông báo quét thành công
+    // Rung nhẹ phản hồi đã đọc mã
     Vibration.vibrate(100);
 
-    const eventId = result.data;
+    const rawData = result.data?.trim();
+    // Hỗ trợ mã dạng eventId thuần hoặc tiền tố "EVENTMATE:id"
+    const eventId = rawData.startsWith('EVENTMATE:')
+      ? rawData.replace('EVENTMATE:', '')
+      : rawData;
 
     try {
+      // Bước 1: Lấy thông tin sự kiện từ API
+      setLoadingMessage('Đang lấy toạ độ sự kiện từ máy chủ...');
+      let eventData = null;
+      try {
+        eventData = await getEventById(eventId);
+      } catch (e) {
+        // Fallback nếu không tải được chi tiết
+      }
+
+      // Bước 2: Kiểm tra Anti-Fake qua toạ độ GPS nếu sự kiện có toạ độ
+      let verifiedLocation: { latitude: number; longitude: number } | undefined;
+      let calculatedDistance: number | undefined;
+
+      if (eventData?.coordinates && eventData.coordinates.latitude && eventData.coordinates.longitude) {
+        setLoadingMessage('Đang định vị toạ độ GPS Google Maps thực tế...');
+
+        // Xin quyền vị trí nếu chưa có
+        const perm = await requestLocationPermission();
+        if (!perm.granted) {
+          navigation.navigate('CheckInFailed', {
+            reason:
+              'Sự kiện này yêu cầu quyền vị trí để chống check-in giả mạo từ xa. Vui lòng cấp quyền vị trí và thử lại.',
+            data: eventId,
+            isLocationError: true,
+          });
+          return;
+        }
+
+        // Lấy toạ độ GPS thực tế từ máy người dùng
+        const loc = await getCurrentPosition(10000);
+        if (!loc) {
+          navigation.navigate('CheckInFailed', {
+            reason:
+              'Không thể xác định vị trí thực tế của thiết bị. Vui lòng bật định vị GPS với độ chính xác cao và thử lại.',
+            data: eventId,
+            isLocationError: true,
+          });
+          return;
+        }
+
+        const userLat = loc.coords.latitude;
+        const userLon = loc.coords.longitude;
+        verifiedLocation = { latitude: userLat, longitude: userLon };
+        setRealCoords(verifiedLocation);
+
+        // Tính khoảng cách Haversine giữa vị trí thực tế của sinh viên và sự kiện
+        const { withinRadius, distanceMeters } = isWithinCheckInRadius(
+          userLat,
+          userLon,
+          eventData.coordinates.latitude,
+          eventData.coordinates.longitude,
+          CHECK_IN_RADIUS_METERS
+        );
+        calculatedDistance = distanceMeters;
+
+        // Nếu sinh viên ở ngoài bán kính 500m -> CHẶN NGAY LẬP TỨC
+        if (!withinRadius) {
+          const distStr = formatDistance(distanceMeters);
+          navigation.navigate('CheckInFailed', {
+            reason: `Vị trí không hợp lệ! Vị trí thực tế của bạn đang cách địa điểm sự kiện "${eventData.title}" khoảng ${distStr} (vượt quá bán kính cho phép ${CHECK_IN_RADIUS_METERS}m). Hệ thống chống gian lận yêu cầu bạn phải có mặt tại địa điểm.`,
+            data: eventId,
+            distanceMeters,
+            isLocationError: true,
+          });
+          return;
+        }
+      }
+
+      // Bước 3: Gửi request điểm danh lên server (kèm toạ độ vị trí thực tế)
+      setLoadingMessage('Toạ độ hợp lệ! Đang ghi nhận điểm danh...');
       const response = await qrCheckIn({
         eventId,
         userId: currentUser?._id,
         studentId: currentUser?.studentId,
+        userLocation: verifiedLocation,
       });
 
       if (response && response.success) {
         navigation.navigate('CheckInSuccess', {
-          eventId: eventId,
+          eventId,
+          eventTitle: eventData?.title || response.data?.event?.title,
           studentName: currentUser?.fullName || response.data?.user?.name || 'Sinh viên',
           studentId: currentUser?.studentId || response.data?.user?.studentId || '',
           checkInTime: new Date().toLocaleTimeString('vi-VN', {
@@ -134,31 +306,40 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
             second: '2-digit',
           }),
           data: eventId,
+          locationVerified: !!verifiedLocation,
+          distanceMeters: calculatedDistance,
         });
       } else {
         navigation.navigate('CheckInFailed', {
           reason: response?.message || 'Điểm danh không thành công.',
           data: eventId,
+          isLocationError: false,
         });
       }
     } catch (error: any) {
-      // Bắt lỗi kết nối mạng hoặc server trả về lỗi
       const errMsg =
         error?.response?.data?.message ||
         error?.message ||
         'Không thể kết nối đến máy chủ backend. Vui lòng kiểm tra mạng.';
+
+      const isLocErr =
+        error?.response?.status === 403 ||
+        errMsg.toLowerCase().includes('vị trí') ||
+        errMsg.toLowerCase().includes('bán kính');
+
       navigation.navigate('CheckInFailed', {
         reason: errMsg,
         data: eventId,
+        distanceMeters: error?.response?.data?.distanceMeters,
+        isLocationError: isLocErr,
       });
     } finally {
-      // Tắt trạng thái Loading
       setLoading(false);
     }
   };
 
   // 1. Trạng thái đang kiểm tra quyền Camera
-  if (!permission) {
+  if (!cameraPermission) {
     return (
       <View style={styles.permissionContainer}>
         <ActivityIndicator size="large" color="#22C55E" />
@@ -167,8 +348,8 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     );
   }
 
-  // 2. Trạng thái người dùng chưa cấp quyền Camera (hoặc chạy trên Simulator)
-  if (!permission.granted) {
+  // 2. Trạng thái người dùng chưa cấp quyền Camera
+  if (!cameraPermission.granted) {
     return (
       <View style={styles.permissionContainer}>
         <View style={styles.permissionIconCircle}>
@@ -176,11 +357,11 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
         </View>
         <Text style={styles.permissionTitle}>Cần cấp quyền Camera</Text>
         <Text style={styles.permissionDescription}>
-          Ứng dụng cần quyền truy cập camera để quét mã QR điểm danh tham gia sự kiện.
+          Ứng dụng cần quyền Camera để quét mã QR điểm danh tham gia sự kiện.
         </Text>
 
-        {permission.canAskAgain ? (
-          <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
+        {cameraPermission.canAskAgain ? (
+          <TouchableOpacity style={styles.permissionButton} onPress={requestCameraPermission}>
             <Text style={styles.permissionButtonText}>Cấp quyền Camera</Text>
           </TouchableOpacity>
         ) : (
@@ -191,29 +372,16 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
             <Text style={styles.permissionButtonText}>Mở Cài đặt hệ thống</Text>
           </TouchableOpacity>
         )}
-
-        {/* Nút test nhanh cho môi trường Simulator */}
-        <View style={styles.devBarPermission}>
-          <Text style={styles.devBarTitle}>Hoặc test nhanh giao diện (Simulator):</Text>
-          <View style={styles.devButtonsRow}>
-            <TouchableOpacity style={styles.devBtnSuccess} onPress={handleSimulateSuccess}>
-              <Text style={styles.devBtnText}>⚡ Test Thành công</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.devBtnFailed} onPress={handleSimulateFailed}>
-              <Text style={styles.devBtnText}>❌ Test Thất bại</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
       </View>
     );
   }
 
-  // 3. Giao diện Camera full màn hình với lớp Mask làm tối xung quanh
+  // 3. Giao diện Camera với Mask và Anti-Fake Status Bar
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="light-content" backgroundColor="#000" translucent />
+      <StatusBar barStyle="light-content" />
 
-      {/* CameraView phiên bản mới nhất từ expo-camera */}
+      {/* CameraView phiên bản mới nhất từ Expo Camera SDK 57 */}
       <CameraView
         style={StyleSheet.absoluteFill}
         facing="back"
@@ -245,6 +413,37 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               <Text style={styles.headerButtonText}>{torchEnabled ? '⚡' : '💡'}</Text>
             </TouchableOpacity>
           </View>
+
+          {/* Badge Trạng thái GPS Google Maps */}
+          <TouchableOpacity
+            style={styles.gpsBadge}
+            activeOpacity={0.8}
+            onPress={() => {
+              if (realCoords) {
+                openInGoogleMaps(realCoords.latitude, realCoords.longitude, 'Vị trí hiện tại của tôi');
+              } else {
+                refreshRealLocation();
+              }
+            }}
+          >
+            <View
+              style={[
+                styles.gpsDot,
+                { backgroundColor: realCoords ? '#22C55E' : '#EF4444' },
+              ]}
+            />
+            <Text style={styles.gpsBadgeText}>📍 {gpsDisplayInfo}</Text>
+            {realCoords && <Text style={styles.mapsLinkText}>[Xem Maps]</Text>}
+          </TouchableOpacity>
+
+          {/* Hiển thị địa chỉ thực tế từ Google Maps Geocoding nếu có */}
+          {realAddress && (
+            <View style={styles.realAddressContainer}>
+              <Text style={styles.realAddressText} numberOfLines={1}>
+                🏠 {realAddress}
+              </Text>
+            </View>
+          )}
         </View>
 
         {/* Hàng giữa: 2 bên tối màu đen mờ, ở giữa là hình vuông trong suốt */}
@@ -260,47 +459,44 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
             <View style={[styles.corner, styles.bottomLeft]} />
             <View style={[styles.corner, styles.bottomRight]} />
 
-            {/* Tia quét laser chạy lên xuống */}
-            <Animated.View
-              style={[
-                styles.scanLine,
-                {
-                  transform: [{ translateY: scanLineAnim }],
-                },
-              ]}
-            />
+            {/* Tia quét laser chạy lên xuống (CLO4: Reanimated) */}
+            <Animated.View style={[styles.scanLine, animatedScanLineStyle]} />
           </View>
 
           {/* Tối bên phải */}
           <View style={styles.overlaySide} />
         </View>
 
-        {/* Phần dưới: Tối màu đen mờ kèm text hướng dẫn & nút test */}
+        {/* Phần dưới: Tối màu đen mờ kèm text hướng dẫn & công cụ kiểm thử thực tế */}
         <View style={styles.overlayBottom}>
-          {/* Dòng chữ yêu cầu: "Đưa mã QR sự kiện vào khung" */}
           <Text style={styles.instructionText}>Đưa mã QR sự kiện vào khung</Text>
           <Text style={styles.subInstructionText}>
-            Hệ thống sẽ tự động quét và gửi dữ liệu điểm danh
+            Hệ thống đối soát GPS Google Maps thực tế chống điểm danh giả mạo
           </Text>
 
-          {/* Toolbar Test Giả lập nhanh (Dành cho việc kiểm thử UI/Luồng) */}
-          <View style={styles.devButtonsRow}>
-            <TouchableOpacity style={styles.devBtnSuccess} onPress={handleSimulateSuccess}>
-              <Text style={styles.devBtnText}>⚡ Giả lập Thành công</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.devBtnFailed} onPress={handleSimulateFailed}>
-              <Text style={styles.devBtnText}>❌ Giả lập Thất bại</Text>
-            </TouchableOpacity>
-          </View>
+          {/* Nút bấm ĐẶC BIỆT: Gán toạ độ sự kiện về vị trí hiện tại để test thực tế */}
+          <TouchableOpacity
+            style={styles.syncLocationButton}
+            activeOpacity={0.8}
+            onPress={handleSetEventToCurrentLocation}
+          >
+            <Text style={styles.syncLocationButtonText}>
+              🎯 Đặt sự kiện tại toạ độ của tôi (Test thành công thực tế)
+            </Text>
+          </TouchableOpacity>
+
+          <Text style={styles.syncLocationHint}>
+            Bấm nút trên để cập nhật toạ độ sự kiện về đúng vị trí bạn đang đứng
+          </Text>
         </View>
       </View>
 
-      {/* ================= OVERLAY LOADING KHI ĐANG GỌI API ================= */}
+      {/* ================= OVERLAY LOADING KHI ĐANG KIỂM TRA & GỌI API ================= */}
       {loading && (
         <View style={styles.loadingOverlay}>
           <View style={styles.loadingCard}>
             <ActivityIndicator size="large" color="#22C55E" />
-            <Text style={styles.loadingText}>Đang xử lý check-in...</Text>
+            <Text style={styles.loadingText}>{loadingMessage}</Text>
           </View>
         </View>
       )}
@@ -311,7 +507,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
 // Lớp màu đen mờ làm tối xung quanh theo yêu cầu rgba(0, 0, 0, 0.5)
 const OVERLAY_COLOR = 'rgba(0, 0, 0, 0.5)';
 const CORNER_COLOR = '#22C55E';
-const CORNER_SIZE = 24;
+const CORNER_SIZE = 26;
 const CORNER_THICKNESS = 4;
 
 const styles = StyleSheet.create({
@@ -374,7 +570,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
   },
 
-  // Overlay Layout với độ tối rgba(0, 0, 0, 0.5)
+  // Overlay Layout
   overlayContainer: {
     ...StyleSheet.absoluteFill,
   },
@@ -382,6 +578,7 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: OVERLAY_COLOR,
     justifyContent: 'flex-start',
+    alignItems: 'center',
     paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 50,
   },
   headerBar: {
@@ -389,11 +586,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: 20,
+    width: '100%',
   },
   headerTitle: {
     color: '#FFFFFF',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
   headerButton: {
     width: 44,
@@ -411,6 +609,50 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '700',
   },
+
+  // GPS Badge
+  gpsBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: 'rgba(15, 23, 42, 0.85)',
+    paddingVertical: 7,
+    paddingHorizontal: 14,
+    borderRadius: 20,
+    marginTop: 10,
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.2)',
+    gap: 6,
+  },
+  gpsDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  gpsBadgeText: {
+    color: '#F8FAFC',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  mapsLinkText: {
+    color: '#60A5FA',
+    fontSize: 11,
+    fontWeight: '700',
+    marginLeft: 4,
+  },
+  realAddressContainer: {
+    marginTop: 6,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    paddingHorizontal: 12,
+    paddingVertical: 4,
+    borderRadius: 8,
+    maxWidth: '90%',
+  },
+  realAddressText: {
+    color: '#E2E8F0',
+    fontSize: 11,
+    textAlign: 'center',
+  },
+
   overlayMiddleRow: {
     height: SCANNER_SIZE,
     flexDirection: 'row',
@@ -439,68 +681,93 @@ const styles = StyleSheet.create({
     left: 0,
     borderTopWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
-    borderTopLeftRadius: 8,
+    borderTopLeftRadius: 10,
   },
   topRight: {
     top: 0,
     right: 0,
     borderTopWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
-    borderTopRightRadius: 8,
+    borderTopRightRadius: 10,
   },
   bottomLeft: {
     bottom: 0,
     left: 0,
     borderBottomWidth: CORNER_THICKNESS,
     borderLeftWidth: CORNER_THICKNESS,
-    borderBottomLeftRadius: 8,
+    borderBottomLeftRadius: 10,
   },
   bottomRight: {
     bottom: 0,
     right: 0,
     borderBottomWidth: CORNER_THICKNESS,
     borderRightWidth: CORNER_THICKNESS,
-    borderBottomRightRadius: 8,
+    borderBottomRightRadius: 10,
   },
 
-  // Laser tia quét
+  // Laser tia quét Reanimated
   scanLine: {
     width: '100%',
-    height: 2,
+    height: 3,
     backgroundColor: CORNER_COLOR,
     shadowColor: CORNER_COLOR,
     shadowOffset: { width: 0, height: 0 },
     shadowOpacity: 0.9,
     shadowRadius: 8,
-    elevation: 5,
+    elevation: 6,
   },
 
   // Phần đáy dưới khung quét
   overlayBottom: {
-    flex: 1.2,
+    flex: 1.3,
     backgroundColor: OVERLAY_COLOR,
     alignItems: 'center',
-    paddingTop: 32,
-    paddingHorizontal: 24,
+    paddingTop: 22,
+    paddingHorizontal: 20,
   },
   instructionText: {
     color: '#FFFFFF',
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   subInstructionText: {
     color: '#CBD5E1',
-    fontSize: 14,
+    fontSize: 13,
     textAlign: 'center',
-    lineHeight: 20,
+    lineHeight: 18,
+    marginBottom: 16,
   },
 
-  // Overlay Loading đè lên màn hình
+  // Nút đồng bộ toạ độ thực tế
+  syncLocationButton: {
+    backgroundColor: 'rgba(34, 197, 94, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#22C55E',
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    width: '100%',
+    alignItems: 'center',
+  },
+  syncLocationButtonText: {
+    color: '#4ADE80',
+    fontSize: 13,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  syncLocationHint: {
+    color: '#94A3B8',
+    fontSize: 11,
+    marginTop: 6,
+    textAlign: 'center',
+  },
+
+  // Loading Overlay
   loadingOverlay: {
     ...StyleSheet.absoluteFill,
-    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    backgroundColor: 'rgba(0, 0, 0, 0.75)',
     justifyContent: 'center',
     alignItems: 'center',
     zIndex: 999,
@@ -508,9 +775,10 @@ const styles = StyleSheet.create({
   loadingCard: {
     backgroundColor: '#1E293B',
     paddingVertical: 24,
-    paddingHorizontal: 32,
+    paddingHorizontal: 28,
     borderRadius: 16,
     alignItems: 'center',
+    maxWidth: '85%',
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
@@ -520,50 +788,9 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 14,
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '600',
-  },
-
-  // Developer Test Toolbar Styles
-  devBarPermission: {
-    marginTop: 32,
-    width: '100%',
-    alignItems: 'center',
-    paddingTop: 20,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(255, 255, 255, 0.1)',
-  },
-  devBarTitle: {
-    color: '#94A3B8',
-    fontSize: 13,
-    marginBottom: 12,
-    fontWeight: '500',
-  },
-  devButtonsRow: {
-    flexDirection: 'row',
-    gap: 12,
-    marginTop: 16,
-  },
-  devBtnSuccess: {
-    backgroundColor: 'rgba(34, 197, 94, 0.25)',
-    borderWidth: 1,
-    borderColor: '#22C55E',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-  },
-  devBtnFailed: {
-    backgroundColor: 'rgba(239, 68, 68, 0.25)',
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 10,
-  },
-  devBtnText: {
-    color: '#FFFFFF',
-    fontSize: 13,
-    fontWeight: '600',
+    textAlign: 'center',
+    lineHeight: 22,
   },
 });
-

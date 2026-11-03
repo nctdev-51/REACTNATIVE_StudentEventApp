@@ -6,39 +6,29 @@
 
 ## 1. Cấu trúc dự án
 
-Dự án gồm 2 phần:
+Dự án gồm 2 phần được tích hợp gọn gàng trong cùng thư mục:
 
-- `StudentEventApp/`: Ứng dụng di động (React Native, Expo SDK 57, Redux Toolkit).
-- `backend/`: Máy chủ API (Node.js, Express, MongoDB, JWT).
+- `src/`: Ứng dụng di động (React Native, Expo SDK 57, Tamagui, Redux Toolkit).
+- `server/`: Máy chủ Mock API (Node.js + JSON-Server + JWT) hoạt động độc lập, không yêu cầu cài đặt MongoDB, lưu dữ liệu trực tiếp vào `server/db.json`.
 
 ---
 
 ## 2. Hướng dẫn cài đặt và chạy ứng dụng
 
-### Bước 1: Khởi động Backend
+### Bước 1: Khởi động Mock Backend (JSON-Server)
 
-1. Đảm bảo MongoDB đang chạy trên máy (mặc định cổng 27017) hoặc có connection string MongoDB Atlas.
-2. Mở terminal, vào thư mục backend:
-   ```bash
-   cd backend
-   npm install
-   ```
-3. Kiểm tra file `.env` tại thư mục `backend/`:
-   ```env
-   PORT=5000
-   MONGO_URI=mongodb://localhost:27017/studenteventapp
-   JWT_SECRET=your_super_secret_jwt_key_change_this_in_production
-   ```
-4. Nạp dữ liệu mẫu ban đầu vào cơ sở dữ liệu:
-   ```bash
-   npm run seed
-   ```
-   _(Lệnh này tạo sẵn 6 sự kiện, 3 người dùng, 3 đăng ký mẫu, feedbacks và thông báo)._
-5. Khởi động server:
-   ```bash
-   npm run dev
-   ```
-   Server chạy tại: `http://localhost:5000`
+Không cần cài đặt MongoDB! Chỉ cần mở 1 terminal tại thư mục gốc và chạy:
+
+```bash
+npm run server
+```
+
+- Server sẽ chạy tại: `http://localhost:5000` (hoặc `http://10.0.2.2:5000` cho Android Emulator).
+- Dữ liệu lưu tại: `server/db.json`.
+- Khi cần khôi phục lại dữ liệu mẫu gốc ban đầu:
+  ```bash
+  npm run server:reset
+  ```
 
 ---
 

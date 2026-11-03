@@ -10,8 +10,18 @@ export interface AISummary {
   benefits: string;
 }
 
+/**
+ * Toạ độ GPS của địa điểm tổ chức sự kiện.
+ * Dùng để xác minh vị trí sinh viên khi check-in (Anti-Fake).
+ */
+export interface EventCoordinates {
+  latitude: number;
+  longitude: number;
+}
+
 export interface Event {
   _id: string;
+  id?: string;
 
   title: string;
 
@@ -22,6 +32,9 @@ export interface Event {
   time: EventTime;
 
   location: string;
+
+  /** Toạ độ GPS địa điểm — dùng cho chống check-in giả mạo (Anti-Fake) */
+  coordinates?: EventCoordinates;
 
   organizer: string;
 
@@ -34,4 +47,8 @@ export interface Event {
   aiSummary: AISummary;
 
   status: "upcoming" | "ongoing" | "completed";
+
+  qrCode?: string;
+
+  createdAt?: string;
 }

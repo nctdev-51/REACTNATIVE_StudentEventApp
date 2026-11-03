@@ -5,6 +5,10 @@ export interface Registration {
   participantRole: 'attendee' | 'volunteer';
   status: 'registered' | 'checked_in' | 'cancelled';
   checkInTime: string | null;
+  checkInLocation?: {
+    latitude: number;
+    longitude: number;
+  };
   createdAt?: string;
 }
 

@@ -12,7 +12,7 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
-// ─── Main Stack ───────────────────────────────────────────────────────────────
+// ─── Main Stack (Sinh viên) ───────────────────────────────────────────────────
 
 export type MainStackParamList = {
   Home: undefined;
@@ -26,11 +26,23 @@ export type MainStackParamList = {
   RegistrationSuccess: { eventId?: string; eventTitle?: string } | undefined;
 };
 
+// ─── Admin Stack (Quản trị viên) ──────────────────────────────────────────────
+
+export type AdminStackParamList = {
+  AdminDashboard: undefined;
+  AdminEvents: undefined;
+  AdminCreateEvent: undefined;
+  AdminCheckInReports: { eventId?: string } | undefined;
+  AdminQRDisplay: { eventId: string; eventTitle: string };
+  StudentPreview: NavigatorScreenParams<MainStackParamList> | undefined;
+};
+
 // ─── Root ─────────────────────────────────────────────────────────────────────
 
 export type RootStackParamList = {
   Auth: NavigatorScreenParams<AuthStackParamList>;
   Main: NavigatorScreenParams<MainStackParamList>;
+  Admin: NavigatorScreenParams<AdminStackParamList>;
 };
 
 // ─── Typed Screen Props ───────────────────────────────────────────────────────
@@ -39,7 +51,7 @@ export type RootStackParamList = {
 export type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 export type RegisterScreenProps = NativeStackScreenProps<AuthStackParamList, 'Register'>;
 
-// Main
+// Main (Sinh viên)
 export type HomeScreenProps = NativeStackScreenProps<MainStackParamList, 'Home'>;
 export type EventDetailScreenProps = NativeStackScreenProps<MainStackParamList, 'EventDetail'>;
 export type ProfileScreenProps = NativeStackScreenProps<MainStackParamList, 'Profile'>;
@@ -48,3 +60,10 @@ export type NotificationScreenProps = NativeStackScreenProps<MainStackParamList,
 export type FeedbackScreenProps = NativeStackScreenProps<MainStackParamList, 'Feedback'>;
 export type FilterScreenProps = NativeStackScreenProps<MainStackParamList, 'Filter'>;
 export type RegistrationSuccessScreenProps = NativeStackScreenProps<MainStackParamList, 'RegistrationSuccess'>;
+
+// Admin (Quản trị viên)
+export type AdminDashboardScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminDashboard'>;
+export type AdminEventsScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminEvents'>;
+export type AdminCreateEventScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminCreateEvent'>;
+export type AdminCheckInReportsScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminCheckInReports'>;
+export type AdminQRDisplayScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminQRDisplay'>;

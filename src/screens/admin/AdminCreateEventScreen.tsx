@@ -1,0 +1,390 @@
+import React, { useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  ScrollView,
+  TextInput,
+  TouchableOpacity,
+  ActivityIndicator,
+  Alert,
+  KeyboardAvoidingView,
+  Platform,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import { useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { AdminStackParamList } from '../../navigation/types';
+import { createEvent } from '../../services/api';
+import { EventCoordinates } from '../../types';
+import {
+  geocodeAddress,
+  getCurrentPosition,
+  reverseGeocodeAddress,
+  openInGoogleMaps,
+} from '../../utils/permissionHandler';
+import { Colors } from '../../theme';
+
+type AdminCreateNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminCreateEvent'>;
+
+const CATEGORIES = ['Học thuật', 'Phong trào', 'Tình nguyện', 'Thể thao', 'Hội thảo'];
+
+export default function AdminCreateEventScreen() {
+  const navigation = useNavigation<AdminCreateNavProp>();
+
+  const [title, setTitle] = useState('');
+  const [faculty, setFaculty] = useState('Khoa Công nghệ thông tin');
+  const [category, setCategory] = useState('Học thuật');
+  const [location, setLocation] = useState('Hội trường E4, Trường Đại học Công nghiệp TP.HCM');
+  const [trainingPoints, setTrainingPoints] = useState('5');
+  const [description, setDescription] = useState('');
+
+  // GPS Geocoding State
+  const [coords, setCoords] = useState<EventCoordinates | null>({
+    latitude: 10.8221,
+    longitude: 106.6876,
+  });
+  const [geocoding, setGeocoding] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  // Tìm toạ độ từ text địa chỉ (Forward Geocoding)
+  const handleGeocode = async () => {
+    if (!location.trim()) {
+      Alert.alert('Chưa nhập địa chỉ', 'Vui lòng nhập tên địa điểm hoặc địa chỉ để tìm toạ độ GPS.');
+      return;
+    }
+
+    setGeocoding(true);
+    try {
+      const result = await geocodeAddress(location);
+      if (result) {
+        setCoords(result);
+        Alert.alert(
+          'Đã tìm thấy toạ độ GPS! 🎯',
+          `Vĩ độ: ${result.latitude}\nKinh độ: ${result.longitude}\n\nĐã gắn toạ độ này vào sự kiện.`
+        );
+      } else {
+        Alert.alert(
+          'Không tìm thấy toạ độ',
+          'Không tìm thấy toạ độ cho địa chỉ này. Hãy thử nhập chi tiết hơn (ví dụ kèm phường, quận, TP.HCM).'
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi tìm kiếm toạ độ', e?.message || 'Có lỗi xảy ra.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  // Lấy vị trí GPS hiện tại của Admin
+  const handleUseCurrentLocation = async () => {
+    setGeocoding(true);
+    try {
+      const pos = await getCurrentPosition(10000);
+      if (pos) {
+        setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
+        // Tự động dịch ngược địa chỉ
+        const reverseName = await reverseGeocodeAddress(pos.coords.latitude, pos.coords.longitude);
+        if (reverseName) {
+          setLocation(reverseName);
+        }
+        Alert.alert(
+          'Đã lấy toạ độ thực tế! 📍',
+          `Vĩ độ: ${pos.coords.latitude.toFixed(5)}\nKinh độ: ${pos.coords.longitude.toFixed(5)}`
+        );
+      }
+    } catch (e: any) {
+      Alert.alert('Lỗi GPS', e?.message || 'Không thể lấy toạ độ hiện tại.');
+    } finally {
+      setGeocoding(false);
+    }
+  };
+
+  const handleCreate = async () => {
+    if (!title.trim()) {
+      Alert.alert('Thiếu tiêu đề', 'Vui lòng nhập tiêu đề sự kiện.');
+      return;
+    }
+    if (!location.trim()) {
+      Alert.alert('Thiếu địa điểm', 'Vui lòng nhập địa điểm tổ chức sự kiện.');
+      return;
+    }
+
+    setSubmitting(true);
+    try {
+      await createEvent({
+        title: title.trim(),
+        faculty: faculty.trim(),
+        category,
+        location: location.trim(),
+        coordinates: coords || undefined,
+        trainingPoints: parseInt(trainingPoints, 10) || 5,
+        description: description.trim() || 'Sự kiện do Ban Chấp hành Đoàn trường tổ chức.',
+        time: {
+          start: new Date(Date.now() + 86400000).toISOString(),
+          end: new Date(Date.now() + 86400000 + 7200000).toISOString(),
+        },
+      });
+
+      Alert.alert('Thành công! 🎉', 'Sự kiện mới đã được tạo và kích hoạt mã QR Anti-Fake GPS.', [
+        {
+          text: 'Xem danh sách',
+          onPress: () => navigation.navigate('AdminEvents'),
+        },
+      ]);
+    } catch (e: any) {
+      Alert.alert('Lỗi tạo sự kiện', e?.message || 'Không thể tạo sự kiện.');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
+        <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
+          <Text style={styles.screenTitle}>➕ Thêm Sự Kiện Mới</Text>
+          <Text style={styles.screenSub}>
+            Tạo sự kiện, gắn toạ độ GPS Anti-Fake và tự động tạo mã QR điểm danh cho sinh viên.
+          </Text>
+
+          {/* Form */}
+          <View style={styles.formCard}>
+            {/* Tiêu đề */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Tiêu đề sự kiện *</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="VD: Hội thảo Công nghệ Trí tuệ Nhân tạo 2026"
+                value={title}
+                onChangeText={setTitle}
+              />
+            </View>
+
+            {/* Đơn vị tổ chức */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Đơn vị tổ chức / Khoa</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="VD: Khoa Công nghệ thông tin"
+                value={faculty}
+                onChangeText={setFaculty}
+              />
+            </View>
+
+            {/* Danh mục */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Thể loại sự kiện</Text>
+              <View style={styles.categoriesRow}>
+                {CATEGORIES.map((cat) => (
+                  <TouchableOpacity
+                    key={cat}
+                    style={[styles.catChip, category === cat && styles.catChipActive]}
+                    onPress={() => setCategory(cat)}
+                  >
+                    <Text style={[styles.catChipText, category === cat && styles.catChipTextActive]}>
+                      {cat}
+                    </Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </View>
+
+            {/* Điểm rèn luyện */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Điểm rèn luyện</Text>
+              <TextInput
+                style={styles.input}
+                placeholder="5"
+                keyboardType="numeric"
+                value={trainingPoints}
+                onChangeText={setTrainingPoints}
+              />
+            </View>
+
+            {/* Địa điểm & Geocoding */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Địa điểm tổ chức & Tìm kiếm GPS *</Text>
+              <TextInput
+                style={[styles.input, { height: 48 }]}
+                placeholder="Nhập địa chỉ hoặc tên hội trường..."
+                value={location}
+                onChangeText={setLocation}
+              />
+
+              {/* Action buttons cho GPS */}
+              <View style={styles.gpsButtonsRow}>
+                <TouchableOpacity
+                  style={styles.geocodeBtn}
+                  onPress={handleGeocode}
+                  disabled={geocoding}
+                  activeOpacity={0.8}
+                >
+                  {geocoding ? (
+                    <ActivityIndicator size="small" color="#FFFFFF" />
+                  ) : (
+                    <Text style={styles.geocodeBtnText}>🔍 Tìm toạ độ GPS</Text>
+                  )}
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.currentPosBtn}
+                  onPress={handleUseCurrentLocation}
+                  disabled={geocoding}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.currentPosBtnText}>📍 Lấy GPS của tôi</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Toạ độ đã chọn */}
+              <View style={styles.coordsDisplayBox}>
+                <Text style={styles.coordsDisplayLabel}>Toạ độ xác minh Anti-Fake (Bán kính 500m):</Text>
+                {coords ? (
+                  <View style={styles.coordsSuccessRow}>
+                    <Text style={styles.coordsSuccessText}>
+                      🌐 Lat: {coords.latitude.toFixed(5)}  |  Lng: {coords.longitude.toFixed(5)}
+                    </Text>
+                    <TouchableOpacity
+                      onPress={() => openInGoogleMaps(coords.latitude, coords.longitude, location)}
+                      style={styles.mapLinkBtn}
+                    >
+                      <Text style={styles.mapLinkBtnText}>🗺️ Kiểm tra trên Map</Text>
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <Text style={styles.coordsMissingText}>⚠️ Chưa cài toạ độ GPS</Text>
+                )}
+              </View>
+            </View>
+
+            {/* Mô tả */}
+            <View style={styles.fieldGroup}>
+              <Text style={styles.label}>Mô tả chi tiết</Text>
+              <TextInput
+                style={[styles.input, styles.textArea]}
+                placeholder="Nhập nội dung, quyền lợi, yêu cầu sự kiện..."
+                value={description}
+                onChangeText={setDescription}
+                multiline
+                numberOfLines={4}
+              />
+            </View>
+
+            {/* Nút tạo */}
+            <TouchableOpacity
+              style={[styles.submitBtn, submitting && styles.submitBtnDisabled]}
+              onPress={handleCreate}
+              disabled={submitting}
+              activeOpacity={0.85}
+            >
+              {submitting ? (
+                <ActivityIndicator color="#FFFFFF" />
+              ) : (
+                <Text style={styles.submitBtnText}>🚀 Xuất Bản Sự Kiện Ngay</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
+  );
+}
+
+const styles = StyleSheet.create({
+  safe: { flex: 1, backgroundColor: '#F8FAFC' },
+  scroll: { padding: 16, paddingBottom: 40 },
+  screenTitle: { fontSize: 20, fontWeight: '800', color: '#0F172A', marginBottom: 4 },
+  screenSub: { fontSize: 13, color: '#64748B', marginBottom: 16, lineHeight: 18 },
+  formCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: 16,
+    shadowColor: '#000',
+    shadowOpacity: 0.04,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  fieldGroup: { gap: 6 },
+  label: { fontSize: 13, fontWeight: '700', color: '#334155' },
+  input: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 10,
+    fontSize: 14,
+    color: '#0F172A',
+  },
+  textArea: { height: 90, textAlignVertical: 'top' },
+  categoriesRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  catChip: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+  },
+  catChipActive: { backgroundColor: '#2563EB' },
+  catChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
+  catChipTextActive: { color: '#FFFFFF' },
+  gpsButtonsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  geocodeBtn: {
+    flex: 1,
+    backgroundColor: '#2563EB',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  geocodeBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
+  currentPosBtn: {
+    flex: 1,
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+  },
+  currentPosBtnText: { color: '#334155', fontSize: 12, fontWeight: '700' },
+  coordsDisplayBox: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 8,
+    padding: 10,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginTop: 4,
+  },
+  coordsDisplayLabel: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  coordsSuccessRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 4,
+  },
+  coordsSuccessText: { fontSize: 12, color: '#059669', fontWeight: '700' },
+  mapLinkBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  mapLinkBtnText: { fontSize: 11, color: '#4338CA', fontWeight: '700' },
+  coordsMissingText: { fontSize: 12, color: '#DC2626', marginTop: 4, fontStyle: 'italic' },
+  submitBtn: {
+    backgroundColor: '#10B981',
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginTop: 10,
+    shadowColor: '#10B981',
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+  submitBtnDisabled: { opacity: 0.7 },
+  submitBtnText: { color: '#FFFFFF', fontSize: 15, fontWeight: '800' },
+});

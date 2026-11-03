@@ -93,7 +93,7 @@ export default function RegistrationSuccessScreen({
 }: RegistrationSuccessScreenProps) {
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={BACKGROUND} />
+      <StatusBar barStyle="dark-content" />
 
       <View style={styles.container}>
         {/* Top Space / Graphic area */}

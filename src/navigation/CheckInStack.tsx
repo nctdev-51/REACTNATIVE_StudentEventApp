@@ -12,17 +12,26 @@ import CheckInFailedScreen from '../screens/checkin/CheckInFailedScreen';
  */
 export type CheckInStackParamList = {
   QRScanner: undefined;
-  CheckInSuccess: {
-    eventId?: string;
-    studentName?: string;
-    studentId?: string;
-    checkInTime?: string;
-    data?: string;
-  } | undefined;
-  CheckInFailed: {
-    reason?: string;
-    data?: string;
-  } | undefined;
+  CheckInSuccess:
+    | {
+        eventId?: string;
+        eventTitle?: string;
+        studentName?: string;
+        studentId?: string;
+        checkInTime?: string;
+        data?: string;
+        locationVerified?: boolean;
+        distanceMeters?: number;
+      }
+    | undefined;
+  CheckInFailed:
+    | {
+        reason?: string;
+        data?: string;
+        distanceMeters?: number;
+        isLocationError?: boolean;
+      }
+    | undefined;
 };
 
 // Định nghĩa types props cho từng màn hình
@@ -62,4 +71,3 @@ export default function CheckInStack() {
     </Stack.Navigator>
   );
 }
-

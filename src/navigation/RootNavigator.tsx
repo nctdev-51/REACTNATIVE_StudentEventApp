@@ -4,17 +4,18 @@ import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import { setAuthToken } from '../services/api';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
+import AdminStack from './AdminStack';
 import { Colors } from '../theme';
 
 /**
- * RootNavigator — quyết định hiển thị AuthStack hay MainStack
- * dựa trên trạng thái isAuthenticated trong Redux store.
- *
- * Khi token thay đổi, tự động cập nhật Axios header.
+ * RootNavigator — Phân quyền đăng nhập & điều hướng hệ thống:
+ * - Chưa đăng nhập -> AuthStack (Login / Register)
+ * - Đăng nhập tài khoản Admin (role === 'admin') -> AdminStack (Dashboard Quản trị, Quản lý vị trí GPS, Báo cáo điểm danh)
+ * - Đăng nhập tài khoản Sinh viên (role === 'student') -> MainStack (Sự kiện, Điểm danh QR, Lịch trình, Thông báo)
  */
 export default function RootNavigator() {
   const dispatch = useAppDispatch();
-  const { isAuthenticated, token, loading } = useAppSelector((s) => s.auth);
+  const { isAuthenticated, token, user, loading } = useAppSelector((s) => s.auth);
 
   // Sync token vào Axios interceptor mỗi khi thay đổi
   useEffect(() => {
@@ -30,7 +31,16 @@ export default function RootNavigator() {
     );
   }
 
-  return isAuthenticated ? <MainStack /> : <AuthStack />;
+  if (!isAuthenticated) {
+    return <AuthStack />;
+  }
+
+  // Phân quyền theo vai trò người dùng
+  if (user?.role === 'admin') {
+    return <AdminStack />;
+  }
+
+  return <MainStack />;
 }
 
 const styles = StyleSheet.create({

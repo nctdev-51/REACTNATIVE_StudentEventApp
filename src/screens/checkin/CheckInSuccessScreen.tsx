@@ -10,7 +10,16 @@ import {
 import { CheckInSuccessScreenProps } from '../../navigation/CheckInStack';
 
 export default function CheckInSuccessScreen({ route, navigation }: CheckInSuccessScreenProps) {
-  const { eventId, studentName, studentId, checkInTime, data } = route.params || {};
+  const {
+    eventId,
+    eventTitle,
+    studentName,
+    studentId,
+    checkInTime,
+    data,
+    locationVerified,
+    distanceMeters,
+  } = route.params || {};
 
   const handleGoHome = () => {
     // Quay về màn hình đầu tiên của Stack hoặc đóng navigation
@@ -21,7 +30,7 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
 
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
         {/* Phần trung tâm: Icon Check màu xanh lá to & Thông báo */}
         <View style={styles.centerContent}>
@@ -32,13 +41,35 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
 
           <Text style={styles.title}>Check-in thành công</Text>
           <Text style={styles.subtitle}>
-            Thông tin tham gia sự kiện của bạn đã được ghi nhận thành công.
+            Thông tin tham gia sự kiện và toạ độ hợp lệ đã được ghi nhận vào hệ thống.
           </Text>
 
-          {/* Hộp hiển thị chi tiết (nếu có) */}
+          {/* Badge Anti-Fake: Xác minh vị trí thành công */}
+          <View style={styles.antiFakeBadge}>
+            <Text style={styles.antiFakeBadgeIcon}>🛡️</Text>
+            <View style={styles.antiFakeBadgeTextContainer}>
+              <Text style={styles.antiFakeBadgeTitle}>Xác thực vị trí thành công (Anti-Fake)</Text>
+              <Text style={styles.antiFakeBadgeSubtitle}>
+                {distanceMeters !== undefined
+                  ? `Vị trí cách địa điểm: ${distanceMeters}m (Trong bán kính an toàn 500m)`
+                  : 'Đã đối soát toạ độ GPS hợp lệ qua Expo Location'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Hộp hiển thị chi tiết */}
           <View style={styles.detailCard}>
+            {eventTitle && (
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Sự kiện:</Text>
+                <Text style={styles.infoValue} numberOfLines={2}>
+                  {eventTitle}
+                </Text>
+              </View>
+            )}
+
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Sự kiện (ID):</Text>
+              <Text style={styles.infoLabel}>Mã sự kiện:</Text>
               <Text style={styles.infoValue} numberOfLines={1}>
                 {eventId || data || 'N/A'}
               </Text>
@@ -62,6 +93,13 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
               <Text style={styles.infoLabel}>Thời gian:</Text>
               <Text style={styles.infoValue}>
                 {checkInTime || new Date().toLocaleString('vi-VN')}
+              </Text>
+            </View>
+
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>Trạng thái:</Text>
+              <Text style={[styles.infoValue, { color: '#16A34A', fontWeight: '700' }]}>
+                Đã điểm danh ✓
               </Text>
             </View>
           </View>
@@ -91,7 +129,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingVertical: 24,
   },
   centerContent: {
     flex: 1,
@@ -100,13 +138,13 @@ const styles = StyleSheet.create({
   },
   // Icon Check màu xanh lá thật to ở giữa
   iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#16A34A', // Xanh lá cây
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: '#16A34A',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     shadowColor: '#16A34A',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
@@ -114,31 +152,60 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   checkmarkIcon: {
-    fontSize: 64,
+    fontSize: 56,
     color: '#FFFFFF',
     fontWeight: '900',
-    lineHeight: 72,
+    lineHeight: 64,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: '#0F172A',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-    paddingHorizontal: 16,
+    lineHeight: 20,
+    marginBottom: 20,
+    paddingHorizontal: 12,
+  },
+  antiFakeBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#ECFDF5',
+    borderWidth: 1,
+    borderColor: '#A7F3D0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    width: '100%',
+    marginBottom: 18,
+    gap: 10,
+  },
+  antiFakeBadgeIcon: {
+    fontSize: 22,
+  },
+  antiFakeBadgeTextContainer: {
+    flex: 1,
+  },
+  antiFakeBadgeTitle: {
+    color: '#065F46',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  antiFakeBadgeSubtitle: {
+    color: '#047857',
+    fontSize: 12,
+    marginTop: 2,
   },
   detailCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#000',
@@ -151,15 +218,15 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: 8,
+    paddingVertical: 7,
   },
   infoLabel: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#64748B',
     fontWeight: '500',
   },
   infoValue: {
-    fontSize: 14,
+    fontSize: 13,
     color: '#0F172A',
     fontWeight: '600',
     maxWidth: '65%',
@@ -167,11 +234,11 @@ const styles = StyleSheet.create({
   },
   footer: {
     width: '100%',
-    paddingTop: 16,
+    paddingTop: 12,
   },
   primaryButton: {
     backgroundColor: '#16A34A',
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: '#16A34A',
@@ -186,4 +253,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-

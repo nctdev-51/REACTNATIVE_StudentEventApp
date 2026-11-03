@@ -42,12 +42,22 @@ export default function LoginScreen() {
     if (loginUser.rejected.match(result)) {
       Alert.alert('Đăng nhập thất bại', result.payload as string);
     }
-    // Nếu thành công, RootNavigator sẽ tự chuyển sang MainStack
+    // Nếu thành công, RootNavigator sẽ tự chuyển sang MainStack (Sinh viên) hoặc AdminStack (Admin)
+  };
+
+  const fillStudent = () => {
+    setEmail('sv01@iuh.edu.vn');
+    setPassword('123456');
+  };
+
+  const fillAdmin = () => {
+    setEmail('admin.doan@iuh.edu.vn');
+    setPassword('admin123');
   };
 
   return (
     <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={Colors.background} />
+      <StatusBar barStyle="dark-content" />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -63,16 +73,16 @@ export default function LoginScreen() {
               <Text style={styles.logoEmoji}>🎓</Text>
             </View>
             <Text style={styles.appName}>StudentEvent</Text>
-            <Text style={styles.tagline}>Sự kiện IUH – Dành cho sinh viên</Text>
+            <Text style={styles.tagline}>Sự kiện IUH – Hệ thống Quản trị & Sinh viên</Text>
           </View>
 
           {/* Form Card */}
           <View style={styles.card}>
-            <Text style={styles.cardTitle}>Đăng nhập</Text>
+            <Text style={styles.cardTitle}>Đăng nhập tài khoản</Text>
 
             {/* Email */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email sinh viên</Text>
+              <Text style={styles.label}>Email tài khoản</Text>
               <View
                 style={[
                   styles.inputWrapper,
@@ -82,7 +92,7 @@ export default function LoginScreen() {
                 <Text style={styles.inputIcon}>📧</Text>
                 <TextInput
                   style={styles.input}
-                  placeholder="sv01@iuh.edu.vn"
+                  placeholder="sv01@iuh.edu.vn hoặc admin.doan@iuh.edu.vn"
                   placeholderTextColor={Colors.gray400}
                   value={email}
                   onChangeText={setEmail}
@@ -150,16 +160,47 @@ export default function LoginScreen() {
               {loading ? (
                 <ActivityIndicator color="#fff" />
               ) : (
-                <Text style={styles.loginBtnText}>Đăng nhập</Text>
+                <Text style={styles.loginBtnText}>Đăng nhập ngay</Text>
               )}
             </TouchableOpacity>
 
-            {/* Demo hint */}
-            <View style={styles.demoHint}>
-              <Text style={styles.demoTitle}>🧪 Tài khoản demo:</Text>
-              <Text style={styles.demoText}>
-                📧 sv01@iuh.edu.vn  🔑 123456
-              </Text>
+            {/* Demo Accounts Quick Selection */}
+            <View style={styles.demoSection}>
+              <Text style={styles.demoTitle}>🧪 Bấm chọn tài khoản thử nghiệm nhanh:</Text>
+              <View style={styles.demoRow}>
+                {/* Sinh viên */}
+                <TouchableOpacity
+                  style={[
+                    styles.demoPill,
+                    email === 'sv01@iuh.edu.vn' && styles.demoPillActive,
+                  ]}
+                  onPress={fillStudent}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.demoEmoji}>👨‍🎓</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.demoRole}>Sinh viên</Text>
+                    <Text style={styles.demoAccount}>sv01@iuh.edu.vn</Text>
+                  </View>
+                </TouchableOpacity>
+
+                {/* Admin */}
+                <TouchableOpacity
+                  style={[
+                    styles.demoPill,
+                    styles.demoPillAdmin,
+                    email === 'admin.doan@iuh.edu.vn' && styles.demoPillActiveAdmin,
+                  ]}
+                  onPress={fillAdmin}
+                  activeOpacity={0.7}
+                >
+                  <Text style={styles.demoEmoji}>🛡️</Text>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.demoRoleAdmin}>Quản trị viên (Admin)</Text>
+                    <Text style={styles.demoAccount}>admin.doan@iuh.edu.vn</Text>
+                  </View>
+                </TouchableOpacity>
+              </View>
             </View>
           </View>
 
@@ -180,35 +221,38 @@ export default function LoginScreen() {
 }
 
 const styles = StyleSheet.create({
-  safe: { flex: 1, backgroundColor: Colors.gray50 },
-  keyboardView: { flex: 1 },
+  safe: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+  },
+  keyboardView: {
+    flex: 1,
+  },
   scroll: {
     flexGrow: 1,
-    paddingHorizontal: Spacing.xl,
-    paddingBottom: Spacing.xxxl,
     justifyContent: 'center',
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.xxl,
   },
-
-  // Brand
   brandSection: {
     alignItems: 'center',
-    paddingTop: Spacing.xxxl,
-    paddingBottom: Spacing.xxl,
+    marginBottom: Spacing.xl,
   },
   logoCircle: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: Colors.primaryLight,
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,
-    borderWidth: 2,
-    borderColor: Colors.primary,
+    ...Shadow.md,
   },
-  logoEmoji: { fontSize: 36 },
+  logoEmoji: {
+    fontSize: 34,
+  },
   appName: {
-    fontSize: Typography.display,
+    fontSize: Typography.xxl,
     fontWeight: '800',
     color: Colors.gray900,
     letterSpacing: -0.5,
@@ -217,59 +261,63 @@ const styles = StyleSheet.create({
     fontSize: Typography.sm,
     color: Colors.gray500,
     marginTop: 4,
+    textAlign: 'center',
   },
-
-  // Card
   card: {
-    backgroundColor: Colors.background,
+    backgroundColor: '#fff',
     borderRadius: BorderRadius.xl,
-    padding: Spacing.xxl,
+    padding: Spacing.xl,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
     ...Shadow.md,
   },
   cardTitle: {
-    fontSize: Typography.xxl,
+    fontSize: Typography.xl,
     fontWeight: '700',
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xl,
+    color: Colors.gray900,
+    marginBottom: Spacing.lg,
   },
-
-  // Fields
-  fieldGroup: { marginBottom: Spacing.lg },
+  fieldGroup: {
+    marginBottom: Spacing.md,
+  },
   label: {
     fontSize: Typography.sm,
     fontWeight: '600',
-    color: Colors.gray600,
+    color: Colors.gray700,
     marginBottom: Spacing.xs,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: BorderRadius.md,
-    paddingHorizontal: Spacing.md,
     backgroundColor: Colors.gray50,
-    height: 50,
+    borderRadius: BorderRadius.md,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.md,
+    height: 48,
   },
   inputWrapperFocused: {
     borderColor: Colors.primary,
-    backgroundColor: Colors.background,
+    backgroundColor: '#fff',
   },
-  inputIcon: { fontSize: 16, marginRight: Spacing.sm },
+  inputIcon: {
+    fontSize: 16,
+    marginRight: Spacing.sm,
+  },
   input: {
     flex: 1,
     fontSize: Typography.base,
-    color: Colors.textPrimary,
+    color: Colors.gray900,
+    height: '100%',
   },
-  eyeIcon: { fontSize: 18, paddingLeft: Spacing.sm },
-
-  // Error
+  eyeIcon: {
+    fontSize: 18,
+    padding: Spacing.xs,
+  },
   errorBox: {
     backgroundColor: Colors.errorLight,
     borderRadius: BorderRadius.sm,
-    padding: Spacing.md,
+    padding: Spacing.sm,
     marginBottom: Spacing.md,
   },
   errorText: {
@@ -277,8 +325,6 @@ const styles = StyleSheet.create({
     fontSize: Typography.sm,
     fontWeight: '500',
   },
-
-  // Button
   loginBtn: {
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.md,
@@ -297,27 +343,60 @@ const styles = StyleSheet.create({
     fontSize: Typography.lg,
     fontWeight: '700',
   },
-
-  // Demo hint
-  demoHint: {
+  demoSection: {
     marginTop: Spacing.lg,
-    padding: Spacing.md,
-    backgroundColor: Colors.warningLight,
-    borderRadius: BorderRadius.sm,
-    alignItems: 'center',
+    paddingTop: Spacing.md,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
   },
   demoTitle: {
-    fontSize: Typography.sm,
+    fontSize: 12,
     fontWeight: '700',
-    color: Colors.warning,
-    marginBottom: 2,
+    color: '#475569',
+    marginBottom: 8,
   },
-  demoText: {
-    fontSize: Typography.sm,
-    color: Colors.gray700,
+  demoRow: {
+    gap: 8,
   },
-
-  // Register link
+  demoPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    padding: 10,
+    borderRadius: 10,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 10,
+  },
+  demoPillActive: {
+    borderColor: '#2563EB',
+    backgroundColor: '#EFF6FF',
+  },
+  demoPillAdmin: {
+    borderColor: '#E2E8F0',
+    backgroundColor: '#FDF4FF',
+  },
+  demoPillActiveAdmin: {
+    borderColor: '#9333EA',
+    backgroundColor: '#FAF5FF',
+  },
+  demoEmoji: {
+    fontSize: 22,
+  },
+  demoRole: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  demoRoleAdmin: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#7E22CE',
+  },
+  demoAccount: {
+    fontSize: 11,
+    color: '#64748B',
+  },
   registerRow: {
     flexDirection: 'row',
     justifyContent: 'center',

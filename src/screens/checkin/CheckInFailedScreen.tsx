@@ -10,16 +10,24 @@ import {
 import { CheckInFailedScreenProps } from '../../navigation/CheckInStack';
 
 export default function CheckInFailedScreen({ route, navigation }: CheckInFailedScreenProps) {
-  const { reason, data } = route.params || {};
+  const { reason, data, distanceMeters, isLocationError } = route.params || {};
 
   const handleRetry = () => {
     // Quay lại màn hình quét QR (QRScannerScreen sẽ tự mở lại quét qua useFocusEffect)
     navigation.goBack();
   };
 
+  const isGpsIssue =
+    isLocationError ||
+    (reason &&
+      (reason.toLowerCase().includes('vị trí') ||
+        reason.toLowerCase().includes('bán kính') ||
+        reason.toLowerCase().includes('gps') ||
+        reason.toLowerCase().includes('khoảng cách')));
+
   return (
     <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" backgroundColor="#F8FAFC" />
+      <StatusBar barStyle="dark-content" />
       <View style={styles.container}>
         {/* Phần trung tâm: Icon X màu đỏ to & Thông báo lỗi */}
         <View style={styles.centerContent}>
@@ -33,27 +41,61 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
             {reason || 'Đã có lỗi xảy ra khi xác thực thông tin check-in. Vui lòng kiểm tra lại.'}
           </Text>
 
+          {/* Cảnh báo riêng cho vi phạm Anti-Fake GPS */}
+          {isGpsIssue && (
+            <View style={styles.antiFakeAlertBox}>
+              <Text style={styles.antiFakeAlertIcon}>📍</Text>
+              <View style={styles.antiFakeAlertContent}>
+                <Text style={styles.antiFakeAlertTitle}>Cảnh báo chống gian lận (Anti-Fake)</Text>
+                <Text style={styles.antiFakeAlertDesc}>
+                  Hệ thống yêu cầu sinh viên phải có mặt trong bán kính ≤ 500m quanh sự kiện để điểm danh.
+                </Text>
+              </View>
+            </View>
+          )}
+
           {/* Hộp gợi ý & chi tiết */}
           <View style={styles.detailCard}>
-            <Text style={styles.cardHeader}>Nguyên nhân có thể do:</Text>
+            <Text style={styles.cardHeader}>Nguyên nhân & Hướng xử lý:</Text>
 
-            <View style={styles.bulletItem}>
-              <Text style={styles.bulletDot}>•</Text>
-              <Text style={styles.bulletText}>
-                Mã QR không hợp lệ hoặc không thuộc hệ thống sự kiện.
-              </Text>
-            </View>
+            {isGpsIssue ? (
+              <>
+                <View style={styles.bulletItem}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>
+                    Bạn đang ở quá xa địa điểm sự kiện
+                    {distanceMeters ? ` (~${distanceMeters}m).` : '.'} Hãy di chuyển vào khu vực tổ chức.
+                  </Text>
+                </View>
 
-            <View style={styles.bulletItem}>
-              <Text style={styles.bulletDot}>•</Text>
-              <Text style={styles.bulletText}>
-                Kết nối mạng bị gián đoạn khi gửi dữ liệu lên máy chủ.
-              </Text>
-            </View>
+                <View style={styles.bulletItem}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>
+                    Đảm bảo đã cấp quyền Vị trí (Location) và bật GPS độ chính xác cao.
+                  </Text>
+                </View>
+              </>
+            ) : (
+              <>
+                <View style={styles.bulletItem}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>
+                    Mã QR không hợp lệ hoặc sự kiện đã kết thúc/hủy.
+                  </Text>
+                </View>
+
+                <View style={styles.bulletItem}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>
+                    Kết nối mạng bị gián đoạn khi gửi dữ liệu lên máy chủ.
+                  </Text>
+                </View>
+              </>
+            )}
 
             {data && (
               <View style={styles.dataBox}>
-                <Text style={styles.dataLabel}>Dữ liệu nhận diện:</Text>
+                <Text style={styles.dataLabel}>Dữ liệu mã nhận diện:</Text>
                 <Text style={styles.dataCode} numberOfLines={1}>
                   {data}
                 </Text>
@@ -86,7 +128,7 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'space-between',
     paddingHorizontal: 24,
-    paddingVertical: 32,
+    paddingVertical: 24,
   },
   centerContent: {
     flex: 1,
@@ -95,13 +137,13 @@ const styles = StyleSheet.create({
   },
   // Icon X màu đỏ thật to ở giữa
   iconCircle: {
-    width: 120,
-    height: 120,
-    borderRadius: 60,
-    backgroundColor: '#DC2626', // Màu đỏ
+    width: 104,
+    height: 104,
+    borderRadius: 52,
+    backgroundColor: '#DC2626',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 24,
+    marginBottom: 20,
     shadowColor: '#DC2626',
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.35,
@@ -109,31 +151,61 @@ const styles = StyleSheet.create({
     elevation: 8,
   },
   closeIcon: {
-    fontSize: 54,
+    fontSize: 48,
     color: '#FFFFFF',
     fontWeight: '900',
-    lineHeight: 60,
+    lineHeight: 54,
   },
   title: {
-    fontSize: 26,
+    fontSize: 24,
     fontWeight: '800',
     color: '#0F172A',
     textAlign: 'center',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: 15,
+    fontSize: 14,
     color: '#64748B',
     textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: 28,
-    paddingHorizontal: 16,
+    lineHeight: 20,
+    marginBottom: 18,
+    paddingHorizontal: 12,
+  },
+  antiFakeAlertBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FECACA',
+    borderRadius: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 14,
+    width: '100%',
+    marginBottom: 16,
+    gap: 10,
+  },
+  antiFakeAlertIcon: {
+    fontSize: 22,
+  },
+  antiFakeAlertContent: {
+    flex: 1,
+  },
+  antiFakeAlertTitle: {
+    color: '#991B1B',
+    fontWeight: '700',
+    fontSize: 13,
+  },
+  antiFakeAlertDesc: {
+    color: '#B91C1C',
+    fontSize: 12,
+    marginTop: 2,
+    lineHeight: 16,
   },
   detailCard: {
     width: '100%',
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 18,
+    padding: 16,
     borderWidth: 1,
     borderColor: '#E2E8F0',
     shadowColor: '#000',
@@ -143,21 +215,21 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   cardHeader: {
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: '700',
     color: '#334155',
-    marginBottom: 10,
+    marginBottom: 8,
   },
   bulletItem: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: 8,
+    marginBottom: 7,
   },
   bulletDot: {
-    fontSize: 16,
+    fontSize: 15,
     color: '#DC2626',
     marginRight: 8,
-    lineHeight: 20,
+    lineHeight: 18,
   },
   bulletText: {
     flex: 1,
@@ -166,32 +238,32 @@ const styles = StyleSheet.create({
     lineHeight: 18,
   },
   dataBox: {
-    marginTop: 10,
-    paddingTop: 10,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#F1F5F9',
   },
   dataLabel: {
-    fontSize: 12,
+    fontSize: 11,
     color: '#94A3B8',
     fontWeight: '600',
-    marginBottom: 4,
+    marginBottom: 3,
   },
   dataCode: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#475569',
     fontFamily: 'monospace',
     backgroundColor: '#F8FAFC',
-    padding: 8,
-    borderRadius: 8,
+    padding: 6,
+    borderRadius: 6,
   },
   footer: {
     width: '100%',
-    paddingTop: 16,
+    paddingTop: 12,
   },
   primaryButton: {
     backgroundColor: '#DC2626',
-    paddingVertical: 16,
+    paddingVertical: 15,
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: '#DC2626',
@@ -206,4 +278,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-
