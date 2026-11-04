@@ -1,6 +1,14 @@
 import { StyleSheet, TextInput, View, Text } from "react-native";
+import { useAppDispatch, useAppSelector } from "../../hooks/redux";
+import { setSearchQuery } from "../../features/events/eventsSlice";
 
 export default function SearchBar() {
+  const dispatch = useAppDispatch();
+
+  const searchQuery = useAppSelector(
+    (state) => state.events.filter.searchQuery
+  );
+
   return (
     <View style={styles.container}>
       <Text style={styles.icon}>🔍</Text>
@@ -9,6 +17,8 @@ export default function SearchBar() {
         style={styles.input}
         placeholder="Tìm kiếm sự kiện..."
         placeholderTextColor="#9ca3af"
+        value={searchQuery}
+        onChangeText={(text) => dispatch(setSearchQuery(text))}
       />
     </View>
   );

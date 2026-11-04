@@ -19,6 +19,7 @@ import {
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
+<<<<<<< HEAD
 const debuggerHost = Constants.expoConfig?.hostUri;
 const isTunnel =
   debuggerHost?.includes("ngrok") || debuggerHost?.includes("exp.direct");
@@ -53,6 +54,21 @@ export const BASE_URL: string =
       : autoDevIp
         ? `http://${autoDevIp}:5000/api`
         : "http://localhost:5000/api");
+=======
+/**
+ * Cấu hình BASE_URL trỏ đến backend Express (port 5000):
+ * - Android Emulator: 10.0.2.2 → localhost máy host
+ * - iOS / Web: localhost
+ * - Thiết bị thật: đổi DEV_LAN_IP thành IP LAN của máy tính
+ */
+export const DEV_LAN_IP = "172.20.10.2";
+
+export const BASE_URL: string = Platform.select({
+  android: `http://172.20.10.2:3000/api`,
+  ios: `http://localhost:3000/api`,
+  default: `http://localhost:3000/api`,
+});
+>>>>>>> 8d9ed42 (Update Event)
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 
