@@ -11,44 +11,29 @@ import {
   Platform,
   StatusBar,
   Alert,
+  ActivityIndicator,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { submitFeedback } from '../../features/events/feedbacksSlice';
+import { Colors } from '../../theme';
 
-// ---------------------------------------------------------------------------
-// Types
-// ---------------------------------------------------------------------------
-
-export interface EventInfo {
-  id: string;
-  title: string;
-  date: string;
-  thumbnailUrl?: string;
-}
-
-export interface FeedbackScreenProps {
-  event?: EventInfo;
-}
+type FeedbackNavProp = NativeStackNavigationProp<MainStackParamList>;
+type FeedbackRouteProp = RouteProp<MainStackParamList, 'Feedback'>;
 
 // ---------------------------------------------------------------------------
 // Constants
 // ---------------------------------------------------------------------------
 
-const ACCENT_COLOR = '#2563EB'; // Blue
-const STAR_ACTIVE = '#FBBF24'; // Amber-400
-const STAR_INACTIVE = '#CBD5E1'; // Slate-300
+const ACCENT_COLOR = Colors.primary;
+const STAR_ACTIVE = '#FBBF24';
+const STAR_INACTIVE = '#CBD5E1';
 const BACKGROUND = '#FFFFFF';
 const TEXT_PRIMARY = '#111827';
 const TEXT_SECONDARY = '#6B7280';
 const BORDER_COLOR = '#E2E8F0';
-
-const DEFAULT_EVENT: EventInfo = {
-  id: '1',
-  title: 'Workshop React Native',
-  date: '20/09/2026',
-  thumbnailUrl: 'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=300&q=80',
-};
 
 // ---------------------------------------------------------------------------
 // StarRating component
@@ -78,7 +63,6 @@ function StarRating({ value, onChange, size = 36 }: StarRatingProps) {
             accessibilityLabel={`${star} sao`}
             style={starStyles.touchable}
           >
-            {/* Outline star '☆' for inactive, filled '★' for active */}
             <Text
               style={[
                 starStyles.star,
@@ -104,27 +88,69 @@ const starStyles = StyleSheet.create({
     alignItems: 'center',
     gap: 8,
   },
-  touchable: {
-    paddingHorizontal: 2,
-    paddingVertical: 4,
-  },
-  star: {
-    lineHeight: 46,
-    includeFontPadding: false,
-  },
+  touchable: { paddingHorizontal: 2, paddingVertical: 4 },
+  star: { lineHeight: 46, includeFontPadding: false },
 });
 
 // ---------------------------------------------------------------------------
 // FeedbackScreen
 // ---------------------------------------------------------------------------
 
-export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreenProps) {
-  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
-  // Mô phỏng bắt đầu với 4 sao
+export default function FeedbackScreen() {
+  const navigation = useNavigation<FeedbackNavProp>();
+  const route = useRoute<FeedbackRouteProp>();
+  const dispatch = useAppDispatch();
+
+  const user = useAppSelector((s) => s.auth.user);
+  const { submitting } = useAppSelector((s) => s.feedbacks);
+
+  const eventId = route.params?.eventId;
+  const eventTitle = route.params?.eventTitle ?? 'Sự kiện';
+
   const [rating, setRating] = useState<number>(4);
   const [comment, setComment] = useState<string>('');
   const [isFocused, setIsFocused] = useState<boolean>(false);
-  const [imageError, setImageError] = useState<boolean>(false);
+
+  const handleSubmit = async () => {
+    if (!user || !eventId) {
+      Alert.alert('Lỗi', 'Không thể xác định người dùng hoặc sự kiện.');
+      return;
+    }
+    if (rating === 0) {
+      Alert.alert('Thiếu đánh giá', 'Vui lòng chọn số sao.');
+      return;
+    }
+
+    const result = await dispatch(
+      submitFeedback({
+        eventId,
+        userId: user._id,
+        rating,
+        comment: comment.trim(),
+      })
+    );
+
+    if (submitFeedback.fulfilled.match(result)) {
+      Alert.alert(
+        '✅ Gửi thành công!',
+        `Cảm ơn bạn đã đánh giá "${eventTitle}" với ${rating} sao!`,
+        [
+          {
+            text: 'OK',
+            onPress: () =>
+              navigation.canGoBack()
+                ? navigation.goBack()
+                : navigation.navigate('Home'),
+          },
+        ]
+      );
+    } else {
+      Alert.alert(
+        'Gửi thất bại',
+        (result.payload as string) ?? 'Vui lòng thử lại.'
+      );
+    }
+  };
 
   return (
     <SafeAreaView style={styles.safe}>
@@ -134,11 +160,15 @@ export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreen
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Header ─────────────────────────────────────────────────────── */}
+        {/* ── Header ── */}
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')}
+            onPress={() =>
+              navigation.canGoBack()
+                ? navigation.goBack()
+                : navigation.navigate('Home')
+            }
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Quay lại"
@@ -149,45 +179,30 @@ export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreen
         </View>
         <Text style={styles.header}>Đánh giá sự kiện</Text>
 
-        {/* ── Event Info ─────────────────────────────────────────────────── */}
+        {/* ── Event Info ── */}
         <View style={styles.eventRow}>
-          {event.thumbnailUrl && !imageError ? (
-            <Image
-              source={{ uri: event.thumbnailUrl }}
-              style={styles.thumbnail}
-              resizeMode="cover"
-              onError={() => setImageError(true)}
-              accessible
-              accessibilityLabel={`Ảnh sự kiện ${event.title}`}
-            />
-          ) : (
-            <View style={styles.thumbnailFallback}>
-              <View style={styles.reactAtomCenter} />
-              <Text style={styles.thumbnailFallbackText}>⚛</Text>
-            </View>
-          )}
-
+          <View style={styles.thumbnailFallback}>
+            <Text style={styles.thumbnailFallbackText}>⚛</Text>
+          </View>
           <View style={styles.eventMeta}>
             <Text style={styles.eventTitle} numberOfLines={2}>
-              {event.title}
+              {eventTitle}
             </Text>
-            <Text style={styles.eventDate}>{event.date}</Text>
+            <Text style={styles.eventDate}>
+              {eventId ? `Mã sự kiện: ${eventId.slice(-6)}` : '—'}
+            </Text>
           </View>
         </View>
 
-        {/* ── Rating question ─────────────────────────────────────────────── */}
+        {/* ── Rating ── */}
         <Text style={styles.question}>Bạn thấy sự kiện này thế nào?</Text>
-
         <View style={styles.starsWrapper}>
           <StarRating value={rating} onChange={setRating} size={38} />
         </View>
 
-        {/* ── Comment box ─────────────────────────────────────────────────── */}
+        {/* ── Comment ── */}
         <TextInput
-          style={[
-            styles.commentInput,
-            isFocused && styles.commentInputFocused,
-          ]}
+          style={[styles.commentInput, isFocused && styles.commentInputFocused]}
           placeholder="Chia sẻ cảm nhận của bạn..."
           placeholderTextColor={TEXT_SECONDARY}
           multiline
@@ -201,22 +216,23 @@ export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreen
           accessibilityLabel="Ô nhập cảm nhận"
         />
 
-        {/* ── Submit button (UI interaction only, no backend) ─────────────── */}
+        {/* ── Submit ── */}
         <TouchableOpacity
-          style={[styles.submitButton, rating === 0 && styles.submitButtonDisabled]}
+          style={[
+            styles.submitButton,
+            (rating === 0 || submitting) && styles.submitButtonDisabled,
+          ]}
           activeOpacity={0.85}
-          disabled={rating === 0}
+          disabled={rating === 0 || submitting}
           accessibilityRole="button"
           accessibilityLabel="Gửi đánh giá"
-          onPress={() => {
-            Alert.alert(
-              '✅ Gửi thành công!',
-              `Cảm ơn bạn đã đánh giá "${event.title}" với ${rating} sao. Phản hồi của bạn giúp chúng tôi cải thiện hơn!`,
-              [{ text: 'OK', onPress: () => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home') }]
-            );
-          }}
+          onPress={handleSubmit}
         >
-          <Text style={styles.submitText}>Gửi đánh giá</Text>
+          {submitting ? (
+            <ActivityIndicator color="#fff" />
+          ) : (
+            <Text style={styles.submitText}>Gửi đánh giá</Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
     </SafeAreaView>
@@ -228,17 +244,13 @@ export default function FeedbackScreen({ event = DEFAULT_EVENT }: FeedbackScreen
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
-  safe: {
-    flex: 1,
-    backgroundColor: BACKGROUND,
-  },
+  safe: { flex: 1, backgroundColor: BACKGROUND },
   scroll: {
     paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 40,
   },
 
-  // Header
   header: {
     fontSize: 22,
     fontWeight: '700',
@@ -246,18 +258,10 @@ const styles = StyleSheet.create({
     marginBottom: 24,
     letterSpacing: -0.3,
   },
-
-  // Event info
   eventRow: {
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: 36,
-  },
-  thumbnail: {
-    width: 74,
-    height: 74,
-    borderRadius: 12,
-    backgroundColor: '#0F172A',
   },
   thumbnailFallback: {
     width: 74,
@@ -267,22 +271,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  reactAtomCenter: {
-    position: 'absolute',
-    width: 10,
-    height: 10,
-    borderRadius: 5,
-    backgroundColor: '#38BDF8',
-  },
-  thumbnailFallbackText: {
-    fontSize: 32,
-    color: '#38BDF8',
-  },
-  eventMeta: {
-    flex: 1,
-    marginLeft: 16,
-    justifyContent: 'center',
-  },
+  thumbnailFallbackText: { fontSize: 32, color: '#38BDF8' },
+  eventMeta: { flex: 1, marginLeft: 16, justifyContent: 'center' },
   eventTitle: {
     fontSize: 16,
     fontWeight: '700',
@@ -290,13 +280,8 @@ const styles = StyleSheet.create({
     marginBottom: 6,
     lineHeight: 22,
   },
-  eventDate: {
-    fontSize: 14,
-    color: TEXT_SECONDARY,
-    fontWeight: '400',
-  },
+  eventDate: { fontSize: 14, color: TEXT_SECONDARY },
 
-  // Rating section
   question: {
     fontSize: 16,
     fontWeight: '600',
@@ -304,12 +289,8 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     marginBottom: 16,
   },
-  starsWrapper: {
-    alignItems: 'center',
-    marginBottom: 24,
-  },
+  starsWrapper: { alignItems: 'center', marginBottom: 24 },
 
-  // Comment input
   commentInput: {
     borderWidth: 1,
     borderColor: BORDER_COLOR,
@@ -322,11 +303,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#FFFFFF',
     marginBottom: 28,
   },
-  commentInputFocused: {
-    borderColor: ACCENT_COLOR,
-  },
+  commentInputFocused: { borderColor: ACCENT_COLOR },
 
-  // Submit button
   submitButton: {
     backgroundColor: ACCENT_COLOR,
     borderRadius: 12,
@@ -340,26 +318,17 @@ const styles = StyleSheet.create({
         shadowOpacity: 0.25,
         shadowRadius: 8,
       },
-      android: {
-        elevation: 3,
-      },
+      android: { elevation: 3 },
     }),
   },
-  submitText: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#FFFFFF',
-  },
+  submitText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
   submitButtonDisabled: {
     backgroundColor: '#94A3B8',
     elevation: 0,
     shadowOpacity: 0,
   },
-  // Top Bar / Back button
-  topBar: {
-    paddingVertical: 8,
-    marginBottom: 4,
-  },
+
+  topBar: { paddingVertical: 8, marginBottom: 4 },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -374,9 +343,5 @@ const styles = StyleSheet.create({
     lineHeight: 28,
     marginRight: 4,
   },
-  backLabel: {
-    fontSize: 15,
-    color: ACCENT_COLOR,
-    fontWeight: '500',
-  },
+  backLabel: { fontSize: 15, color: ACCENT_COLOR, fontWeight: '500' },
 });

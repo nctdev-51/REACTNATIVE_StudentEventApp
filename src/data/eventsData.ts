@@ -1,5 +1,11 @@
 import { Event } from "../types/event";
 
+/**
+ * @deprecated
+ * Dữ liệu mock ban đầu. Ứng dụng hiện tại đã chuyển sang nạp dữ liệu hoàn toàn từ Backend Express / MongoDB
+ * qua endpoint GET /api/events (Redux eventsSlice -> api.getEvents).
+ * File này được lưu lại phục vụ seed data ban đầu cho backend (`npm run seed`).
+ */
 export const eventsData: Event[] = [
   {
     _id: "66f1e2010000000000000001",

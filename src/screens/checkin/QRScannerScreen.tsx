@@ -15,9 +15,8 @@ import {
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useFocusEffect } from '@react-navigation/native';
 import { QRScannerScreenProps } from '../../navigation/CheckInStack';
-
-// Thay đổi URL Mock API của bạn tại đây (MockAPI, Postman Mock, hoặc backend server)
-const CHECKIN_API_ENDPOINT = 'https://6759c991099e3090dbe281ab.mockapi.io/api/v1/checkins';
+import { qrCheckIn } from '../../services/api';
+import { useAppSelector } from '../../hooks/redux';
 
 const { width } = Dimensions.get('window');
 
@@ -25,6 +24,9 @@ const { width } = Dimensions.get('window');
 const SCANNER_SIZE = Math.min(width * 0.72, 280);
 
 export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
+  // Lấy thông tin user đăng nhập từ Redux auth state
+  const currentUser = useAppSelector((state) => state.auth.user);
+
   // Hook quản lý quyền truy cập Camera mới nhất của expo-camera
   const [permission, requestPermission] = useCameraPermissions();
 
@@ -74,15 +76,15 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
   // Hàm giả lập quét thành công để test nhanh giao diện / luồng
   const handleSimulateSuccess = () => {
     navigation.navigate('CheckInSuccess', {
-      eventId: 'EVT-HOITHAO-2024',
-      studentName: 'Nguyễn Chí Tâm',
-      studentId: '20212345',
+      eventId: '66f1e2010000000000000001',
+      studentName: currentUser?.fullName || 'Nguyễn Văn A',
+      studentId: currentUser?.studentId || '23123456',
       checkInTime: new Date().toLocaleTimeString('vi-VN', {
         hour: '2-digit',
         minute: '2-digit',
         second: '2-digit',
       }),
-      data: 'EVT-HOITHAO-2024',
+      data: '66f1e2010000000000000001',
     });
   };
 
@@ -99,8 +101,8 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
    * 1. Lấy eventId từ QR data
    * 2. Tạm dừng quét
    * 3. Hiển thị Loading Overlay
-   * 4. Gọi fetch POST lên API Endpoint
-   * 5. Điều hướng sang Success (nếu 201/200) hoặc Failed (nếu lỗi)
+   * 4. Gọi API Backend POST /api/registrations/check-in
+   * 5. Điều hướng sang Success (nếu thành công) hoặc Failed (nếu lỗi)
    */
   const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
     if (scanned || loading) return;
@@ -114,31 +116,18 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
 
     const eventId = result.data;
 
-    // Body dữ liệu gửi lên API theo đúng yêu cầu
-    const payload = {
-      eventId: eventId,
-      studentId: '20212345',
-      studentName: 'Nguyễn Chí Tâm',
-      checkInTime: new Date().toISOString(),
-      status: 'success',
-    };
-
     try {
-      const response = await fetch(CHECKIN_API_ENDPOINT, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Accept: 'application/json',
-        },
-        body: JSON.stringify(payload),
+      const response = await qrCheckIn({
+        eventId,
+        userId: currentUser?._id,
+        studentId: currentUser?.studentId,
       });
 
-      // Kiểm tra phản hồi từ máy chủ (chuẩn RESTful trả về 201 Created hoặc 200 OK)
-      if (response.status === 201 || response.ok) {
+      if (response && response.success) {
         navigation.navigate('CheckInSuccess', {
           eventId: eventId,
-          studentName: payload.studentName,
-          studentId: payload.studentId,
+          studentName: currentUser?.fullName || response.data?.user?.name || 'Sinh viên',
+          studentId: currentUser?.studentId || response.data?.user?.studentId || '',
           checkInTime: new Date().toLocaleTimeString('vi-VN', {
             hour: '2-digit',
             minute: '2-digit',
@@ -148,14 +137,18 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
         });
       } else {
         navigation.navigate('CheckInFailed', {
-          reason: `Máy chủ trả về trạng thái ${response.status}: Điểm danh không thành công.`,
+          reason: response?.message || 'Điểm danh không thành công.',
           data: eventId,
         });
       }
     } catch (error: any) {
-      // Bắt tất cả lỗi kết nối mạng hoặc timeout
+      // Bắt lỗi kết nối mạng hoặc server trả về lỗi
+      const errMsg =
+        error?.response?.data?.message ||
+        error?.message ||
+        'Không thể kết nối đến máy chủ backend. Vui lòng kiểm tra mạng.';
       navigation.navigate('CheckInFailed', {
-        reason: error?.message || 'Không thể kết nối đến máy chủ điểm danh. Vui lòng kiểm tra mạng.',
+        reason: errMsg,
         data: eventId,
       });
     } finally {

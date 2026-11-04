@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,10 @@ import {
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { logout } from '../../features/auth/authSlice';
+import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
+import api from '../../services/api';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -54,14 +58,14 @@ const BORDER_COLOR = '#F1F5F9';
 const DANGER_COLOR = '#EF4444';
 
 const DEFAULT_PROFILE: UserProfile = {
-  displayName: 'Nguyễn Văn A',
-  studentId: '23123456',
-  faculty: 'Khoa Công nghệ thông tin',
-  avatarUrl: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=300&q=80',
+  displayName: 'Sinh viên IUH',
+  studentId: 'Chưa cập nhật',
+  faculty: 'Trường Đại học Công nghiệp TP.HCM',
+  avatarUrl: undefined,
   stats: {
-    eventsAttended: 12,
-    pointsAccumulated: 120,
-    reviews: 5,
+    eventsAttended: 0,
+    pointsAccumulated: 0,
+    reviews: 0,
   },
 };
 
@@ -585,9 +589,30 @@ export default function ProfileScreen({
   initialTab = 'profile',
 }: ProfileScreenProps) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const dispatch = useAppDispatch();
+
+  const currentUser = useAppSelector((state) => state.auth.user);
+  const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
+
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [currentTheme, setCurrentTheme] = useState<'Sáng' | 'Tối'>(initialTheme);
   const [imageError, setImageError] = useState<boolean>(false);
+
+  useEffect(() => {
+    if (currentUser?._id) {
+      dispatch(fetchMyRegistrations(currentUser._id));
+    }
+  }, [dispatch, currentUser?._id]);
+
+  // Compute real user details and stats from Redux
+  const displayName = currentUser?.fullName || profile.displayName;
+  const studentId = currentUser?.studentId || profile.studentId;
+  const faculty = currentUser?.faculty || profile.faculty;
+  const avatarUrl = currentUser?.avatarUrl || profile.avatarUrl;
+
+  const eventsAttendedCount = myRegistrations.filter((r) => r.status === 'checked_in').length;
+  const pointsAccumulated = currentUser?.point ?? 0;
+  const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
 
   // Toggle theme locally for responsive UI feedback
   const handleToggleTheme = () => {
@@ -613,6 +638,29 @@ export default function ProfileScreen({
     }
   };
 
+  // Logout handler
+  const handleLogout = () => {
+    Alert.alert(
+      'Đăng xuất',
+      'Bạn có chắc muốn đăng xuất khỏi tài khoản không?',
+      [
+        { text: 'Hủy', style: 'cancel' },
+        {
+          text: 'Đăng xuất',
+          style: 'destructive',
+          onPress: async () => {
+            try {
+              await api.logout();
+            } catch (err) {
+              // Ignore logout network error
+            }
+            dispatch(logout());
+          },
+        },
+      ]
+    );
+  };
+
   return (
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" backgroundColor={BACKGROUND} />
@@ -636,41 +684,41 @@ export default function ProfileScreen({
 
         {/* ── Avatar ──────────────────────────────────────────────────────── */}
         <View style={styles.avatarWrapper}>
-          {profile.avatarUrl && !imageError ? (
+          {avatarUrl && !imageError ? (
             <Image
-              source={{ uri: profile.avatarUrl }}
+              source={{ uri: avatarUrl }}
               style={styles.avatarImage}
               resizeMode="cover"
               onError={() => setImageError(true)}
               accessible
-              accessibilityLabel={`Ảnh đại diện của ${profile.displayName}`}
+              accessibilityLabel={`Ảnh đại diện của ${displayName}`}
             />
           ) : (
             <View style={styles.avatarFallback}>
               <Text style={styles.avatarFallbackInitial}>
-                {profile.displayName.charAt(0).toUpperCase()}
+                {displayName.charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
         </View>
 
         {/* ── Student info ─────────────────────────────────────────────────── */}
-        <Text style={styles.displayName}>{profile.displayName}</Text>
-        <Text style={styles.studentId}>MSSV: {profile.studentId}</Text>
-        <Text style={styles.faculty}>{profile.faculty}</Text>
+        <Text style={styles.displayName}>{displayName}</Text>
+        <Text style={styles.studentId}>MSSV: {studentId}</Text>
+        <Text style={styles.faculty}>{faculty}</Text>
 
         {/* ── Activity stats card ─────────────────────────────────────────── */}
         <View style={styles.statsCard}>
           <ActivityStatItem
-            value={profile.stats.eventsAttended}
+            value={eventsAttendedCount}
             label="Sự kiện tham gia"
           />
           <ActivityStatItem
-            value={profile.stats.pointsAccumulated}
+            value={pointsAccumulated}
             label="Điểm tích lũy"
           />
           <ActivityStatItem
-            value={profile.stats.reviews}
+            value={reviewsCount}
             label="Đánh giá"
           />
         </View>
@@ -685,12 +733,12 @@ export default function ProfileScreen({
           <MenuItem
             icon={<UserOutlineIcon color="#334155" />}
             label="Thông tin cá nhân"
-            onPress={() => Alert.alert('Thông tin cá nhân', 'Tính năng đang được phát triển.')}
+            onPress={() => Alert.alert('Thông tin cá nhân', `Họ tên: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nEmail: ${currentUser?.email || 'N/A'}`)}
           />
           <MenuItem
             icon={<SettingsCogIcon color="#334155" />}
             label="Cài đặt"
-            onPress={() => Alert.alert('Cài đặt', 'Tính năng đang được phát triển.')}
+            onPress={() => Alert.alert('Cài đặt', 'Cài đặt ứng dụng')}
           />
           <MenuItem
             icon={<MoonCrescentIcon color="#334155" />}
@@ -702,16 +750,7 @@ export default function ProfileScreen({
             icon={<LogoutIcon color={DANGER_COLOR} />}
             label="Đăng xuất"
             isLast
-            onPress={() =>
-              Alert.alert(
-                'Đăng xuất',
-                'Bạn có chắc muốn đăng xuất khỏi tài khoản không?',
-                [
-                  { text: 'Hủy', style: 'cancel' },
-                  { text: 'Đăng xuất', style: 'destructive', onPress: () => navigation.navigate('Home') },
-                ]
-              )
-            }
+            onPress={handleLogout}
           />
         </View>
       </ScrollView>
