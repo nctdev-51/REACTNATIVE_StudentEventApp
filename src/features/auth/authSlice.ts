@@ -1,6 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { User, AuthCredentials, RegisterPayload } from '../../types';
 import api from '../../services/api';
+import { getDbUsers } from '../../data/dbService';
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -24,7 +25,7 @@ const initialState: AuthState = {
 
 /**
  * Đăng nhập: POST /auth/login → { token, user }
- * Nếu backend chưa có /auth, tạm fallback GET /users?email=...
+ * Nếu backend chưa có /auth hoặc offline, fallback kiểm tra từ db.json
  */
 export const loginUser = createAsyncThunk(
   'auth/login',
@@ -32,6 +33,35 @@ export const loginUser = createAsyncThunk(
     try {
       return await api.login(credentials);
     } catch (err: any) {
+      // Fallback xác thực trực tiếp qua dữ liệu db.json nếu server offline
+      try {
+        const dbUsers = getDbUsers();
+        const matched = dbUsers.find(
+          (u) =>
+            u.email?.toLowerCase() === credentials.email?.toLowerCase().trim() &&
+            u.password === credentials.password
+        );
+        if (matched) {
+          return {
+            token: 'jwt_token_db_' + (matched.id || matched._id),
+            user: {
+              _id: matched.id || matched._id,
+              studentId: matched.studentId || 'SV01',
+              fullName: matched.name || matched.fullName || 'Nguyễn Văn A',
+              email: matched.email,
+              point: matched.point ?? 120,
+              role: matched.role || 'student',
+              faculty: matched.faculty || 'Khoa Công nghệ thông tin',
+              phone: matched.phone || '0901234567',
+              avatarUrl: matched.avatarUrl || matched.avatar,
+              isActive: true,
+            },
+          };
+        }
+      } catch (dbErr) {
+        // Bỏ qua lỗi fallback
+      }
+
       return rejectWithValue(
         err?.response?.data?.message ?? err?.message ?? 'Đăng nhập thất bại'
       );

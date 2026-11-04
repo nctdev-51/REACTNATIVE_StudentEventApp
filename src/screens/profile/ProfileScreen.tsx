@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Modal,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -17,7 +18,13 @@ import type { MainStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { logout } from '../../features/auth/authSlice';
 import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
-import api from '../../services/api';
+import api, { setAuthToken } from '../../services/api';
+import { useAppTheme } from '../../theme';
+import {
+  getDefaultDbUser,
+  getUserStatsFromDb,
+  findDbUser,
+} from '../../data/dbService';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,51 +41,33 @@ export interface UserProfile {
   studentId: string;
   faculty: string;
   avatarUrl?: string;
-  stats: ActivityStats;
+  email?: string;
+  phone?: string;
+  stats?: ActivityStats;
 }
 
 export type TabKey = 'home' | 'schedule' | 'checkin' | 'profile';
 
 export interface ProfileScreenProps {
   profile?: UserProfile;
-  initialTheme?: 'Sáng' | 'Tối';
   initialTab?: TabKey;
 }
 
 // ---------------------------------------------------------------------------
-// Constants
+// Vector-style Custom Icons
 // ---------------------------------------------------------------------------
 
-const ACCENT_COLOR = '#2563EB';
-const BACKGROUND = '#FFFFFF';
-const SCREEN_BG = '#F8FAFC'; // Clean off-white background
-const TEXT_PRIMARY = '#111827';
-const TEXT_SECONDARY = '#6B7280';
-const BORDER_COLOR = '#F1F5F9';
-const DANGER_COLOR = '#EF4444';
-
-const DEFAULT_PROFILE: UserProfile = {
-  displayName: 'Sinh viên IUH',
-  studentId: 'Chưa cập nhật',
-  faculty: 'Trường Đại học Công nghiệp TP.HCM',
-  avatarUrl: undefined,
-  stats: {
-    eventsAttended: 0,
-    pointsAccumulated: 0,
-    reviews: 0,
-  },
-};
-
-// ---------------------------------------------------------------------------
-// Vector-style Custom Icons (Using pure React Native Views)
-// ---------------------------------------------------------------------------
-
-/** Chevron arrow (right pointing) */
-function ChevronRight() {
-  return <View style={iconStyles.chevron} />;
+function ChevronRight({ color = '#94A3B8' }: { color?: string }) {
+  return (
+    <View
+      style={[
+        iconStyles.chevron,
+        { borderTopColor: color, borderRightColor: color },
+      ]}
+    />
+  );
 }
 
-/** Calendar Icon (outline with binder loops) */
 function CalendarIcon({ color = '#475569' }: { color?: string }) {
   return (
     <View style={[iconStyles.calendarContainer, { borderColor: color }]}>
@@ -93,7 +82,6 @@ function CalendarIcon({ color = '#475569' }: { color?: string }) {
   );
 }
 
-/** User Profile Outline Icon */
 function UserOutlineIcon({ color = '#475569' }: { color?: string }) {
   return (
     <View style={iconStyles.userContainer}>
@@ -103,7 +91,14 @@ function UserOutlineIcon({ color = '#475569' }: { color?: string }) {
   );
 }
 
-/** Settings Cog Icon */
+function StarIconOutline({ color = '#475569' }: { color?: string }) {
+  return (
+    <View style={iconStyles.starContainer}>
+      <Text style={[iconStyles.starEmoji, { color }]}>★</Text>
+    </View>
+  );
+}
+
 function SettingsCogIcon({ color = '#475569' }: { color?: string }) {
   return (
     <View style={iconStyles.settingsContainer}>
@@ -116,18 +111,27 @@ function SettingsCogIcon({ color = '#475569' }: { color?: string }) {
   );
 }
 
-/** Moon Crescent Icon */
-function MoonCrescentIcon({ color = '#475569' }: { color?: string }) {
+function ThemeToggleIcon({ isDark, color = '#475569' }: { isDark: boolean; color?: string }) {
+  if (isDark) {
+    // Sun icon in dark mode (ready to switch to Light)
+    return (
+      <View style={iconStyles.sunContainer}>
+        <View style={[iconStyles.sunCenter, { backgroundColor: color }]} />
+        <View style={[iconStyles.sunRay, iconStyles.rayV, { backgroundColor: color }]} />
+        <View style={[iconStyles.sunRay, iconStyles.rayH, { backgroundColor: color }]} />
+      </View>
+    );
+  }
+  // Moon crescent in light mode (ready to switch to Dark)
   return (
     <View style={iconStyles.moonContainer}>
       <View style={[iconStyles.moonOuter, { borderColor: color }]} />
-      <View style={iconStyles.moonInner} />
+      <View style={[iconStyles.moonInner, { backgroundColor: '#F8FAFC' }]} />
     </View>
   );
 }
 
-/** Logout Door & Arrow Icon */
-function LogoutIcon({ color = DANGER_COLOR }: { color?: string }) {
+function LogoutIcon({ color = '#EF4444' }: { color?: string }) {
   return (
     <View style={iconStyles.logoutContainer}>
       <View style={[iconStyles.logoutDoor, { borderColor: color }]} />
@@ -137,9 +141,7 @@ function LogoutIcon({ color = DANGER_COLOR }: { color?: string }) {
   );
 }
 
-/** Home Tab Icon */
-function HomeTabIcon({ active }: { active: boolean }) {
-  const color = active ? ACCENT_COLOR : '#94A3B8';
+function HomeTabIcon({ active, color }: { active: boolean; color: string }) {
   return (
     <View style={iconStyles.homeContainer}>
       <View style={[iconStyles.homeRoof, { borderColor: color }]} />
@@ -148,9 +150,7 @@ function HomeTabIcon({ active }: { active: boolean }) {
   );
 }
 
-/** Check-in Ticket Tab Icon */
-function CheckinTabIcon({ active }: { active: boolean }) {
-  const color = active ? ACCENT_COLOR : '#94A3B8';
+function CheckinTabIcon({ color }: { color: string }) {
   return (
     <View style={[iconStyles.checkinContainer, { borderColor: color }]}>
       <View style={[iconStyles.checkinLine, { backgroundColor: color }]} />
@@ -159,9 +159,7 @@ function CheckinTabIcon({ active }: { active: boolean }) {
   );
 }
 
-/** Profile Tab Icon */
-function ProfileTabIcon({ active }: { active: boolean }) {
-  const color = active ? ACCENT_COLOR : '#94A3B8';
+function ProfileTabIcon({ active, color }: { active: boolean; color: string }) {
   return (
     <View style={iconStyles.userContainer}>
       <View
@@ -186,11 +184,9 @@ const iconStyles = StyleSheet.create({
     height: 8,
     borderTopWidth: 2,
     borderRightWidth: 2,
-    borderColor: '#94A3B8',
     transform: [{ rotate: '45deg' }],
     marginLeft: 6,
   },
-  // Calendar
   calendarContainer: {
     width: 20,
     height: 20,
@@ -217,7 +213,6 @@ const iconStyles = StyleSheet.create({
     height: 2.5,
     borderRadius: 1,
   },
-  // User
   userContainer: {
     width: 20,
     height: 20,
@@ -238,7 +233,16 @@ const iconStyles = StyleSheet.create({
     borderTopRightRadius: 8,
     borderWidth: 1.6,
   },
-  // Settings
+  starContainer: {
+    width: 20,
+    height: 20,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  starEmoji: {
+    fontSize: 16,
+    lineHeight: 18,
+  },
   settingsContainer: {
     width: 20,
     height: 20,
@@ -272,7 +276,6 @@ const iconStyles = StyleSheet.create({
     height: 3.5,
     borderRadius: 1,
   },
-  // Moon
   moonContainer: {
     width: 20,
     height: 20,
@@ -290,11 +293,32 @@ const iconStyles = StyleSheet.create({
     width: 12,
     height: 12,
     borderRadius: 6,
-    backgroundColor: BACKGROUND,
     top: 1,
     right: 3,
   },
-  // Logout
+  sunContainer: {
+    width: 20,
+    height: 20,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  sunCenter: {
+    width: 10,
+    height: 10,
+    borderRadius: 5,
+  },
+  sunRay: {
+    position: 'absolute',
+    borderRadius: 1,
+  },
+  rayV: {
+    width: 2,
+    height: 18,
+  },
+  rayH: {
+    width: 18,
+    height: 2,
+  },
   logoutContainer: {
     width: 20,
     height: 20,
@@ -327,7 +351,6 @@ const iconStyles = StyleSheet.create({
     borderRightWidth: 1.8,
     transform: [{ rotate: '45deg' }],
   },
-  // Home
   homeContainer: {
     width: 20,
     height: 20,
@@ -349,7 +372,6 @@ const iconStyles = StyleSheet.create({
     borderTopWidth: 0,
     marginTop: -4,
   },
-  // Check-in
   checkinContainer: {
     width: 17,
     height: 19,
@@ -381,34 +403,45 @@ const iconStyles = StyleSheet.create({
 interface BottomTabBarProps {
   activeTab: TabKey;
   onTabPress: (tab: TabKey) => void;
+  tabBg: string;
+  borderColor: string;
+  activeColor: string;
+  inactiveColor: string;
 }
 
-function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
+function BottomTabBar({
+  activeTab,
+  onTabPress,
+  tabBg,
+  borderColor,
+  activeColor,
+  inactiveColor,
+}: BottomTabBarProps) {
   const tabs: { key: TabKey; label: string; renderIcon: (active: boolean) => React.ReactNode }[] = [
     {
       key: 'home',
       label: 'Trang chủ',
-      renderIcon: (active) => <HomeTabIcon active={active} />,
+      renderIcon: (active) => <HomeTabIcon active={active} color={active ? activeColor : inactiveColor} />,
     },
     {
       key: 'schedule',
       label: 'Lịch của tôi',
-      renderIcon: (active) => <CalendarIcon color={active ? ACCENT_COLOR : '#94A3B8'} />,
+      renderIcon: (active) => <CalendarIcon color={active ? activeColor : inactiveColor} />,
     },
     {
       key: 'checkin',
       label: 'Check-in',
-      renderIcon: (active) => <CheckinTabIcon active={active} />,
+      renderIcon: (active) => <CheckinTabIcon color={active ? activeColor : inactiveColor} />,
     },
     {
       key: 'profile',
       label: 'Cá nhân',
-      renderIcon: (active) => <ProfileTabIcon active={active} />,
+      renderIcon: (active) => <ProfileTabIcon active={active} color={active ? activeColor : inactiveColor} />,
     },
   ];
 
   return (
-    <View style={tabStyles.container}>
+    <View style={[tabStyles.container, { backgroundColor: tabBg, borderTopColor: borderColor }]}>
       {tabs.map((tab) => {
         const isActive = tab.key === activeTab;
         return (
@@ -422,7 +455,13 @@ function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
             accessibilityState={{ selected: isActive }}
           >
             <View style={tabStyles.iconBox}>{tab.renderIcon(isActive)}</View>
-            <Text style={[tabStyles.label, isActive && tabStyles.labelActive]}>
+            <Text
+              style={[
+                tabStyles.label,
+                { color: isActive ? activeColor : inactiveColor },
+                isActive && tabStyles.labelActive,
+              ]}
+            >
               {tab.label}
             </Text>
           </TouchableOpacity>
@@ -435,9 +474,7 @@ function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
 const tabStyles = StyleSheet.create({
   container: {
     flexDirection: 'row',
-    backgroundColor: BACKGROUND,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
     paddingBottom: Platform.OS === 'ios' ? 24 : 10,
     paddingTop: 8,
     ...Platform.select({
@@ -465,11 +502,9 @@ const tabStyles = StyleSheet.create({
   },
   label: {
     fontSize: 10,
-    color: '#64748B',
     fontWeight: '400',
   },
   labelActive: {
-    color: ACCENT_COLOR,
     fontWeight: '600',
   },
 });
@@ -484,22 +519,46 @@ interface MenuItemProps {
   badge?: string;
   isLast?: boolean;
   onPress?: () => void;
+  textColor?: string;
+  bgColor?: string;
+  borderSubtle?: string;
+  badgeBg?: string;
+  chevronColor?: string;
 }
 
-function MenuItem({ icon, label, badge, isLast = false, onPress }: MenuItemProps) {
+function MenuItem({
+  icon,
+  label,
+  badge,
+  isLast = false,
+  onPress,
+  textColor = '#0F172A',
+  bgColor = '#FFFFFF',
+  borderSubtle = '#F1F5F9',
+  badgeBg = '#EFF6FF',
+  chevronColor = '#94A3B8',
+}: MenuItemProps) {
   return (
     <TouchableOpacity
-      style={[menuStyles.row, isLast && menuStyles.rowLast]}
+      style={[
+        menuStyles.row,
+        { backgroundColor: bgColor, borderBottomColor: borderSubtle },
+        isLast && menuStyles.rowLast,
+      ]}
       onPress={onPress}
       activeOpacity={0.65}
       accessibilityRole="button"
       accessibilityLabel={label}
     >
       <View style={menuStyles.iconBox}>{icon}</View>
-      <Text style={menuStyles.label}>{label}</Text>
+      <Text style={[menuStyles.label, { color: textColor }]}>{label}</Text>
       <View style={menuStyles.rightBox}>
-        {badge ? <Text style={menuStyles.badgeText}>{badge}</Text> : null}
-        <ChevronRight />
+        {badge ? (
+          <View style={[menuStyles.badgeBox, { backgroundColor: badgeBg }]}>
+            <Text style={[menuStyles.badgeText, { color: textColor }]}>{badge}</Text>
+          </View>
+        ) : null}
+        <ChevronRight color={chevronColor} />
       </View>
     </TouchableOpacity>
   );
@@ -511,9 +570,7 @@ const menuStyles = StyleSheet.create({
     alignItems: 'center',
     paddingVertical: 14,
     paddingHorizontal: 16,
-    backgroundColor: BACKGROUND,
     borderBottomWidth: 1,
-    borderBottomColor: '#F1F5F9',
   },
   rowLast: {
     borderBottomWidth: 0,
@@ -527,17 +584,21 @@ const menuStyles = StyleSheet.create({
   label: {
     flex: 1,
     fontSize: 15,
-    color: TEXT_PRIMARY,
     fontWeight: '500',
   },
   rightBox: {
     flexDirection: 'row',
     alignItems: 'center',
   },
-  badgeText: {
-    fontSize: 14,
-    color: '#64748B',
+  badgeBox: {
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+    borderRadius: 8,
     marginRight: 4,
+  },
+  badgeText: {
+    fontSize: 13,
+    fontWeight: '600',
   },
 });
 
@@ -548,13 +609,15 @@ const menuStyles = StyleSheet.create({
 interface ActivityStatItemProps {
   value: number;
   label: string;
+  accentColor: string;
+  labelColor: string;
 }
 
-function ActivityStatItem({ value, label }: ActivityStatItemProps) {
+function ActivityStatItem({ value, label, accentColor, labelColor }: ActivityStatItemProps) {
   return (
     <View style={statStyles.item}>
-      <Text style={statStyles.value}>{value}</Text>
-      <Text style={statStyles.label}>{label}</Text>
+      <Text style={[statStyles.value, { color: accentColor }]}>{value}</Text>
+      <Text style={[statStyles.label, { color: labelColor }]}>{label}</Text>
     </View>
   );
 }
@@ -568,12 +631,10 @@ const statStyles = StyleSheet.create({
   value: {
     fontSize: 22,
     fontWeight: '700',
-    color: ACCENT_COLOR,
     marginBottom: 4,
   },
   label: {
     fontSize: 11,
-    color: TEXT_SECONDARY,
     textAlign: 'center',
     lineHeight: 15,
   },
@@ -584,42 +645,50 @@ const statStyles = StyleSheet.create({
 // ---------------------------------------------------------------------------
 
 export default function ProfileScreen({
-  profile = DEFAULT_PROFILE,
-  initialTheme = 'Sáng',
+  profile,
   initialTab = 'profile',
 }: ProfileScreenProps) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const dispatch = useAppDispatch();
+  const { theme, isDark, mode, toggleTheme } = useAppTheme();
 
   const currentUser = useAppSelector((state) => state.auth.user);
   const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
 
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
-  const [currentTheme, setCurrentTheme] = useState<'Sáng' | 'Tối'>(initialTheme);
   const [imageError, setImageError] = useState<boolean>(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState<boolean>(false);
+
+  // Lấy dữ liệu mẫu từ db.json khi currentUser chưa có
+  const defaultDbStudent = getDefaultDbUser();
+  const dbUser = findDbUser(currentUser?._id || (currentUser as any)?.id || defaultDbStudent.id);
 
   useEffect(() => {
-    if (currentUser?._id) {
-      dispatch(fetchMyRegistrations(currentUser._id));
+    const targetId = currentUser?._id || defaultDbStudent._id;
+    if (targetId) {
+      dispatch(fetchMyRegistrations(targetId));
     }
-  }, [dispatch, currentUser?._id]);
+  }, [dispatch, currentUser?._id, defaultDbStudent._id]);
 
-  // Compute real user details and stats from Redux
-  const displayName = currentUser?.fullName || profile.displayName;
-  const studentId = currentUser?.studentId || profile.studentId;
-  const faculty = currentUser?.faculty || profile.faculty;
-  const avatarUrl = currentUser?.avatarUrl || profile.avatarUrl;
+  // Dữ liệu người dùng hoàn toàn lấy từ db.json hoặc Redux xác thực
+  const displayName = currentUser?.fullName || profile?.displayName || dbUser.fullName || (dbUser as any).name || defaultDbStudent.fullName;
+  const studentId = currentUser?.studentId || profile?.studentId || dbUser.studentId || defaultDbStudent.studentId;
+  const faculty = currentUser?.faculty || profile?.faculty || dbUser.faculty || defaultDbStudent.faculty;
+  const avatarUrl = currentUser?.avatarUrl || profile?.avatarUrl || dbUser.avatarUrl || (dbUser as any).avatar || defaultDbStudent.avatarUrl;
+  const email = currentUser?.email || dbUser.email || defaultDbStudent.email;
+  const phone = currentUser?.phone || dbUser.phone || defaultDbStudent.phone;
 
-  const eventsAttendedCount = myRegistrations.filter((r) => r.status === 'checked_in').length;
-  const pointsAccumulated = currentUser?.point ?? 0;
-  const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
+  // Tính toán thống kê chính xác từ db.json
+  const dbStats = getUserStatsFromDb(currentUser?._id || dbUser._id || defaultDbStudent._id);
+  const realAttendedFromRedux = myRegistrations.filter(
+    (r) => r.status === 'checked_in' || (r.status as string) === 'completed'
+  ).length;
 
-  // Toggle theme locally for responsive UI feedback
-  const handleToggleTheme = () => {
-    setCurrentTheme((prev) => (prev === 'Sáng' ? 'Tối' : 'Sáng'));
-  };
+  const eventsAttendedCount = realAttendedFromRedux > 0 ? realAttendedFromRedux : dbStats.eventsAttended;
+  const pointsAccumulated = typeof currentUser?.point === 'number' ? currentUser.point : dbStats.pointsAccumulated;
+  const reviewsCount = dbStats.reviews;
 
-  // Wire up bottom tab navigation
+  // Xử lý chuyển tab dưới cùng
   const handleTabPress = (tab: TabKey) => {
     setActiveTab(tab);
     switch (tab) {
@@ -633,52 +702,85 @@ export default function ProfileScreen({
         navigation.navigate('CheckIn');
         break;
       case 'profile':
-        // Already on profile, do nothing
         break;
     }
   };
 
-  // Logout handler
-  const handleLogout = () => {
-    Alert.alert(
-      'Đăng xuất',
-      'Bạn có chắc muốn đăng xuất khỏi tài khoản không?',
-      [
-        { text: 'Hủy', style: 'cancel' },
-        {
-          text: 'Đăng xuất',
-          style: 'destructive',
-          onPress: async () => {
-            try {
-              await api.logout();
-            } catch (err) {
-              // Ignore logout network error
-            }
-            dispatch(logout());
-          },
-        },
-      ]
-    );
+  // Mở modal xác nhận đăng xuất
+  const handleLogoutPress = () => {
+    setLogoutModalVisible(true);
+  };
+
+  // Thực hiện đăng xuất tài khoản
+  const confirmLogout = async () => {
+    setLogoutModalVisible(false);
+
+    // 1. Thu hồi / xoá token axios interceptor
+    try {
+      setAuthToken(null);
+    } catch (e) {
+      // ignore
+    }
+
+    // 2. Cập nhật Redux: RootNavigator sẽ tự động nhận diện isAuthenticated = false
+    // và lập tức chuyển về AuthStack (LoginScreen)
+    dispatch(logout());
+
+    // 3. Thông báo máy chủ backend ngầm
+    try {
+      await api.logout();
+    } catch (err) {
+      // Bỏ qua lỗi kết nối máy chủ khi đăng xuất
+    }
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" backgroundColor={BACKGROUND} />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar
+        barStyle={theme.statusBarStyle}
+        backgroundColor={theme.background}
+      />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Top row with options button ─────────────────────────────────── */}
+        {/* ── Top Bar với nút đổi theme nhanh ───────────────────────────── */}
         <View style={styles.topRow}>
-          <View style={{ flex: 1 }} />
           <TouchableOpacity
-            style={styles.optionsButton}
+            style={[
+              styles.themePill,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            onPress={toggleTheme}
             activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel={`Chuyển sang chế độ ${isDark ? 'Sáng' : 'Tối'}`}
+          >
+            <ThemeToggleIcon isDark={isDark} color={theme.textPrimary} />
+            <Text style={[styles.themePillText, { color: theme.textPrimary }]}>
+              {mode}
+            </Text>
+          </TouchableOpacity>
+
+          <View style={{ flex: 1 }} />
+
+          <TouchableOpacity
+            style={[
+              styles.optionsButton,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            activeOpacity={0.7}
+            onPress={() => {
+              Alert.alert(
+                'Dữ liệu db.json',
+                `Người dùng hiện tại: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nĐiểm rèn luyện: ${pointsAccumulated} đ\nChế độ màu: ${mode}`
+              );
+            }}
             accessibilityRole="button"
             accessibilityLabel="Tùy chọn khác"
           >
-            <Text style={styles.optionsDots}>•••</Text>
+            <Text style={[styles.optionsDots, { color: theme.textSecondary }]}>•••</Text>
           </TouchableOpacity>
         </View>
 
@@ -687,14 +789,14 @@ export default function ProfileScreen({
           {avatarUrl && !imageError ? (
             <Image
               source={{ uri: avatarUrl }}
-              style={styles.avatarImage}
+              style={[styles.avatarImage, { borderColor: theme.surface }]}
               resizeMode="cover"
               onError={() => setImageError(true)}
               accessible
               accessibilityLabel={`Ảnh đại diện của ${displayName}`}
             />
           ) : (
-            <View style={styles.avatarFallback}>
+            <View style={[styles.avatarFallback, { backgroundColor: theme.primary, borderColor: theme.surface }]}>
               <Text style={styles.avatarFallbackInitial}>
                 {displayName.charAt(0).toUpperCase()}
               </Text>
@@ -703,60 +805,217 @@ export default function ProfileScreen({
         </View>
 
         {/* ── Student info ─────────────────────────────────────────────────── */}
-        <Text style={styles.displayName}>{displayName}</Text>
-        <Text style={styles.studentId}>MSSV: {studentId}</Text>
-        <Text style={styles.faculty}>{faculty}</Text>
+        <Text style={[styles.displayName, { color: theme.textPrimary }]}>{displayName}</Text>
+        <Text style={[styles.studentId, { color: theme.textSecondary }]}>MSSV: {studentId}</Text>
+        <Text style={[styles.faculty, { color: theme.textSecondary }]}>{faculty}</Text>
 
-        {/* ── Activity stats card ─────────────────────────────────────────── */}
-        <View style={styles.statsCard}>
+        {/* ── Activity stats card (Dữ liệu chính xác từ db.json) ─────────── */}
+        <View
+          style={[
+            styles.statsCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              shadowColor: theme.cardShadow,
+            },
+          ]}
+        >
           <ActivityStatItem
             value={eventsAttendedCount}
             label="Sự kiện tham gia"
+            accentColor={theme.primary}
+            labelColor={theme.textSecondary}
           />
           <ActivityStatItem
             value={pointsAccumulated}
             label="Điểm tích lũy"
+            accentColor={theme.primary}
+            labelColor={theme.textSecondary}
           />
           <ActivityStatItem
             value={reviewsCount}
             label="Đánh giá"
+            accentColor={theme.primary}
+            labelColor={theme.textSecondary}
           />
         </View>
 
         {/* ── Menu list ───────────────────────────────────────────────────── */}
-        <View style={styles.menuCard}>
+        <View
+          style={[
+            styles.menuCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+              shadowColor: theme.cardShadow,
+            },
+          ]}
+        >
           <MenuItem
-            icon={<CalendarIcon color="#334155" />}
+            icon={<CalendarIcon color={theme.textSecondary} />}
             label="Lịch sử tham gia"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
             onPress={() => navigation.navigate('MySchedule')}
           />
+
           <MenuItem
-            icon={<UserOutlineIcon color="#334155" />}
+            icon={<StarIconOutline color={theme.starActive} />}
+            label="Đánh giá sự kiện"
+            badge={`${reviewsCount} đã gửi`}
+            badgeBg={theme.badgeBackground}
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => navigation.navigate('Feedback', {})}
+          />
+
+          <MenuItem
+            icon={<UserOutlineIcon color={theme.textSecondary} />}
             label="Thông tin cá nhân"
-            onPress={() => Alert.alert('Thông tin cá nhân', `Họ tên: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nEmail: ${currentUser?.email || 'N/A'}`)}
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() =>
+              Alert.alert(
+                'Thông tin sinh viên (db.json)',
+                `Họ và tên: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nEmail: ${email}\nSố điện thoại: ${phone || 'Chưa cập nhật'}\nĐiểm rèn luyện: ${pointsAccumulated} điểm`
+              )
+            }
           />
+
           <MenuItem
-            icon={<SettingsCogIcon color="#334155" />}
-            label="Cài đặt"
-            onPress={() => Alert.alert('Cài đặt', 'Cài đặt ứng dụng')}
+            icon={<SettingsCogIcon color={theme.textSecondary} />}
+            label="Cài đặt ứng dụng"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() =>
+              Alert.alert('Cài đặt', 'Ứng dụng Quản lý Sự kiện Sinh viên IUH v1.0.0')
+            }
           />
+
+          {/* Nút Đổi Theme sáng/tối ấn được */}
           <MenuItem
-            icon={<MoonCrescentIcon color="#334155" />}
-            label="Đổi theme"
-            badge={currentTheme}
-            onPress={handleToggleTheme}
+            icon={<ThemeToggleIcon isDark={isDark} color={theme.primary} />}
+            label="Đổi theme (Sáng / Tối)"
+            badge={mode}
+            badgeBg={theme.badgeBackground}
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={toggleTheme}
           />
-          <MenuItem
-            icon={<LogoutIcon color={DANGER_COLOR} />}
-            label="Đăng xuất"
-            isLast
-            onPress={handleLogout}
-          />
+
+         
         </View>
+
+        {/* ── Nút Đăng xuất riêng biệt nổi bật ── */}
+        <TouchableOpacity
+          style={[
+            styles.standaloneLogoutBtn,
+            {
+              backgroundColor: isDark ? '#261214' : '#FEF2F2',
+              borderColor: isDark ? '#7F1D1D' : '#FECACA',
+            },
+          ]}
+          onPress={handleLogoutPress}
+          activeOpacity={0.75}
+          accessibilityRole="button"
+          accessibilityLabel="Đăng xuất khỏi tài khoản"
+        >
+          <View style={styles.standaloneLogoutContent}>
+            <LogoutIcon color={theme.danger} />
+            <Text style={[styles.standaloneLogoutText, { color: theme.danger }]}>
+              Đăng xuất tài khoản
+            </Text>
+          </View>
+        </TouchableOpacity>
       </ScrollView>
 
       {/* ── Bottom navigation bar ───────────────────────────────────────── */}
-      <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
+      <BottomTabBar
+        activeTab={activeTab}
+        onTabPress={handleTabPress}
+        tabBg={theme.tabBackground}
+        borderColor={theme.tabBorder}
+        activeColor={theme.primary}
+        inactiveColor={theme.textTertiary}
+      />
+
+      {/* ── Modal Xác nhận Đăng xuất (Hoạt động đa nền tảng iOS, Android & Web) ── */}
+      <Modal
+        visible={logoutModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLogoutModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                shadowColor: theme.cardShadow,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalIconCircle,
+                { backgroundColor: isDark ? '#3E1818' : '#FEE2E2' },
+              ]}
+            >
+              <LogoutIcon color={theme.danger} />
+            </View>
+
+            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
+              Xác nhận đăng xuất
+            </Text>
+
+            <Text style={[styles.modalMessage, { color: theme.textSecondary }]}>
+              Bạn có chắc chắn muốn đăng xuất khỏi tài khoản{' '}
+              <Text style={{ fontWeight: '700', color: theme.textPrimary }}>
+                {displayName}
+              </Text>
+              ? Bạn sẽ được chuyển về màn hình đăng nhập.
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[
+                  styles.modalCancelBtn,
+                  {
+                    backgroundColor: theme.surfaceSecondary,
+                    borderColor: theme.border,
+                  },
+                ]}
+                activeOpacity={0.7}
+                onPress={() => setLogoutModalVisible(false)}
+              >
+                <Text style={[styles.modalCancelText, { color: theme.textPrimary }]}>
+                  Hủy bỏ
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[styles.modalLogoutBtn, { backgroundColor: theme.danger }]}
+                activeOpacity={0.8}
+                onPress={confirmLogout}
+              >
+                <Text style={styles.modalLogoutText}>Đăng xuất</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -768,7 +1027,6 @@ export default function ProfileScreen({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: SCREEN_BG,
   },
   scroll: {
     paddingBottom: 24,
@@ -782,12 +1040,27 @@ const styles = StyleSheet.create({
     paddingTop: 10,
     paddingBottom: 2,
   },
+  themePill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 20,
+    borderWidth: 1,
+    gap: 6,
+  },
+  themePillText: {
+    fontSize: 13,
+    fontWeight: '600',
+  },
   optionsButton: {
-    padding: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 16,
+    borderWidth: 1,
   },
   optionsDots: {
-    fontSize: 18,
-    color: '#64748B',
+    fontSize: 16,
     letterSpacing: 2,
     fontWeight: '700',
   },
@@ -795,50 +1068,44 @@ const styles = StyleSheet.create({
   // Avatar
   avatarWrapper: {
     alignItems: 'center',
-    marginTop: 4,
+    marginTop: 8,
     marginBottom: 12,
   },
   avatarImage: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     backgroundColor: '#E2E8F0',
-    borderWidth: 2,
-    borderColor: BACKGROUND,
+    borderWidth: 3,
   },
   avatarFallback: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: ACCENT_COLOR,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
     justifyContent: 'center',
     alignItems: 'center',
-    borderWidth: 2,
-    borderColor: BACKGROUND,
+    borderWidth: 3,
   },
   avatarFallbackInitial: {
-    fontSize: 34,
+    fontSize: 36,
     fontWeight: '700',
     color: '#FFFFFF',
   },
 
   // User info
   displayName: {
-    fontSize: 20,
+    fontSize: 21,
     fontWeight: '700',
-    color: TEXT_PRIMARY,
     textAlign: 'center',
     marginBottom: 4,
   },
   studentId: {
     fontSize: 13,
-    color: TEXT_SECONDARY,
     textAlign: 'center',
     marginBottom: 2,
   },
   faculty: {
     fontSize: 13,
-    color: TEXT_SECONDARY,
     textAlign: 'center',
     marginBottom: 20,
   },
@@ -846,45 +1113,145 @@ const styles = StyleSheet.create({
   // Stats card
   statsCard: {
     flexDirection: 'row',
-    backgroundColor: BACKGROUND,
     marginHorizontal: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
     paddingVertical: 14,
     paddingHorizontal: 12,
     marginBottom: 20,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
+        shadowOpacity: 0.08,
         shadowRadius: 6,
       },
       android: {
-        elevation: 1.5,
+        elevation: 2,
       },
     }),
   },
 
   // Menu Card
   menuCard: {
-    backgroundColor: BACKGROUND,
     marginHorizontal: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
     overflow: 'hidden',
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
         shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
+        shadowOpacity: 0.08,
         shadowRadius: 6,
       },
       android: {
-        elevation: 1.5,
+        elevation: 2,
       },
     }),
+  },
+
+  // Standalone Logout Button
+  standaloneLogoutBtn: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  standaloneLogoutContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  standaloneLogoutText: {
+    fontSize: 15,
+    fontWeight: '700',
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    width: '100%',
+    maxWidth: 360,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: 'center',
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  modalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: '700',
+    textAlign: 'center',
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: 12,
+    width: '100%',
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: '600',
+  },
+  modalLogoutBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalLogoutText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

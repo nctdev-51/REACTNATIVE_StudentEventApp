@@ -10,7 +10,7 @@ const middlewares = jsonServer.defaults({
   logger: true,
 });
 
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 5000;
 const JWT_SECRET = process.env.JWT_SECRET || "studenteventapp_secret_key_2026";
 
 // ─── Core Middlewares ──────────────────────────────────────────────────────────
@@ -184,6 +184,14 @@ server.post(["/api/auth/register", "/auth/register"], (req, res) => {
     },
     user: userSafe,
     token: accessToken,
+  });
+});
+
+// POST /api/auth/logout & /auth/logout
+server.post(["/api/auth/logout", "/auth/logout"], (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Đăng xuất thành công",
   });
 });
 
