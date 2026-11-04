@@ -21,12 +21,12 @@ import {
  * - iOS / Web: localhost
  * - Thiết bị thật: đổi DEV_LAN_IP thành IP LAN của máy tính
  */
-export const DEV_LAN_IP = "192.168.1.100";
+export const DEV_LAN_IP = "172.20.10.2";
 
 export const BASE_URL: string = Platform.select({
-  android: `http://10.0.2.2:5000/api`,
-  ios: `http://localhost:5000/api`,
-  default: `http://localhost:5000/api`,
+  android: `http://172.20.10.2:3000/api`,
+  ios: `http://localhost:3000/api`,
+  default: `http://localhost:3000/api`,
 });
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
