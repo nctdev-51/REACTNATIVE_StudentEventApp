@@ -4,14 +4,10 @@
 
 ---
 
-
-B3: code xong commit lên như bình thường
-
-LQB: npx expo install expo-notifications
-=======
 ## 1. Cấu trúc dự án
 
 Dự án gồm 2 phần:
+
 - `StudentEventApp/`: Ứng dụng di động (React Native, Expo SDK 57, Redux Toolkit).
 - `backend/`: Máy chủ API (Node.js, Express, MongoDB, JWT).
 
@@ -37,7 +33,7 @@ Dự án gồm 2 phần:
    ```bash
    npm run seed
    ```
-   *(Lệnh này tạo sẵn 6 sự kiện, 3 người dùng, 3 đăng ký mẫu, feedbacks và thông báo).*
+   _(Lệnh này tạo sẵn 6 sự kiện, 3 người dùng, 3 đăng ký mẫu, feedbacks và thông báo)._
 5. Khởi động server:
    ```bash
    npm run dev
@@ -60,12 +56,13 @@ Dự án gồm 2 phần:
      - Mở cmd gõ `ipconfig` lấy IPv4 của máy tính (ví dụ: `192.168.1.15`).
      - Đổi giá trị `DEV_LAN_IP` trong `src/services/api.ts` thành IP đó:
        ```typescript
-       export const DEV_LAN_IP = '192.168.1.15';
+       export const DEV_LAN_IP = "192.168.1.15";
        ```
 3. Chạy ứng dụng:
    ```bash
    npm start
    ```
+
    - Nhấn `a` để chạy trên Android Emulator.
    - Nhấn `w` để chạy trên Web.
    - Hoặc quét mã QR bằng Expo Go trên điện thoại.
@@ -76,17 +73,18 @@ Dự án gồm 2 phần:
 
 Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
 
-| Vai trò | Email | Mật khẩu | Ghi chú |
-| :--- | :--- | :--- | :--- |
-| Sinh viên (SV01) | `sv01@iuh.edu.vn` | `123456` | Nguyễn Văn A, Khoa CNTT, 120 điểm |
-| Sinh viên (SV02) | `sv02@iuh.edu.vn` | `123456` | Trần Thị Bích, Khoa Kinh tế, 85 điểm |
-| Quản trị viên (AD01) | `admin.doan@iuh.edu.vn` | `admin123` | Ban Quản Trị Đoàn Hội, 500 điểm |
+| Vai trò              | Email                   | Mật khẩu   | Ghi chú                              |
+| :------------------- | :---------------------- | :--------- | :----------------------------------- |
+| Sinh viên (SV01)     | `sv01@iuh.edu.vn`       | `123456`   | Nguyễn Văn A, Khoa CNTT, 120 điểm    |
+| Sinh viên (SV02)     | `sv02@iuh.edu.vn`       | `123456`   | Trần Thị Bích, Khoa Kinh tế, 85 điểm |
+| Quản trị viên (AD01) | `admin.doan@iuh.edu.vn` | `admin123` | Ban Quản Trị Đoàn Hội, 500 điểm      |
 
 ---
 
 ## 4. Phân công nhiệm vụ các thành viên
 
 ### Hà (Nhiệm vụ 7)
+
 - Đã hoàn thành:
   - Cấu hình Redux Toolkit store và các slices (auth, events, registrations, feedbacks, notifications).
   - Xây dựng Core API Service (`src/services/api.ts`) với Axios interceptors, token refresh, timeout.
@@ -95,6 +93,7 @@ Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
   - Tích hợp API Gemini/ChatGPT để tạo tóm tắt sự kiện tự động theo thời gian thực.
 
 ### Nguyên (Nhiệm vụ 4, 5, 6)
+
 - Đã hoàn thành:
   - Cấu hình Navigation System (RootNavigator, MainStack, AuthStack, Bottom Tabs).
   - Màn hình HomeScreen, EventDetailScreen, FilterScreen, SearchBar, CategoryChip.
@@ -103,6 +102,7 @@ Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
   - Chuyển danh sách sự kiện ở HomeScreen sang FlatList có lazy loading / phân trang.
 
 ### Tâm (Nhiệm vụ 11, 12)
+
 - Đã hoàn thành:
   - Luồng quét mã QR bằng Expo Camera (QRScannerScreen, CheckInSuccessScreen, CheckInFailedScreen).
   - Tích hợp API điểm danh backend (`/api/registrations/check-in`) và tự động cộng điểm rèn luyện.
@@ -111,6 +111,7 @@ Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
   - Tạo module Permission Handler chung (`src/utils/permissionHandler.ts`) để đồng bộ xin quyền Camera, Location.
 
 ### Bảo (Nhiệm vụ 8, 9, 10)
+
 - Đã hoàn thành:
   - Giao diện lịch cá nhân MyScheduleScreen kết nối Redux và Backend (lọc Sắp diễn ra / Đã tham gia).
   - Tích hợp Expo Notifications với màn hình thử nghiệm NotificationReminderScreen.
@@ -119,6 +120,7 @@ Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
   - Xây dựng các Core Component tái sử dụng bằng Tamagui (Button, Input, Card, Modal) trong `src/components/common/`.
 
 ### Nhi (Nhiệm vụ 13, 14)
+
 - Đã hoàn thành:
   - Màn hình ProfileScreen hiển thị thông tin thực tế từ backend, đếm sự kiện, điểm tích luỹ, đăng xuất.
   - Màn hình FeedbackScreen gửi đánh giá sao và nhận xét lưu vào cơ sở dữ liệu.
@@ -147,4 +149,3 @@ Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
    git push origin feature/<ten-thanh-vien>
    ```
 4. Tạo Pull Request trên GitHub vào nhánh `main` để nhóm kiểm tra trước khi gộp.
-
