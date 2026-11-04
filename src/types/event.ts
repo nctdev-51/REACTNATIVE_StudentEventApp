@@ -17,6 +17,7 @@ export interface AISummary {
 export interface EventCoordinates {
   latitude: number;
   longitude: number;
+  radiusMeters?: number; // Bán kính cho phép check-in tính bằng mét (mặc định 500m)
 }
 
 export interface Event {

@@ -671,3 +671,66 @@ Chạy backend server:
 npm run server
 ```
 
+
+
+---
+
+## 6. KỊCH BẢN DEMO CHUẨN ĐIỂM 10 (TEST MATRIX ĐÁNH GIÁ TRỰC TIẾP)
+
+Dưới đây là kịch bản trình diễn trước Giảng viên hoặc Hội đồng để đạt điểm tối đa:
+
+### 🎯 Test Case 1: Điểm danh hợp lệ trong bán kính $\le 500\text{m}$
+1. Mở màn hình **Quét QR**.
+2. Bấm nút: **`🎯 Đặt gần tôi (≤500m)`** ở đáy màn hình.
+   - Ứng dụng sẽ tự động gán toạ độ của sự kiện về toạ độ GPS mà bạn đang đứng.
+3. Hướng camera vào mã QR sự kiện (hoặc màn hình chiếu QR của Admin).
+4. **Kết quả:**
+   - Ứng dụng rung nhẹ phản hồi.
+   - Chuyển sang màn hình **`CheckInSuccessScreen`**.
+   - Hiển thị Huy hiệu xanh **"🛡️ Xác thực vị trí thành công (Anti-Fake) - Cách 0m (Trong bán kính an toàn 500m)"**.
+   - Ghi nhận điểm rèn luyện và lưu vết GPS vào cơ sở dữ liệu.
+
+---
+
+### 🚨 Test Case 2: Phát hiện và Chặn điểm danh gian lận từ xa ($> 500\text{m}$)
+1. Tại màn hình **Quét QR**, bấm nút: **`🚨 Dời ra xa (>500m)`**.
+   - Ứng dụng mô phỏng trường hợp sự kiện đang diễn ra ở trường nhưng sinh viên đang ở nhà hoặc quán cafe cách xa ~3km.
+2. Hướng camera vào mã QR sự kiện.
+3. **Kết quả:**
+   - Hệ thống tính toán khoảng cách Haversine và phát hiện khoảng cách $\approx 2.7\text{km} > 500\text{m}$.
+   - Chặn ngay lập tức trước khi ghi nhận điểm danh.
+   - Chuyển sang màn hình **`CheckInFailedScreen`**.
+   - Hiển thị hộp cảnh báo đỏ: **"📍 Cảnh báo chống gian lận (Anti-Fake): Bạn đang cách địa điểm ~2.7km (Vượt quá bán kính 500m)"**.
+
+---
+
+### 🗺️ Test Case 3: Admin cài đặt vị trí sự kiện bằng tìm kiếm Text (Forward Geocoding)
+1. Đăng nhập tài khoản Admin: `admin.doan@iuh.edu.vn` (Pass: `admin123`).
+2. Vào **Cài Đặt Vị Trí & Toạ Độ GPS** $\rightarrow$ Chọn một sự kiện $\rightarrow$ Bấm **`⚙️ Cài đặt vị trí GPS`**.
+3. Nhập địa chỉ dạng text:
+   - Ví dụ: `12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP.HCM` hoặc `Sân vận động Quân khu 7`.
+4. Bấm **"🔍 Tìm toạ độ"**:
+   - Hệ thống tự động phân giải kinh độ / vĩ độ GPS thực tế.
+5. Bấm **"🗺️ Mở Google Maps"**:
+   - Tự động mở ứng dụng Google Maps định vị chính xác vị trí trên bản đồ vệ tinh.
+6. Bấm **"💾 Lưu toạ độ vào sự kiện"**:
+   - Dữ liệu được đồng bộ ngay lập tức.
+
+---
+
+### 🛡️ Test Case 4: Xử lý ngoại lệ phần cứng & Offline
+1. **Khi người dùng tắt GPS trên điện thoại:** App hiển thị hộp thoại hướng dẫn mở Cài đặt GPS hệ thống.
+2. **Khi không có kết nối mạng (hoặc chưa bật server backend):** App tự động kích hoạt **Offline Mock Mode**, kiểm tra Haversine ngay tại máy khách và vẫn thực hiện điểm danh bình thường, **không bao giờ bị văng Network Error**.
+
+---
+
+## 7. ĐỐI SOÁT CHUẨN ĐẦU RA MÔN HỌC (CLO1 - CLO6)
+
+| Chuẩn đầu ra (CLO) | Yêu cầu môn học | Cách hiện thực trong Module |
+| :--- | :--- | :--- |
+| **CLO1** | Cấu trúc component, JSX, props, state | Tách bạch `QRScannerScreen`, `CheckInSuccessScreen`, `AdminLocationModal` |
+| **CLO2** | Tối ưu render, memoization | Sử dụng `useCallback`, `useMemo` tính toán hiển thị toạ độ, debounce GPS |
+| **CLO3** | Xử lý mạng Axios/Fetch, Async/Await | Axios Client tự nhận diện IP, bọc `try/catch`, tự động chuyển đổi sang Offline Fallback |
+| **CLO4** | Hiệu ứng Animation | Sử dụng **React Native Reanimated 4** tạo tia laser quét lặp tuần hoàn |
+| **CLO5** | Quản lý trạng thái Redux Toolkit | Lưu trữ thông tin đăng nhập, phân quyền Role, lưu lịch sử check-in trong store |
+| **CLO6** | Tích hợp Device Native SDK | **Expo Camera View** (quét QR) & **Expo Location SDK** (GPS Fused Provider, Geocoding) |

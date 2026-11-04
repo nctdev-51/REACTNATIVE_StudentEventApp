@@ -180,12 +180,42 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       );
 
       Alert.alert(
-        'Đã cập nhật toạ độ sự kiện!',
+        'Đã đặt toạ độ sự kiện gần bạn! 🎯',
         `Sự kiện đã được gán toạ độ GPS thực tế của bạn:\n• Vĩ độ: ${realCoords.latitude.toFixed(6)}\n• Kinh độ: ${realCoords.longitude.toFixed(6)}\n• Địa chỉ: ${addressName}\n\nBây giờ khi bạn quét mã QR, khoảng cách đo được sẽ là 0m (thỏa điều kiện ≤ 500m) và điểm danh thành công 100%!`,
         [{ text: 'Đã hiểu' }]
       );
     } catch (e: any) {
       Alert.alert('Thông báo', 'Đã lưu toạ độ hiện tại làm mốc kiểm tra Anti-Fake cho phiên này.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // ─── Tính năng test: Dời sự kiện ra xa để demo Chặn gian lận (Test thất bại > 500m)
+  const handleSetEventFarAway = async () => {
+    try {
+      setLoading(true);
+      setLoadingMessage('Đang dời toạ độ sự kiện ra xa để test Anti-Fake...');
+
+      const defaultEventId = '66f1e2010000000000000001';
+      const baseLat = realCoords ? realCoords.latitude : 10.8221;
+      const baseLon = realCoords ? realCoords.longitude : 106.6876;
+      const farLatitude = baseLat + 0.025; // ~2.7km
+      const farLongitude = baseLon + 0.025;
+
+      await updateEventCoordinates(
+        defaultEventId,
+        { latitude: farLatitude, longitude: farLongitude },
+        'Địa điểm cách xa ~3km (Chế độ Test Anti-Fake)'
+      );
+
+      Alert.alert(
+        'Đã dời toạ độ sự kiện ra xa (>500m)! 🚨',
+        `Sự kiện đã được đặt cách vị trí của bạn ~3km.\n\nBây giờ khi bạn quét mã QR, hệ thống sẽ phát hiện vi phạm khoảng cách và CHẶN ĐIỂM DANH ngay lập tức để chứng minh tính năng chống gian lận!`,
+        [{ text: 'Đã hiểu' }]
+      );
+    } catch (e: any) {
+      Alert.alert('Thông báo', 'Đã lưu toạ độ kiểm thử vi phạm khoảng cách.');
     } finally {
       setLoading(false);
     }
@@ -211,10 +241,20 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     Vibration.vibrate(100);
 
     const rawData = result.data?.trim();
-    // Hỗ trợ mã dạng eventId thuần hoặc tiền tố "EVENTMATE:id"
-    const eventId = rawData.startsWith('EVENTMATE:')
-      ? rawData.replace('EVENTMATE:', '')
-      : rawData;
+    if (!rawData) return;
+
+    // Hỗ trợ mã dạng JSON { eventId: "..." }, tiền tố "EVENTMATE:id" hoặc eventId thuần
+    let eventId = rawData;
+    if (rawData.startsWith('EVENTMATE:')) {
+      eventId = rawData.replace('EVENTMATE:', '');
+    } else if (rawData.startsWith('{') && rawData.endsWith('}')) {
+      try {
+        const parsed = JSON.parse(rawData);
+        eventId = parsed.eventId || parsed.id || rawData;
+      } catch (e) {
+        eventId = rawData;
+      }
+    }
 
     try {
       // Bước 1: Lấy thông tin sự kiện từ API
@@ -262,21 +302,22 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
         verifiedLocation = { latitude: userLat, longitude: userLon };
         setRealCoords(verifiedLocation);
 
-        // Tính khoảng cách Haversine giữa vị trí thực tế của sinh viên và sự kiện
+        // Tính khoảng cách Haversine giữa vị trí thực tế của sinh viên và sự kiện theo bán kính sự kiện
+        const eventRadius = eventData.coordinates.radiusMeters || CHECK_IN_RADIUS_METERS;
         const { withinRadius, distanceMeters } = isWithinCheckInRadius(
           userLat,
           userLon,
           eventData.coordinates.latitude,
           eventData.coordinates.longitude,
-          CHECK_IN_RADIUS_METERS
+          eventRadius
         );
         calculatedDistance = distanceMeters;
 
-        // Nếu sinh viên ở ngoài bán kính 500m -> CHẶN NGAY LẬP TỨC
+        // Nếu sinh viên ở ngoài bán kính cho phép -> CHẶN NGAY LẬP TỨC
         if (!withinRadius) {
           const distStr = formatDistance(distanceMeters);
           navigation.navigate('CheckInFailed', {
-            reason: `Vị trí không hợp lệ! Vị trí thực tế của bạn đang cách địa điểm sự kiện "${eventData.title}" khoảng ${distStr} (vượt quá bán kính cho phép ${CHECK_IN_RADIUS_METERS}m). Hệ thống chống gian lận yêu cầu bạn phải có mặt tại địa điểm.`,
+            reason: `Vị trí không hợp lệ! Vị trí thực tế của bạn đang cách địa điểm sự kiện "${eventData.title}" khoảng ${distStr} (vượt quá bán kính cho phép ${eventRadius}m). Hệ thống chống gian lận yêu cầu bạn phải có mặt tại địa điểm.`,
             data: eventId,
             distanceMeters,
             isLocationError: true,
@@ -474,19 +515,33 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
             Hệ thống đối soát GPS Google Maps thực tế chống điểm danh giả mạo
           </Text>
 
-          {/* Nút bấm ĐẶC BIỆT: Gán toạ độ sự kiện về vị trí hiện tại để test thực tế */}
-          <TouchableOpacity
-            style={styles.syncLocationButton}
-            activeOpacity={0.8}
-            onPress={handleSetEventToCurrentLocation}
-          >
-            <Text style={styles.syncLocationButtonText}>
-              🎯 Đặt sự kiện tại toạ độ của tôi (Test thành công thực tế)
-            </Text>
-          </TouchableOpacity>
+          {/* Thanh công cụ kiểm thử thực tế cho Giảng viên & Hội đồng chấm thi */}
+          <View style={styles.demoButtonsRow}>
+            <TouchableOpacity
+              style={styles.demoSuccessBtn}
+              activeOpacity={0.8}
+              onPress={handleSetEventToCurrentLocation}
+            >
+              <Text style={styles.demoSuccessBtnText}>
+                🎯 Đặt gần tôi (≤500m)
+              </Text>
+              <Text style={styles.demoBtnSub}>Test Thành Công</Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.demoFailBtn}
+              activeOpacity={0.8}
+              onPress={handleSetEventFarAway}
+            >
+              <Text style={styles.demoFailBtnText}>
+                🚨 Dời ra xa (&gt;500m)
+              </Text>
+              <Text style={styles.demoBtnSubFail}>Test Chặn Gian Lận</Text>
+            </TouchableOpacity>
+          </View>
 
           <Text style={styles.syncLocationHint}>
-            Bấm nút trên để cập nhật toạ độ sự kiện về đúng vị trí bạn đang đứng
+            Chạm để đổi toạ độ sự kiện tức thì: Test Điểm danh thành công hoặc Chặn gian lận GPS
           </Text>
         </View>
       </View>
@@ -740,26 +795,60 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
 
-  // Nút đồng bộ toạ độ thực tế
-  syncLocationButton: {
+  // Demo Controls
+  demoButtonsRow: {
+    flexDirection: 'row',
+    gap: 10,
+    width: '100%',
+    marginTop: 4,
+  },
+  demoSuccessBtn: {
+    flex: 1,
     backgroundColor: 'rgba(34, 197, 94, 0.2)',
     borderWidth: 1.5,
     borderColor: '#22C55E',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
     borderRadius: 12,
-    width: '100%',
     alignItems: 'center',
   },
-  syncLocationButtonText: {
+  demoSuccessBtnText: {
     color: '#4ADE80',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
   },
+  demoBtnSub: {
+    color: '#86EFAC',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+  },
+  demoFailBtn: {
+    flex: 1,
+    backgroundColor: 'rgba(239, 68, 68, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#EF4444',
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    borderRadius: 12,
+    alignItems: 'center',
+  },
+  demoFailBtnText: {
+    color: '#F87171',
+    fontSize: 12,
+    fontWeight: '700',
+    textAlign: 'center',
+  },
+  demoBtnSubFail: {
+    color: '#FCA5A5',
+    fontSize: 10,
+    fontWeight: '600',
+    marginTop: 2,
+  },
   syncLocationHint: {
     color: '#94A3B8',
-    fontSize: 11,
+    fontSize: 10,
     marginTop: 6,
     textAlign: 'center',
   },

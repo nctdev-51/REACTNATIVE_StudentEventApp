@@ -9,6 +9,8 @@ export interface Registration {
     latitude: number;
     longitude: number;
   };
+  checkInMethod?: 'qr_scan' | 'admin_manual';
+  note?: string;
   createdAt?: string;
 }
 

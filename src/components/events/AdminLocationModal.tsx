@@ -49,6 +49,9 @@ export default function AdminLocationModal({
   const [previewCoords, setPreviewCoords] = useState<EventCoordinates | null>(
     event.coordinates || null
   );
+  const [selectedRadius, setSelectedRadius] = useState<number>(
+    event.coordinates?.radiusMeters || 500
+  );
   const [previewAddress, setPreviewAddress] = useState<string>(event.location || '');
 
   // 1. Tìm toạ độ GPS từ địa chỉ text (Forward Geocoding)
@@ -132,7 +135,11 @@ export default function AdminLocationModal({
     setSaving(true);
     try {
       const targetId = event._id || (event as any).id;
-      const updated = await updateEventCoordinates(targetId, previewCoords, previewAddress);
+      const coordsWithRadius: EventCoordinates = {
+        ...previewCoords,
+        radiusMeters: selectedRadius,
+      };
+      const updated = await updateEventCoordinates(targetId, coordsWithRadius, previewAddress);
 
       Alert.alert(
         'Thành công! 🎉',
@@ -242,6 +249,38 @@ export default function AdminLocationModal({
                   <Text style={styles.addressPreviewText}>
                     📍 <Text style={{ fontWeight: '700' }}>Địa chỉ:</Text> {previewAddress}
                   </Text>
+
+                  {/* Cài đặt Bán kính kiểm soát Geofence */}
+                  <View style={styles.radiusContainer}>
+                    <Text style={styles.radiusLabel}>Bán kính Anti-Fake cho phép (Geofence):</Text>
+                    <View style={styles.radiusChipsRow}>
+                      {[
+                        { r: 100, label: '100m (Phòng Lab/Hội đồng)' },
+                        { r: 300, label: '300m (Hội trường E4)' },
+                        { r: 500, label: '500m (Khuôn viên trường)' },
+                        { r: 1000, label: '1000m (Khu thể thao)' },
+                      ].map((item) => (
+                        <TouchableOpacity
+                          key={item.r}
+                          style={[
+                            styles.radiusChip,
+                            selectedRadius === item.r && styles.radiusChipActive,
+                          ]}
+                          onPress={() => setSelectedRadius(item.r)}
+                          activeOpacity={0.7}
+                        >
+                          <Text
+                            style={[
+                              styles.radiusChipText,
+                              selectedRadius === item.r && styles.radiusChipTextActive,
+                            ]}
+                          >
+                            {item.label}
+                          </Text>
+                        </TouchableOpacity>
+                      ))}
+                    </View>
+                  </View>
 
                   <TouchableOpacity style={styles.mapsBtn} onPress={handlePreviewOnMaps}>
                     <Text style={styles.mapsBtnText}>🗺️ Mở kiểm tra trên Google Maps</Text>
@@ -498,6 +537,42 @@ const styles = StyleSheet.create({
   saveBtnText: {
     color: '#FFFFFF',
     fontSize: 15,
+    fontWeight: '700',
+  },
+  radiusContainer: {
+    marginTop: 12,
+    paddingTop: 10,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
+  },
+  radiusLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 6,
+  },
+  radiusChipsRow: {
+    gap: 6,
+  },
+  radiusChip: {
+    backgroundColor: '#F1F5F9',
+    paddingVertical: 7,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  radiusChipActive: {
+    backgroundColor: '#EEF2FF',
+    borderColor: '#6366F1',
+  },
+  radiusChipText: {
+    fontSize: 11,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  radiusChipTextActive: {
+    color: '#4338CA',
     fontWeight: '700',
   },
 });

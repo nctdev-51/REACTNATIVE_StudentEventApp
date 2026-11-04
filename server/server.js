@@ -297,7 +297,7 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
       event.coordinates.longitude
     );
 
-    const MAX_ALLOWED_DISTANCE_METERS = 500;
+    const MAX_ALLOWED_DISTANCE_METERS = event.coordinates.radiusMeters || 500;
     if (distance > MAX_ALLOWED_DISTANCE_METERS) {
       const distText = distance < 1000 ? distance + "m" : (distance / 1000).toFixed(1) + "km";
       return res.status(403).json({

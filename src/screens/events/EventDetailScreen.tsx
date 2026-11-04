@@ -14,6 +14,8 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { MainStackParamList } from "../../navigation/types";
 import AISummary from "../../components/ai/AISummary";
 import AdminLocationModal from "../../components/events/AdminLocationModal";
+import { getDistanceMeters, formatDistance } from "../../utils/locationUtils";
+import { getCurrentPosition, openInGoogleMaps } from "../../utils/permissionHandler";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { fetchEventById, clearSelectedEvent } from "../../features/events/eventsSlice";
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
@@ -48,6 +50,23 @@ export default function EventDetailScreen() {
   );
   const isRegistered = !!existingReg;
   const [adminModalVisible, setAdminModalVisible] = useState(false);
+  const [userDistance, setUserDistance] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (event?.coordinates?.latitude && event?.coordinates?.longitude) {
+      getCurrentPosition(5000).then((loc) => {
+        if (loc) {
+          const d = getDistanceMeters(
+            loc.coords.latitude,
+            loc.coords.longitude,
+            event.coordinates!.latitude,
+            event.coordinates!.longitude
+          );
+          setUserDistance(d);
+        }
+      });
+    }
+  }, [event]);
 
   useEffect(() => {
     if (eventId) {
@@ -156,19 +175,49 @@ export default function EventDetailScreen() {
             <View style={styles.infoContent}>
               <View style={styles.locationHeaderRow}>
                 <Text style={styles.infoLabel}>Địa điểm tổ chức</Text>
-                <TouchableOpacity
-                  style={styles.adminEditBtn}
-                  onPress={() => setAdminModalVisible(true)}
-                  activeOpacity={0.7}
-                >
-                  <Text style={styles.adminEditBtnText}>⚙️ Cài đặt GPS (Admin)</Text>
-                </TouchableOpacity>
+                {user?.role === 'admin' ? (
+                  <TouchableOpacity
+                    style={styles.adminEditBtn}
+                    onPress={() => setAdminModalVisible(true)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.adminEditBtnText}>⚙️ Cài đặt GPS (Admin)</Text>
+                  </TouchableOpacity>
+                ) : (
+                  <TouchableOpacity
+                    style={styles.mapLinkBtn}
+                    onPress={() => {
+                      if (event.coordinates) {
+                        openInGoogleMaps(event.coordinates.latitude, event.coordinates.longitude, event.location);
+                      }
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.mapLinkBtnText}>🗺️ Chỉ đường Map</Text>
+                  </TouchableOpacity>
+                )}
               </View>
               <Text style={styles.infoValue}>{event.location}</Text>
               {event.coordinates ? (
-                <Text style={styles.coordsValue}>
-                  🌐 Toạ độ: {event.coordinates.latitude.toFixed(4)}, {event.coordinates.longitude.toFixed(4)} (Bán kính 500m)
-                </Text>
+                <View style={styles.distanceBadgeRow}>
+                  <Text style={styles.coordsValue}>
+                    🌐 Bán kính: {event.coordinates.radiusMeters || 500}m
+                  </Text>
+                  {userDistance !== null && (
+                    <Text
+                      style={[
+                        styles.distanceStatusText,
+                        userDistance <= (event.coordinates.radiusMeters || 500)
+                          ? styles.textSuccess
+                          : styles.textWarning,
+                      ]}
+                    >
+                      {userDistance <= (event.coordinates.radiusMeters || 500)
+                        ? `🟢 Cách bạn ${formatDistance(userDistance)} (Đủ điều kiện Check-in)`
+                        : `📍 Cách bạn ${formatDistance(userDistance)} (Chưa vào khu vực tổ chức)`}
+                    </Text>
+                  )}
+                </View>
               ) : (
                 <Text style={styles.coordsWarning}>
                   ⚠️ Chưa cấu hình toạ độ GPS Anti-Fake
@@ -455,5 +504,32 @@ const styles = StyleSheet.create({
     color: "#D97706",
     marginTop: 4,
     fontStyle: "italic",
+  },
+  mapLinkBtn: {
+    backgroundColor: "#EEF2FF",
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    borderWidth: 1,
+    borderColor: "#C7D2FE",
+  },
+  mapLinkBtnText: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#4338CA",
+  },
+  distanceBadgeRow: {
+    marginTop: 4,
+    gap: 2,
+  },
+  distanceStatusText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  textSuccess: {
+    color: "#059669",
+  },
+  textWarning: {
+    color: "#D97706",
   },
 });

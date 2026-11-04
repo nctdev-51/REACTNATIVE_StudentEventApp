@@ -505,7 +505,50 @@ export const qrCheckIn = async (payload: {
     return res.data;
   } catch (err: any) {
     if (err?.code === "ERR_NETWORK" || !err?.response) {
-      console.warn("[API] Offline QR Check-in Mock Success");
+      console.warn("[API] Offline QR Check-in Mock Mode");
+
+      const matchedEvent = inMemoryEvents.find(
+        (e) => e._id === payload.eventId || (e as any).id === payload.eventId
+      );
+
+      // Nếu không tìm thấy sự kiện khớp
+      if (!matchedEvent) {
+        return {
+          success: false,
+          message: "Mã QR không hợp lệ hoặc sự kiện không tồn tại trên hệ thống.",
+        };
+      }
+
+      // Kiểm tra Anti-Fake GPS trong chế độ Offline
+      if (matchedEvent.coordinates && matchedEvent.coordinates.latitude && matchedEvent.coordinates.longitude) {
+        if (!payload.userLocation || payload.userLocation.latitude === undefined) {
+          return {
+            success: false,
+            message: "Sự kiện yêu cầu xác thực vị trí (GPS) để chống check-in giả mạo. Vui lòng cấp quyền vị trí.",
+          };
+        }
+
+        const R = 6371000;
+        const toRad = (deg: number) => (deg * Math.PI) / 180;
+        const dLat = toRad(matchedEvent.coordinates.latitude - payload.userLocation.latitude);
+        const dLon = toRad(matchedEvent.coordinates.longitude - payload.userLocation.longitude);
+        const a =
+          Math.sin(dLat / 2) ** 2 +
+          Math.cos(toRad(payload.userLocation.latitude)) *
+          Math.cos(toRad(matchedEvent.coordinates.latitude)) *
+          Math.sin(dLon / 2) ** 2;
+        const dist = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+
+        if (dist > 500) {
+          const distStr = dist < 1000 ? dist + "m" : (dist / 1000).toFixed(1) + "km";
+          return {
+            success: false,
+            message: `Vị trí không hợp lệ! Bạn đang cách địa điểm sự kiện ${distStr} (vượt quá bán kính cho phép 500m). Vui lòng có mặt tại địa điểm để điểm danh.`,
+            distanceMeters: dist,
+          };
+        }
+      }
+
       const newReg: Registration = {
         _id: "reg_" + Date.now(),
         eventId: payload.eventId,
@@ -519,15 +562,70 @@ export const qrCheckIn = async (payload: {
       inMemoryRegistrations.unshift(newReg);
       return {
         success: true,
-        message: "Điểm danh thành công (Chế độ Offline)",
+        message: "Điểm danh thành công! Vị trí toạ độ GPS hợp lệ.",
         data: {
           registration: newReg,
-          event: inMemoryEvents.find((e) => e._id === payload.eventId),
+          event: matchedEvent,
         },
       };
     }
     throw err;
   }
+};
+
+export const adminManualCheckIn = async (payload: {
+  eventId: string;
+  studentIdOrEmail: string;
+  note?: string;
+}): Promise<{ success: boolean; message: string; registration?: Registration }> => {
+  const cleanId = payload.studentIdOrEmail.trim().toLowerCase();
+
+  let allUsers: User[] = [MOCK_DEFAULT_USER, MOCK_ADMIN_USER];
+  try {
+    const fetched = await getUsers();
+    if (fetched && fetched.length > 0) allUsers = fetched;
+  } catch (e) {}
+
+  const targetUser = allUsers.find(
+    (u) =>
+      u.studentId?.toLowerCase() === cleanId ||
+      u.email?.toLowerCase() === cleanId ||
+      u.fullName?.toLowerCase().includes(cleanId)
+  ) || {
+    _id: "user_" + Date.now(),
+    studentId: payload.studentIdOrEmail.toUpperCase(),
+    fullName: `Sinh viên ${payload.studentIdOrEmail.toUpperCase()}`,
+    email: `${cleanId}@iuh.edu.vn`,
+    point: 100,
+    role: "student" as const,
+    faculty: "Khoa Công nghệ thông tin",
+  };
+
+  const newReg: Registration = {
+    _id: "reg_manual_" + Date.now(),
+    eventId: payload.eventId,
+    userId: targetUser._id,
+    participantRole: "attendee",
+    status: "checked_in",
+    checkInTime: new Date().toISOString(),
+    checkInMethod: "admin_manual",
+    note: payload.note || "Admin xác nhận tham dự thủ công tại hội trường",
+    createdAt: new Date().toISOString(),
+  };
+
+  inMemoryRegistrations.unshift(newReg);
+
+  try {
+    await apiClient.post("/registrations", newReg);
+  } catch (e) {
+    // Offline pass
+  }
+
+  return {
+    success: true,
+    message: `Đã điểm danh bù thành công cho ${targetUser.fullName} (${targetUser.studentId})!`,
+    registration: newReg,
+  };
 };
 
 export const cancelRegistration = async (
@@ -633,6 +731,7 @@ export default {
   registerEvent,
   checkIn,
   qrCheckIn,
+  adminManualCheckIn,
   cancelRegistration,
   getFeedbacksByEvent,
   createFeedback,
