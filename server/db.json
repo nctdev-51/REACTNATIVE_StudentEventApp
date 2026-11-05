@@ -279,6 +279,18 @@
       "id": "6ae03e31060e337a59925c69",
       "_id": "6ae03e31060e337a59925c69",
       "createdAt": "2026-10-27T06:01:21.847Z"
+      "id": "6adf71560ed48ed7cdf82e8d",
+      "_id": "6adf71560ed48ed7cdf82e8d",
+      "createdAt": "2026-10-26T15:27:18.154Z"
+    },
+    {
+      "eventId": "66f1e2040000000000000004",
+      "userId": "66f1a1010000000000000001",
+      "participantRole": "attendee",
+      "status": "registered",
+      "id": "6ae05611d477aabcc68b72a4",
+      "_id": "6ae05611d477aabcc68b72a4",
+      "createdAt": "2026-10-27T07:43:13.697Z"
     }
   ],
   "feedbacks": [
