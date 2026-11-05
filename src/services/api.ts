@@ -33,8 +33,7 @@ export const USE_DEV_LAN_IP = !!autoDevIp;
  * URL Backend Cloud (Deploy Render / Localtunnel):
  * Điền link Cloud vào đây (ví dụ: "https://student-event-server.onrender.com/api")
  */
-export const CLOUD_API_URL: string | null = null;
-// "https://silver-walls-design.loca.lt";
+export const CLOUD_API_URL: string | null = "https://easy-cups-roll.loca.lt"; // Localtunnel/Render URL — điền vào khi deploy lên cloud
 
 /**
  * ⚡ CHẾ ĐỘ THỬ NGHIỆM ĐỘC LẬP (KHÔNG CẦN BACKEND):
@@ -263,9 +262,18 @@ export const login = async (
     const res = await apiClient.post("/auth/login", credentials);
     return mapBackendAuth(res.data);
   } catch (err: any) {
-    // Tự động kích hoạt Offline Fallback khi không thấy server để app luôn chạy mượt mà
-    if (err?.code === "ERR_NETWORK" || !err?.response) {
-      console.warn("[API] Offline Login Fallback Mode (Server không phản hồi)");
+    // Tự động kích hoạt Offline Fallback khi không thấy server hoặc lỗi 5xx để app luôn chạy mượt mà
+    const httpStatus = err?.response?.status;
+    if (
+      err?.code === "ERR_NETWORK" ||
+      !err?.response ||
+      (httpStatus && httpStatus >= 500)
+    ) {
+      console.warn(
+        "[API] Offline Login Fallback Mode (Server không phản hồi / lỗi:",
+        httpStatus ?? err?.code,
+        ")",
+      );
       const email = credentials.email?.toLowerCase().trim();
 
       if (email.includes("admin")) {
@@ -314,7 +322,11 @@ export const register = async (
     const res = await apiClient.post("/auth/register", body);
     return mapBackendAuth(res.data);
   } catch (err: any) {
-    if (err?.code === "ERR_NETWORK" || !err?.response) {
+    if (
+      err?.code === "ERR_NETWORK" ||
+      !err?.response ||
+      (err?.response?.status && err.response.status >= 500)
+    ) {
       const newUser: User = {
         _id: "user_" + Date.now(),
         studentId: payload.studentId,
@@ -335,7 +347,11 @@ export const getCurrentUser = async (): Promise<User> => {
     const res = await apiClient.get("/auth/me");
     return mapBackendUser(res.data);
   } catch (err: any) {
-    if (err?.code === "ERR_NETWORK" || !err?.response) {
+    if (
+      err?.code === "ERR_NETWORK" ||
+      !err?.response ||
+      (err?.response?.status && err.response.status >= 500)
+    ) {
       return MOCK_DEFAULT_USER;
     }
     throw err;
@@ -394,8 +410,16 @@ export const getEvents = async (params?: {
     if (list.length > 0) return list;
     return inMemoryEvents;
   } catch (err: any) {
-    if (err?.code === "ERR_NETWORK" || !err?.response) {
-      console.warn("[API] Offline events fallback");
+    const status = err?.response?.status;
+    if (
+      err?.code === "ERR_NETWORK" ||
+      !err?.response ||
+      (status && status >= 500)
+    ) {
+      console.warn(
+        "[API] Events fallback (server offline/lỗi):",
+        err?.code ?? status,
+      );
       return inMemoryEvents;
     }
     throw err;
@@ -407,7 +431,12 @@ export const getEventById = async (id: string): Promise<Event> => {
     const res = await apiClient.get(`/events/${id}`);
     return unwrapOne<Event>(res.data);
   } catch (err: any) {
-    if (err?.code === "ERR_NETWORK" || !err?.response) {
+    const status = err?.response?.status;
+    if (
+      err?.code === "ERR_NETWORK" ||
+      !err?.response ||
+      (status && status >= 500)
+    ) {
       const found = inMemoryEvents.find(
         (e) => e._id === id || (e as any).id === id,
       );
@@ -525,6 +554,55 @@ export const deleteEvent = async (eventId: string): Promise<boolean> => {
     );
     return true;
   }
+};
+
+/**
+ * Ẩn hoặc hiện sự kiện (dành cho Admin)
+ */
+export const toggleHideEvent = async (
+  eventId: string,
+  currentHidden: boolean,
+): Promise<boolean> => {
+  const newHidden = !currentHidden;
+  try {
+    await apiClient.patch(`/events/${eventId}`, { isHidden: newHidden });
+    inMemoryEvents = inMemoryEvents.map((e) =>
+      e._id === eventId || (e as any).id === eventId
+        ? { ...e, isHidden: newHidden }
+        : e,
+    );
+    return newHidden;
+  } catch (e) {
+    inMemoryEvents = inMemoryEvents.map((e) =>
+      e._id === eventId || (e as any).id === eventId
+        ? { ...e, isHidden: newHidden }
+        : e,
+    );
+    return newHidden;
+  }
+};
+
+/**
+ * Kiểm tra xem sự kiện đã diễn ra trong quá khứ / hết hạn chưa
+ */
+export const isEventPast = (event?: Event | null): boolean => {
+  if (!event) return false;
+  if (event.status === "completed" || (event.status as any) === "past")
+    return true;
+  const now = new Date();
+  const endTime = event.time?.end
+    ? new Date(event.time.end)
+    : event.time?.start
+      ? new Date(event.time.start)
+      : null;
+  if (
+    endTime &&
+    !isNaN(endTime.getTime()) &&
+    endTime.getTime() < now.getTime()
+  ) {
+    return true;
+  }
+  return false;
 };
 
 // ─── Registrations ────────────────────────────────────────────────────────────
@@ -935,6 +1013,8 @@ export default {
   updateEventCoordinates,
   createEvent,
   deleteEvent,
+  toggleHideEvent,
+  isEventPast,
   getAllRegistrations,
   getRegistrationsByUser,
   getRegistrationsByEvent,

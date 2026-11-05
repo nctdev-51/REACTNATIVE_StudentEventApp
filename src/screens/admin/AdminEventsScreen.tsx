@@ -13,7 +13,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
-import { getEvents, deleteEvent } from '../../services/api';
+import { getEvents, deleteEvent, toggleHideEvent } from '../../services/api';
 import { Event } from '../../types';
 import AdminLocationModal from '../../components/events/AdminLocationModal';
 import { openInGoogleMaps } from '../../utils/permissionHandler';
@@ -82,6 +82,12 @@ export default function AdminEventsScreen() {
           </View>
         </View>
 
+        {item.isHidden && (
+          <View style={styles.hiddenNoticeBadge}>
+            <Text style={styles.hiddenNoticeText}>👁️ ĐÃ ẨN — Sinh viên không nhìn thấy sự kiện này</Text>
+          </View>
+        )}
+
         {/* Title */}
         <Text style={styles.cardTitle}>{item.title}</Text>
         <Text style={styles.facultyText}>Đơn vị: {item.faculty || 'Toàn trường'}</Text>
@@ -145,6 +151,20 @@ export default function AdminEventsScreen() {
             <Text style={styles.reportBtnText}>📊 Điểm danh</Text>
           </TouchableOpacity>
 
+          {/* Ẩn / Hiện sự kiện */}
+          <TouchableOpacity
+            style={[styles.hideBtn, item.isHidden ? styles.unhideBtn : null]}
+            onPress={async () => {
+              await toggleHideEvent(item._id || (item as any).id, !!item.isHidden);
+              fetchEvents();
+            }}
+            activeOpacity={0.8}
+          >
+            <Text style={styles.hideBtnText}>
+              {item.isHidden ? '👁️ Hiện' : '👁️ Ẩn'}
+            </Text>
+          </TouchableOpacity>
+
           {/* Xoá */}
           <TouchableOpacity
             style={styles.deleteBtn}
@@ -196,7 +216,7 @@ export default function AdminEventsScreen() {
       ) : (
         <FlatList
           data={filteredEvents}
-          keyExtractor={(item) => item._id || (item as any).id || String(Math.random())}
+          keyExtractor={(item, index) => `${item._id || (item as any).id || 'evt'}-${index}`}
           renderItem={renderEventItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
@@ -359,5 +379,37 @@ const styles = StyleSheet.create({
   emptyBox: { padding: 40, alignItems: 'center' },
   emptyIcon: { fontSize: 40, marginBottom: 8 },
   emptyText: { color: '#94A3B8', fontSize: 14 },
+  hiddenNoticeBadge: {
+    backgroundColor: '#FEF3C7',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    marginBottom: 8,
+  },
+  hiddenNoticeText: {
+    color: '#B45309',
+    fontSize: 11,
+    fontWeight: '700',
+  },
+  hideBtn: {
+    backgroundColor: '#FFFBEB',
+    paddingVertical: 9,
+    paddingHorizontal: 10,
+    borderRadius: 8,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  unhideBtn: {
+    backgroundColor: '#ECFDF5',
+    borderColor: '#A7F3D0',
+  },
+  hideBtnText: {
+    color: '#B45309',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
 });
 

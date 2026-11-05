@@ -19,6 +19,7 @@ import type { AuthStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { loginUser, clearError } from '../../features/auth/authSlice';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -26,6 +27,7 @@ export default function LoginScreen() {
   const navigation = useNavigation<LoginNavProp>();
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((s) => s.auth);
+  const { theme, isDark } = useAppTheme();
 
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -56,8 +58,8 @@ export default function LoginScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -69,29 +71,30 @@ export default function LoginScreen() {
         >
           {/* Logo / Brand */}
           <View style={styles.brandSection}>
-            <View style={styles.logoCircle}>
+            <View style={[styles.logoCircle, { backgroundColor: isDark ? theme.surfaceSecondary : '#EEF2FF' }]}>
               <Text style={styles.logoEmoji}>🎓</Text>
             </View>
-            <Text style={styles.appName}>StudentEvent</Text>
-            <Text style={styles.tagline}>Sự kiện IUH – Hệ thống Quản trị & Sinh viên</Text>
+            <Text style={[styles.appName, { color: theme.textPrimary }]}>StudentEvent</Text>
+            <Text style={[styles.tagline, { color: theme.textSecondary }]}>Sự kiện IUH – Hệ thống Quản trị & Sinh viên</Text>
           </View>
 
           {/* Form Card */}
-          <View style={styles.card}>
-            <Text style={styles.cardTitle}>Đăng nhập tài khoản</Text>
+          <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+            <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>Đăng nhập tài khoản</Text>
 
             {/* Email */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Email tài khoản</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Email tài khoản</Text>
               <View
                 style={[
                   styles.inputWrapper,
-                  focusedField === 'email' && styles.inputWrapperFocused,
+                  { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder },
+                  focusedField === 'email' && { borderColor: theme.primary, backgroundColor: theme.surface },
                 ]}
               >
                 <Text style={styles.inputIcon}>📧</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.textPrimary }]}
                   placeholder="sv01@iuh.edu.vn hoặc admin.doan@iuh.edu.vn"
                   placeholderTextColor={Colors.gray400}
                   value={email}
@@ -109,16 +112,17 @@ export default function LoginScreen() {
 
             {/* Password */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Mật khẩu</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Mật khẩu</Text>
               <View
                 style={[
                   styles.inputWrapper,
-                  focusedField === 'password' && styles.inputWrapperFocused,
+                  { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder },
+                  focusedField === 'password' && { borderColor: theme.primary, backgroundColor: theme.surface },
                 ]}
               >
                 <Text style={styles.inputIcon}>🔒</Text>
                 <TextInput
-                  style={styles.input}
+                  style={[styles.input, { color: theme.textPrimary }]}
                   placeholder="Nhập mật khẩu"
                   placeholderTextColor={Colors.gray400}
                   value={password}
@@ -165,13 +169,14 @@ export default function LoginScreen() {
             </TouchableOpacity>
 
             {/* Demo Accounts Quick Selection */}
-            <View style={styles.demoSection}>
-              <Text style={styles.demoTitle}>🧪 Bấm chọn tài khoản thử nghiệm nhanh:</Text>
+            <View style={[styles.demoSection, { borderTopColor: theme.border }]}>
+              <Text style={[styles.demoTitle, { color: theme.textSecondary }]}>Đăng nhập nhanh:</Text>
               <View style={styles.demoRow}>
                 {/* Sinh viên */}
                 <TouchableOpacity
                   style={[
                     styles.demoPill,
+                    { backgroundColor: theme.surfaceSecondary, borderColor: theme.border },
                     email === 'sv01@iuh.edu.vn' && styles.demoPillActive,
                   ]}
                   onPress={fillStudent}
@@ -179,8 +184,8 @@ export default function LoginScreen() {
                 >
                   <Text style={styles.demoEmoji}>👨‍🎓</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.demoRole}>Sinh viên</Text>
-                    <Text style={styles.demoAccount}>sv01@iuh.edu.vn</Text>
+                    <Text style={[styles.demoRole, { color: theme.textPrimary }]}>Sinh viên</Text>
+                    <Text style={[styles.demoAccount, { color: theme.textTertiary }]}>sv01@iuh.edu.vn</Text>
                   </View>
                 </TouchableOpacity>
 
@@ -189,6 +194,7 @@ export default function LoginScreen() {
                   style={[
                     styles.demoPill,
                     styles.demoPillAdmin,
+                    { backgroundColor: theme.surfaceSecondary, borderColor: theme.border },
                     email === 'admin.doan@iuh.edu.vn' && styles.demoPillActiveAdmin,
                   ]}
                   onPress={fillAdmin}
@@ -197,7 +203,7 @@ export default function LoginScreen() {
                   <Text style={styles.demoEmoji}>🛡️</Text>
                   <View style={{ flex: 1 }}>
                     <Text style={styles.demoRoleAdmin}>Quản trị viên (Admin)</Text>
-                    <Text style={styles.demoAccount}>admin.doan@iuh.edu.vn</Text>
+                    <Text style={[styles.demoAccount, { color: theme.textTertiary }]}>admin.doan@iuh.edu.vn</Text>
                   </View>
                 </TouchableOpacity>
               </View>
@@ -206,7 +212,7 @@ export default function LoginScreen() {
 
           {/* Register Link */}
           <View style={styles.registerRow}>
-            <Text style={styles.registerText}>Chưa có tài khoản? </Text>
+            <Text style={[styles.registerText, { color: theme.textSecondary }]}>Chưa có tài khoản? </Text>
             <TouchableOpacity
               onPress={() => navigation.navigate('Register')}
               accessibilityRole="button"
@@ -223,7 +229,6 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: '#F8FAFC',
   },
   keyboardView: {
     flex: 1,
@@ -242,7 +247,6 @@ const styles = StyleSheet.create({
     width: 68,
     height: 68,
     borderRadius: 34,
-    backgroundColor: '#EEF2FF',
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,
@@ -254,27 +258,22 @@ const styles = StyleSheet.create({
   appName: {
     fontSize: Typography.xxl,
     fontWeight: '800',
-    color: Colors.gray900,
     letterSpacing: -0.5,
   },
   tagline: {
     fontSize: Typography.sm,
-    color: Colors.gray500,
     marginTop: 4,
     textAlign: 'center',
   },
   card: {
-    backgroundColor: '#fff',
     borderRadius: BorderRadius.xl,
     padding: Spacing.xl,
     borderWidth: 1,
-    borderColor: '#E2E8F0',
     ...Shadow.md,
   },
   cardTitle: {
     fontSize: Typography.xl,
     fontWeight: '700',
-    color: Colors.gray900,
     marginBottom: Spacing.lg,
   },
   fieldGroup: {
@@ -283,22 +282,15 @@ const styles = StyleSheet.create({
   label: {
     fontSize: Typography.sm,
     fontWeight: '600',
-    color: Colors.gray700,
     marginBottom: Spacing.xs,
   },
   inputWrapper: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: Colors.gray50,
     borderRadius: BorderRadius.md,
     borderWidth: 1.5,
-    borderColor: Colors.border,
     paddingHorizontal: Spacing.md,
     height: 48,
-  },
-  inputWrapperFocused: {
-    borderColor: Colors.primary,
-    backgroundColor: '#fff',
   },
   inputIcon: {
     fontSize: 16,
@@ -307,7 +299,6 @@ const styles = StyleSheet.create({
   input: {
     flex: 1,
     fontSize: Typography.base,
-    color: Colors.gray900,
     height: '100%',
   },
   eyeIcon: {
@@ -347,12 +338,10 @@ const styles = StyleSheet.create({
     marginTop: Spacing.lg,
     paddingTop: Spacing.md,
     borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
   },
   demoTitle: {
     fontSize: 12,
     fontWeight: '700',
-    color: '#475569',
     marginBottom: 8,
   },
   demoRow: {
@@ -361,21 +350,16 @@ const styles = StyleSheet.create({
   demoPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#F8FAFC',
     padding: 10,
     borderRadius: 10,
     borderWidth: 1.5,
-    borderColor: '#E2E8F0',
     gap: 10,
   },
   demoPillActive: {
     borderColor: '#2563EB',
     backgroundColor: '#EFF6FF',
   },
-  demoPillAdmin: {
-    borderColor: '#E2E8F0',
-    backgroundColor: '#FDF4FF',
-  },
+  demoPillAdmin: {},
   demoPillActiveAdmin: {
     borderColor: '#9333EA',
     backgroundColor: '#FAF5FF',
@@ -386,7 +370,6 @@ const styles = StyleSheet.create({
   demoRole: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#1E293B',
   },
   demoRoleAdmin: {
     fontSize: 13,
@@ -395,7 +378,6 @@ const styles = StyleSheet.create({
   },
   demoAccount: {
     fontSize: 11,
-    color: '#64748B',
   },
   registerRow: {
     flexDirection: 'row',
@@ -405,7 +387,6 @@ const styles = StyleSheet.create({
   },
   registerText: {
     fontSize: Typography.base,
-    color: Colors.gray500,
   },
   registerLink: {
     fontSize: Typography.base,

@@ -179,10 +179,145 @@ export default function FeedbackScreen() {
         </View>
         <Text style={styles.header}>Đánh giá sự kiện</Text>
 
+<<<<<<< HEAD
         {/* ── Event Info ── */}
         <View style={styles.eventRow}>
           <View style={styles.thumbnailFallback}>
             <Text style={styles.thumbnailFallbackText}>⚛</Text>
+=======
+        <Text style={[styles.header, { color: theme.textPrimary }]}>
+          Đánh giá sự kiện
+        </Text>
+        <Text style={[styles.headerSub, { color: theme.textSecondary }]}>
+          Dữ liệu đồng bộ trực tiếp từ db.json
+        </Text>
+
+        {/* ── Thanh chọn sự kiện từ db.json ── */}
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          Chọn sự kiện cần đánh giá
+        </Text>
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.eventChipsScroll}
+        >
+          {eventsList.map((evt, index) => {
+            const evtId = evt.id || evt._id || `evt-${index}`;
+            const isSelected =
+              evtId === (currentEvent?.id || currentEvent?._id);
+            return (
+              <TouchableOpacity
+                key={`${evtId}-${index}`}
+                style={[
+                  styles.eventChip,
+                  {
+                    backgroundColor: isSelected ? theme.primary : theme.surface,
+                    borderColor: isSelected ? theme.primary : theme.border,
+                  },
+                ]}
+                onPress={() => handleSelectEvent(evt)}
+                activeOpacity={0.7}
+              >
+                <Text
+                  style={[
+                    styles.eventChipText,
+                    { color: isSelected ? "#FFFFFF" : theme.textPrimary },
+                  ]}
+                  numberOfLines={1}
+                >
+                  {evt.title}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </ScrollView>
+
+        {/* ── Thẻ sự kiện chi tiết từ db.json ── */}
+        {currentEvent && (
+          <View
+            style={[
+              styles.eventCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                shadowColor: theme.cardShadow,
+              },
+            ]}
+          >
+            <View style={styles.eventRow}>
+              {eventImage && !imageError ? (
+                <Image
+                  source={{ uri: eventImage }}
+                  style={styles.thumbnailImage}
+                  resizeMode="cover"
+                  onError={() => setImageError(true)}
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.thumbnailFallback,
+                    { backgroundColor: theme.primaryLight },
+                  ]}
+                >
+                  <Text
+                    style={[
+                      styles.thumbnailFallbackText,
+                      { color: theme.primary },
+                    ]}
+                  >
+                    🎓
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.eventMeta}>
+                <View style={styles.badgeRow}>
+                  <View
+                    style={[
+                      styles.categoryBadge,
+                      { backgroundColor: theme.primaryLight },
+                    ]}
+                  >
+                    <Text
+                      style={[
+                        styles.categoryBadgeText,
+                        { color: theme.primary },
+                      ]}
+                    >
+                      {currentEvent.category || "Sự kiện"}
+                    </Text>
+                  </View>
+                  {currentEvent.trainingPoints ? (
+                    <Text
+                      style={[styles.pointsBadge, { color: theme.success }]}
+                    >
+                      +{currentEvent.trainingPoints} ĐRL
+                    </Text>
+                  ) : null}
+                </View>
+
+                <Text
+                  style={[styles.eventTitle, { color: theme.textPrimary }]}
+                  numberOfLines={2}
+                >
+                  {currentEvent.title}
+                </Text>
+
+                <Text
+                  style={[styles.eventDate, { color: theme.textSecondary }]}
+                >
+                  📅 {formatEventDate(currentEvent.time)}
+                </Text>
+
+                <Text
+                  style={[styles.eventLocation, { color: theme.textTertiary }]}
+                  numberOfLines={1}
+                >
+                  📍 {currentEvent.location || "IUH TP. Hồ Chí Minh"}
+                </Text>
+              </View>
+            </View>
+>>>>>>> 6a72187 (Ver1_NguyenNhiTam)
           </View>
           <View style={styles.eventMeta}>
             <Text style={styles.eventTitle} numberOfLines={2}>

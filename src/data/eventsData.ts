@@ -8,8 +8,8 @@ export const eventsData: Event[] = [
     "faculty": "Khoa Công nghệ thông tin",
     "category": "Học thuật",
     "time": {
-      "start": "2026-10-15T08:00:00.000Z",
-      "end": "2026-10-15T11:30:00.000Z"
+      "start": "2026-11-20T08:00:00.000Z",
+      "end": "2026-11-20T11:30:00.000Z"
     },
     "location": "Hội trường E4, Trường Đại học Công nghiệp TP.HCM",
     "organizer": "Khoa Công nghệ thông tin và Đoàn Thanh niên IUH",
@@ -20,7 +20,7 @@ export const eventsData: Event[] = [
     "trainingPoints": 10,
     "aiSummary": {
       "what": "Hội thảo chuyên đề công nghệ AI và ứng dụng thực tiễn trong kỹ thuật.",
-      "when": "08:00 - 11:30 ngày 15/10/2026.",
+      "when": "08:00 - 11:30 ngày 20/11/2026.",
       "where": "Hội trường E4, cơ sở chính IUH.",
       "benefits": "Cộng 10 điểm rèn luyện, cấp giấy chứng nhận tham gia, cơ hội nhận học bổng và kết nối doanh nghiệp."
     },
@@ -38,8 +38,8 @@ export const eventsData: Event[] = [
     "faculty": "Khoa Quản trị kinh doanh",
     "category": "Kỹ năng",
     "time": {
-      "start": "2026-09-25T13:30:00.000Z",
-      "end": "2026-09-25T16:30:00.000Z"
+      "start": "2026-11-25T13:30:00.000Z",
+      "end": "2026-11-25T16:30:00.000Z"
     },
     "location": "Phòng Hội thảo B3.02, Tòa nhà B",
     "organizer": "Trung tâm Hỗ trợ sinh viên IUH",
@@ -50,7 +50,7 @@ export const eventsData: Event[] = [
     "trainingPoints": 8,
     "aiSummary": {
       "what": "Buổi đào tạo thực hành kỹ năng thuyết trình, phản biện và giao tiếp chuyên nghiệp.",
-      "when": "13:30 - 16:30 ngày 25/09/2026.",
+      "when": "13:30 - 16:30 ngày 25/11/2026.",
       "where": "Phòng B3.02, Đại học Công nghiệp TP.HCM.",
       "benefits": "Cộng 8 điểm rèn luyện, tài liệu độc quyền và thực hành trực tiếp với chuyên gia."
     },
@@ -68,8 +68,8 @@ export const eventsData: Event[] = [
     "faculty": "Toàn trường",
     "category": "Thể thao",
     "time": {
-      "start": "2026-11-01T07:00:00.000Z",
-      "end": "2026-11-15T17:00:00.000Z"
+      "start": "2026-11-28T07:00:00.000Z",
+      "end": "2026-12-05T17:00:00.000Z"
     },
     "location": "Sân vận động Quân khu 7 / Sân bóng đá IUH",
     "organizer": "Đoàn Thanh niên - Hội Sinh viên IUH",
@@ -158,8 +158,8 @@ export const eventsData: Event[] = [
     "faculty": "Toàn trường",
     "category": "Việc làm",
     "time": {
-      "start": "2026-10-25T07:30:00.000Z",
-      "end": "2026-10-25T16:30:00.000Z"
+      "start": "2026-12-15T07:30:00.000Z",
+      "end": "2026-12-15T16:30:00.000Z"
     },
     "location": "Sân A, Trường Đại học Công nghiệp TP.HCM",
     "organizer": "Trung tâm Hỗ trợ sinh viên và Quan hệ doanh nghiệp",

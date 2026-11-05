@@ -1,4 +1,6 @@
+import React from "react";
 import { StyleSheet, Text, View } from "react-native";
+import { useAppTheme } from "../../theme/ThemeContext";
 
 interface CategoryChipProps {
   label: string;
@@ -9,17 +11,25 @@ export default function CategoryChip({
   label,
   selected = false,
 }: CategoryChipProps) {
+  const { theme } = useAppTheme();
+
   return (
     <View
       style={[
         styles.chip,
-        selected && styles.chipSelected,
+        {
+          backgroundColor: selected ? theme.primary : theme.surfaceSecondary,
+          borderColor: selected ? theme.primary : theme.border,
+        },
       ]}
     >
       <Text
         style={[
           styles.text,
-          selected && styles.textSelected,
+          {
+            color: selected ? "#ffffff" : theme.textSecondary,
+            fontWeight: selected ? "600" : "500",
+          },
         ]}
       >
         {label}
@@ -33,22 +43,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     paddingVertical: 8,
     borderRadius: 20,
-    backgroundColor: "#f3f4f6",
+    borderWidth: 1,
     marginRight: 8,
   },
-
-  chipSelected: {
-    backgroundColor: "#2563eb",
-  },
-
   text: {
     fontSize: 14,
-    color: "#4b5563",
-    fontWeight: "500",
-  },
-
-  textSelected: {
-    color: "#ffffff",
-    fontWeight: "600",
   },
 });
