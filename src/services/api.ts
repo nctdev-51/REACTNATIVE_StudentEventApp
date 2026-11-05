@@ -61,7 +61,11 @@ export const BASE_URL: string =
  * - iOS / Web: localhost
  * - Thiết bị thật: đổi DEV_LAN_IP thành IP LAN của máy tính
  */
+<<<<<<< HEAD
 export const DEV_LAN_IP = "172.20.10.2";
+=======
+export const DEV_LAN_IP = "192.168.1.15";
+>>>>>>> b65f9f5 (feat: update event management app)
 
 export const BASE_URL: string = Platform.select({
   android: `http://172.20.10.2:3000/api`,

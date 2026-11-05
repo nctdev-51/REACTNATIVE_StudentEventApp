@@ -12,8 +12,13 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+<<<<<<< HEAD
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
+=======
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Button, Card } from '../../components/common';
+>>>>>>> b65f9f5 (feat: update event management app)
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -440,10 +445,11 @@ function EventCard({ event, onPress }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
 
   return (
-    <TouchableOpacity
+    <Card
       style={cardStyles.card}
+      padding={0}
       onPress={() => onPress?.(event)}
-      activeOpacity={0.75}
+      pressStyle={{ opacity: 0.75 }}
       accessibilityRole="button"
       accessibilityLabel={event.title}
     >
@@ -490,7 +496,7 @@ function EventCard({ event, onPress }: EventCardProps) {
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </Card>
   );
 }
 
@@ -598,9 +604,9 @@ export default function MyScheduleScreen({
     await dispatch(fetchEvents());
   }, [dispatch, currentUser?._id]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(useCallback(() => {
+    void loadData();
+  }, [loadData]));
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -708,12 +714,20 @@ export default function MyScheduleScreen({
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={theme.statusBarStyle} />
 
+<<<<<<< HEAD
       {/* ── Header với nút Left Navbar (☰) ──────────────────────────────────────────────────────── */}
       <View style={[styles.header, { backgroundColor: theme.background, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <LeftNavbarButton />
           <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Lịch của tôi</Text>
         </View>
+=======
+      {/* ── Header ──────────────────────────────────────────────────────── */}
+      <View style={styles.header}>
+        <Button variant="secondary" onPress={() => navigation.navigate('Notification')}>
+          Nhắc nhở
+        </Button>
+>>>>>>> b65f9f5 (feat: update event management app)
         <TouchableOpacity
           style={styles.filterButton}
           onPress={handleFilterPress}
