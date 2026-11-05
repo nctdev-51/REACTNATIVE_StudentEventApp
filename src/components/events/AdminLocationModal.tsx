@@ -23,6 +23,7 @@ import {
 } from '../../utils/permissionHandler';
 import { updateEventCoordinates } from '../../services/api';
 import { Colors, Shadow } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 interface AdminLocationModalProps {
   visible: boolean;
@@ -37,6 +38,7 @@ export default function AdminLocationModal({
   event,
   onSuccess,
 }: AdminLocationModalProps) {
+  const { theme, isDark } = useAppTheme();
   const [searchQuery, setSearchQuery] = useState<string>(event.location || '');
   const [searching, setSearching] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
@@ -191,38 +193,44 @@ export default function AdminLocationModal({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.modalOverlay}
       >
-        <View style={styles.modalContainer}>
+        <View style={[styles.modalContainer, { backgroundColor: theme.surface }]}>
           {/* Header */}
-          <View style={styles.header}>
+          <View style={[styles.header, { borderBottomColor: theme.border }]}>
             <View style={{ flex: 1, marginRight: 10 }}>
-              <Text style={styles.headerTitle}>🏢 Cài Đặt Địa Điểm Tổ Chức</Text>
-              <Text style={styles.headerSubtitle} numberOfLines={1}>
+              <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>🏢 Cài Đặt Địa Điểm Tổ Chức</Text>
+              <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
                 {event.title}
               </Text>
             </View>
-            <TouchableOpacity style={styles.closeBtn} onPress={onClose}>
-              <Text style={styles.closeBtnText}>✕</Text>
+            <TouchableOpacity style={[styles.closeBtn, { backgroundColor: theme.surfaceSecondary }]} onPress={onClose}>
+              <Text style={[styles.closeBtnText, { color: theme.textSecondary }]}>✕</Text>
             </TouchableOpacity>
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
             {/* Hướng dẫn nghiệp vụ giảng viên */}
-            <View style={styles.infoBanner}>
+            <View style={[styles.infoBanner, { backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#EFF6FF', borderColor: isDark ? theme.primary : '#BFDBFE' }]}>
               <Text style={styles.infoBannerIcon}>💡</Text>
-              <Text style={styles.infoBannerText}>
+              <Text style={[styles.infoBannerText, { color: isDark ? '#93C5FD' : '#1E40AF' }]}>
                 Chọn hội trường hoặc khuôn viên tổ chức sự kiện. Thuật toán định vị Anti-Fake sẽ tự động kiểm soát ngầm để chỉ sinh viên có mặt thực tế mới điểm danh được.
               </Text>
             </View>
 
             {/* Danh sách địa điểm thường dùng tại trường IUH */}
-            <Text style={styles.sectionLabel}>Hội trường & Khuôn viên trường IUH:</Text>
+            <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Hội trường & Khuôn viên trường IUH:</Text>
             <View style={styles.venuesGrid}>
               {IUH_CAMPUS_VENUES.map((venue) => {
                 const isSelected = previewAddress.includes(venue.name) || searchQuery === venue.name;
                 return (
                   <TouchableOpacity
                     key={venue.id}
-                    style={[styles.venueChip, isSelected && styles.venueChipActive]}
+                    style={[
+                      styles.venueChip,
+                      {
+                        backgroundColor: isSelected ? (isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF') : theme.surfaceSecondary,
+                        borderColor: isSelected ? theme.primary : theme.border,
+                      },
+                    ]}
                     onPress={() => handleSelectVenue(venue)}
                     activeOpacity={0.7}
                   >
@@ -241,34 +249,34 @@ export default function AdminLocationModal({
                       <Text
                         style={[
                           styles.venueChipTitle,
-                          isSelected && styles.venueChipTitleActive,
+                          { color: isSelected ? theme.primary : theme.textPrimary },
                         ]}
                         numberOfLines={1}
                       >
                         {venue.name}
                       </Text>
-                      <Text style={styles.venueChipDesc} numberOfLines={1}>
+                      <Text style={[styles.venueChipDesc, { color: theme.textSecondary }]} numberOfLines={1}>
                         {venue.description}
                       </Text>
                     </View>
-                    {isSelected && <Text style={styles.venueCheckIcon}>✓</Text>}
+                    {isSelected && <Text style={[styles.venueCheckIcon, { color: theme.primary }]}>✓</Text>}
                   </TouchableOpacity>
                 );
               })}
             </View>
 
             {/* Hoặc nhập địa điểm tuỳ ý */}
-            <Text style={styles.sectionLabel}>Hoặc nhập tên phòng / địa điểm khác:</Text>
-            <View style={styles.searchBox}>
+            <Text style={[styles.sectionLabel, { color: theme.textPrimary }]}>Hoặc nhập tên phòng / địa điểm khác:</Text>
+            <View style={[styles.searchBox, { backgroundColor: theme.inputBackground, borderColor: theme.inputBorder }]}>
               <TextInput
-                style={styles.searchInput}
+                style={[styles.searchInput, { color: theme.textPrimary }]}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
                 placeholder="Ví dụ: Phòng B1.02, Giảng đường H3..."
-                placeholderTextColor="#94A3B8"
+                placeholderTextColor={theme.textTertiary}
               />
               <TouchableOpacity
-                style={styles.searchBtn}
+                style={[styles.searchBtn, { backgroundColor: theme.primary }]}
                 onPress={handleConfirmCustomAddress}
                 disabled={searching}
               >
@@ -282,24 +290,30 @@ export default function AdminLocationModal({
 
             {/* Nút lấy vị trí hiện tại */}
             <TouchableOpacity
-              style={styles.currentLocBtn}
+              style={[
+                styles.currentLocBtn,
+                {
+                  backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#F0FDF4',
+                  borderColor: isDark ? '#34D399' : '#BBF7D0',
+                },
+              ]}
               onPress={handleUseCurrentLocation}
               disabled={searching}
             >
-              <Text style={styles.currentLocBtnText}>
+              <Text style={[styles.currentLocBtnText, { color: isDark ? '#34D399' : '#166534' }]}>
                 🎯 Đặt địa điểm tại vị trí tôi đang đứng
               </Text>
             </TouchableOpacity>
 
             {/* Thẻ xác nhận địa điểm & Phạm vi kiểm soát */}
-            <View style={styles.resultBox}>
-              <Text style={styles.resultHeader}>Địa điểm tổ chức đã chọn:</Text>
+            <View style={[styles.resultBox, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}>
+              <Text style={[styles.resultHeader, { color: theme.textSecondary }]}>Địa điểm tổ chức đã chọn:</Text>
               
-              <View style={styles.selectedLocationCard}>
+              <View style={[styles.selectedLocationCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
                 <Text style={styles.selectedLocationIcon}>📍</Text>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.selectedLocationText}>{previewAddress}</Text>
-                  <Text style={styles.securityStatusText}>
+                  <Text style={[styles.selectedLocationText, { color: theme.textPrimary }]}>{previewAddress}</Text>
+                  <Text style={[styles.securityStatusText, { color: isDark ? '#34D399' : '#059669' }]}>
                     🔒 Định vị Anti-Fake: Đang kích hoạt kiểm soát
                   </Text>
                 </View>
@@ -307,7 +321,7 @@ export default function AdminLocationModal({
 
               {/* Cài đặt Bán kính kiểm soát Geofence */}
               <View style={styles.radiusContainer}>
-                <Text style={styles.radiusLabel}>Phạm vi sinh viên được phép điểm danh:</Text>
+                <Text style={[styles.radiusLabel, { color: theme.textSecondary }]}>Phạm vi sinh viên được phép điểm danh:</Text>
                 <View style={styles.radiusChipsRow}>
                   {[
                     { r: 100, label: '100m (Phòng họp / Phòng Lab)' },
@@ -318,7 +332,10 @@ export default function AdminLocationModal({
                       key={item.r}
                       style={[
                         styles.radiusChip,
-                        selectedRadius === item.r && styles.radiusChipActive,
+                        {
+                          backgroundColor: selectedRadius === item.r ? theme.primary : theme.surface,
+                          borderColor: selectedRadius === item.r ? theme.primary : theme.border,
+                        },
                       ]}
                       onPress={() => setSelectedRadius(item.r)}
                       activeOpacity={0.7}
@@ -326,7 +343,7 @@ export default function AdminLocationModal({
                       <Text
                         style={[
                           styles.radiusChipText,
-                          selectedRadius === item.r && styles.radiusChipTextActive,
+                          { color: selectedRadius === item.r ? '#FFFFFF' : theme.textSecondary },
                         ]}
                       >
                         {item.label}
@@ -336,20 +353,23 @@ export default function AdminLocationModal({
                 </View>
               </View>
 
-              <TouchableOpacity style={styles.mapsBtn} onPress={handlePreviewOnMaps}>
-                <Text style={styles.mapsBtnText}>🗺️ Xem trên Google Maps</Text>
+              <TouchableOpacity
+                style={[styles.mapsBtn, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF', borderColor: isDark ? '#818CF8' : '#C7D2FE' }]}
+                onPress={handlePreviewOnMaps}
+              >
+                <Text style={[styles.mapsBtnText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>🗺️ Xem trên Google Maps</Text>
               </TouchableOpacity>
             </View>
           </ScrollView>
 
           {/* Footer Buttons */}
-          <View style={styles.footer}>
-            <TouchableOpacity style={styles.cancelBtn} onPress={onClose}>
-              <Text style={styles.cancelBtnText}>Huỷ</Text>
+          <View style={[styles.footer, { borderTopColor: theme.borderSubtle }]}>
+            <TouchableOpacity style={[styles.cancelBtn, { backgroundColor: theme.surfaceSecondary }]} onPress={onClose}>
+              <Text style={[styles.cancelBtnText, { color: theme.textSecondary }]}>Huỷ</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
+              style={[styles.saveBtn, { backgroundColor: theme.primary }, saving && styles.saveBtnDisabled]}
               onPress={handleSaveLocation}
               disabled={saving}
             >

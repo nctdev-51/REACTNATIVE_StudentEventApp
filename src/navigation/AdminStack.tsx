@@ -8,22 +8,25 @@ import AdminCheckInReportsScreen from '../screens/admin/AdminCheckInReportsScree
 import AdminQRDisplayScreen from '../screens/admin/AdminQRDisplayScreen';
 import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 import MainStack from './MainStack';
-import { Colors } from '../theme';
+import { useAppTheme } from '../theme/ThemeContext';
 
 const Stack = createNativeStackNavigator<AdminStackParamList>();
 
 export default function AdminStack() {
+  const { theme } = useAppTheme();
+
   return (
     <Stack.Navigator
       initialRouteName="AdminDashboard"
       screenOptions={{
         headerStyle: {
-          backgroundColor: '#1E293B',
+          backgroundColor: theme.surface,
         },
-        headerTintColor: '#FFFFFF',
+        headerTintColor: theme.textPrimary,
         headerTitleStyle: {
           fontWeight: '700',
           fontSize: 16,
+          color: theme.textPrimary,
         },
         headerShadowVisible: false,
         animation: 'slide_from_right',

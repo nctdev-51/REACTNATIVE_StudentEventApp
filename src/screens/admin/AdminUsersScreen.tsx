@@ -12,6 +12,7 @@ import {
   Modal,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -26,6 +27,7 @@ import {
 } from '../../services/api';
 import { User, CreateUserPayload } from '../../types';
 import { Colors, Shadow, Spacing, Typography, BorderRadius } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 type AdminUsersNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminUsers'>;
 
@@ -42,6 +44,7 @@ const FACULTIES = [
 ];
 
 export default function AdminUsersScreen() {
+  const { theme, isDark } = useAppTheme();
   const navigation = useNavigation<AdminUsersNavProp>();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -277,19 +280,20 @@ export default function AdminUsersScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       {/* ── Top Header ──────────────────────────────────────────────────────── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <View style={styles.headerLeftGroup}>
-          <LeftNavbarButton tintColor="#0F172A" />
+          <LeftNavbarButton tintColor={theme.textPrimary} />
           <View style={styles.headerTitleBox}>
-            <Text style={styles.headerTitle}>Quản Lý Người Dùng & ĐRL</Text>
-            <Text style={styles.headerSub}>Hệ thống danh sách sinh viên & cán bộ IUH</Text>
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Quản Lý Người Dùng & ĐRL</Text>
+            <Text style={[styles.headerSub, { color: theme.textSecondary }]}>Hệ thống danh sách sinh viên & cán bộ IUH</Text>
           </View>
         </View>
 
         <TouchableOpacity
-          style={styles.addBtn}
+          style={[styles.addBtn, { backgroundColor: theme.primary }]}
           onPress={() => setCreateModalVisible(true)}
           activeOpacity={0.8}
         >
@@ -304,46 +308,46 @@ export default function AdminUsersScreen() {
       >
         {/* ── KPI Stats Grid ──────────────────────────────────────────────────── */}
         <View style={styles.kpiGrid}>
-          <View style={[styles.kpiCard, { borderLeftColor: '#3B82F6' }]}>
+          <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#3B82F6' }]}>
             <Text style={styles.kpiIcon}>👥</Text>
             <View>
-              <Text style={styles.kpiValue}>{loading ? '...' : totalCount}</Text>
-              <Text style={styles.kpiLabel}>Tổng tài khoản</Text>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : totalCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Tổng tài khoản</Text>
             </View>
           </View>
 
-          <View style={[styles.kpiCard, { borderLeftColor: '#10B981' }]}>
+          <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#10B981' }]}>
             <Text style={styles.kpiIcon}>🎓</Text>
             <View>
-              <Text style={styles.kpiValue}>{loading ? '...' : studentCount}</Text>
-              <Text style={styles.kpiLabel}>Sinh viên</Text>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : studentCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Sinh viên</Text>
             </View>
           </View>
 
-          <View style={[styles.kpiCard, { borderLeftColor: '#EF4444' }]}>
+          <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#EF4444' }]}>
             <Text style={styles.kpiIcon}>🛡️</Text>
             <View>
-              <Text style={styles.kpiValue}>{loading ? '...' : adminCount}</Text>
-              <Text style={styles.kpiLabel}>Quản trị viên</Text>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : adminCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Quản trị viên</Text>
             </View>
           </View>
 
-          <View style={[styles.kpiCard, { borderLeftColor: '#F59E0B' }]}>
+          <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#F59E0B' }]}>
             <Text style={styles.kpiIcon}>🟢</Text>
             <View>
-              <Text style={styles.kpiValue}>{loading ? '...' : activeCount}</Text>
-              <Text style={styles.kpiLabel}>Hoạt động</Text>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : activeCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Hoạt động</Text>
             </View>
           </View>
         </View>
 
         {/* ── Search Bar ──────────────────────────────────────────────────────── */}
-        <View style={styles.searchBox}>
+        <View style={[styles.searchBox, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.textPrimary }]}
             placeholder="Tìm theo Họ tên, MSSV hoặc Email..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={theme.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -366,14 +370,20 @@ export default function AdminUsersScreen() {
             return (
               <TouchableOpacity
                 key={filter}
-                style={[styles.filterChip, isActive && styles.filterChipActive]}
+                style={[
+                  styles.filterChip,
+                  {
+                    backgroundColor: isActive ? theme.primary : theme.surface,
+                    borderColor: isActive ? theme.primary : theme.border,
+                  },
+                ]}
                 onPress={() => setActiveFilter(filter)}
                 activeOpacity={0.7}
               >
                 <Text
                   style={[
                     styles.filterChipText,
-                    isActive && styles.filterChipTextActive,
+                    { color: isActive ? '#FFFFFF' : theme.textSecondary },
                   ]}
                 >
                   {filter}
@@ -385,25 +395,25 @@ export default function AdminUsersScreen() {
 
         {/* ── Section Title & Count ───────────────────────────────────────────── */}
         <View style={styles.sectionHeaderRow}>
-          <Text style={styles.sectionTitle}>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
             Danh sách ({filteredUsers.length} người)
           </Text>
           <TouchableOpacity onPress={loadData} activeOpacity={0.7}>
-            <Text style={styles.reloadText}>🔄 Làm mới</Text>
+            <Text style={[styles.reloadText, { color: theme.primary }]}>🔄 Làm mới</Text>
           </TouchableOpacity>
         </View>
 
         {/* ── Users List ──────────────────────────────────────────────────────── */}
         {loading ? (
           <View style={styles.loadingBox}>
-            <ActivityIndicator size="large" color={Colors.primary} />
-            <Text style={styles.loadingText}>Đang tải danh sách người dùng...</Text>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Đang tải danh sách người dùng...</Text>
           </View>
         ) : filteredUsers.length === 0 ? (
           <View style={styles.emptyBox}>
             <Text style={styles.emptyIcon}>🔍</Text>
-            <Text style={styles.emptyTitle}>Không tìm thấy tài khoản nào</Text>
-            <Text style={styles.emptySubtitle}>
+            <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>Không tìm thấy tài khoản nào</Text>
+            <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
               Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc hiện tại.
             </Text>
           </View>
@@ -424,7 +434,11 @@ export default function AdminUsersScreen() {
             return (
               <View
                 key={u._id}
-                style={[styles.userCard, isInactive && styles.userCardInactive]}
+                style={[
+                  styles.userCard,
+                  { backgroundColor: theme.surface, borderColor: theme.border },
+                  isInactive && styles.userCardInactive,
+                ]}
               >
                 {/* User Top Row */}
                 <View style={styles.userMainRow}>
@@ -439,7 +453,7 @@ export default function AdminUsersScreen() {
 
                   <View style={styles.userMeta}>
                     <View style={styles.userNameRow}>
-                      <Text style={styles.userName} numberOfLines={1}>
+                      <Text style={[styles.userName, { color: theme.textPrimary }]} numberOfLines={1}>
                         {u.fullName || 'Người dùng'}
                       </Text>
                       <View
@@ -459,20 +473,20 @@ export default function AdminUsersScreen() {
                       </View>
                     </View>
 
-                    <Text style={styles.userMSSV}>
+                    <Text style={[styles.userMSSV, { color: theme.textSecondary }]}>
                       MSSV: {u.studentId || 'Chưa cập nhật'} • {u.email}
                     </Text>
-                    <Text style={styles.userFaculty} numberOfLines={1}>
+                    <Text style={[styles.userFaculty, { color: theme.textTertiary }]} numberOfLines={1}>
                       {u.faculty || 'Khoa Công nghệ thông tin'}
                     </Text>
                   </View>
                 </View>
 
                 {/* Score & Status Bar */}
-                <View style={styles.scoreBar}>
+                <View style={[styles.scoreBar, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}>
                   <View style={styles.pointGroup}>
                     <Text style={styles.pointIcon}>⭐</Text>
-                    <Text style={styles.pointValue}>{point} ĐRL</Text>
+                    <Text style={[styles.pointValue, { color: theme.textPrimary }]}>{point} ĐRL</Text>
                     <Text style={styles.pointRank}>({rankText})</Text>
                   </View>
 
@@ -502,19 +516,19 @@ export default function AdminUsersScreen() {
                 {/* Quick Action Buttons */}
                 <View style={styles.actionsRow}>
                   <TouchableOpacity
-                    style={styles.actionBtnPoint}
+                    style={[styles.actionBtnPoint, { backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF', borderColor: isDark ? '#3B82F6' : '#BFDBFE' }]}
                     onPress={() => handleOpenPointModal(u)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.actionBtnTextPoint}>⭐ Sửa ĐRL</Text>
+                    <Text style={[styles.actionBtnTextPoint, { color: theme.primary }]}>⭐ Sửa ĐRL</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.actionBtnRole}
+                    style={[styles.actionBtnRole, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
                     onPress={() => handleToggleRole(u)}
                     activeOpacity={0.8}
                   >
-                    <Text style={styles.actionBtnTextRole}>
+                    <Text style={[styles.actionBtnTextRole, { color: theme.textPrimary }]}>
                       {isAdmin ? '⬇️ Xuống SV' : '⬆️ Lên Admin'}
                     </Text>
                   </TouchableOpacity>
@@ -538,7 +552,7 @@ export default function AdminUsersScreen() {
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={styles.actionBtnDelete}
+                    style={[styles.actionBtnDelete, { backgroundColor: theme.surfaceSecondary }]}
                     onPress={() => handleDeleteUser(u)}
                     activeOpacity={0.8}
                   >
@@ -561,7 +575,7 @@ export default function AdminUsersScreen() {
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={styles.modalCard}
+            style={[styles.modalCard, { backgroundColor: theme.surface }]}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>⭐ Điều Chỉnh Điểm Rèn Luyện</Text>
@@ -572,28 +586,31 @@ export default function AdminUsersScreen() {
 
             {selectedUserForPoint && (
               <View style={styles.pointModalBody}>
-                <Text style={styles.pointModalUserName}>
+                <Text style={[styles.pointModalUserName, { color: theme.textPrimary }]}>
                   Sinh viên: {selectedUserForPoint.fullName} ({selectedUserForPoint.studentId})
                 </Text>
-                <Text style={styles.pointModalCurrent}>
+                <Text style={[styles.pointModalCurrent, { color: theme.textSecondary }]}>
                   Điểm hiện tại: <Text style={styles.pointHighlight}>{selectedUserForPoint.point ?? 0} ĐRL</Text> / 100
                 </Text>
 
-                <Text style={styles.modalInputLabel}>Số điểm điều chỉnh:</Text>
+                <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Số điểm điều chỉnh:</Text>
                 <View style={styles.pointQuickChipsRow}>
                   {['5', '10', '15', '20'].map((val) => (
                     <TouchableOpacity
                       key={val}
                       style={[
                         styles.pointQuickChip,
-                        pointDelta === val && styles.pointQuickChipActive,
+                        {
+                          backgroundColor: pointDelta === val ? theme.primary : theme.surfaceSecondary,
+                          borderColor: pointDelta === val ? theme.primary : theme.border,
+                        },
                       ]}
                       onPress={() => setPointDelta(val)}
                     >
                       <Text
                         style={[
                           styles.pointQuickChipText,
-                          pointDelta === val && styles.pointQuickChipTextActive,
+                          { color: pointDelta === val ? '#FFFFFF' : theme.textSecondary },
                         ]}
                       >
                         ±{val}đ
@@ -603,19 +620,35 @@ export default function AdminUsersScreen() {
                 </View>
 
                 <TextInput
-                  style={styles.pointInput}
+                  style={[
+                    styles.pointInput,
+                    {
+                      backgroundColor: theme.inputBackground,
+                      borderColor: theme.inputBorder,
+                      color: theme.textPrimary,
+                    },
+                  ]}
                   keyboardType="numeric"
                   value={pointDelta}
                   onChangeText={setPointDelta}
                   placeholder="Nhập số điểm cần cộng hoặc trừ..."
+                  placeholderTextColor={theme.textTertiary}
                 />
 
-                <Text style={styles.modalInputLabel}>Lý do điều chỉnh (Minh chứng):</Text>
+                <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Lý do điều chỉnh (Minh chứng):</Text>
                 <TextInput
-                  style={styles.reasonInput}
+                  style={[
+                    styles.reasonInput,
+                    {
+                      backgroundColor: theme.inputBackground,
+                      borderColor: theme.inputBorder,
+                      color: theme.textPrimary,
+                    },
+                  ]}
                   value={pointReason}
                   onChangeText={setPointReason}
                   placeholder="Ví dụ: Tham gia hoạt động tình nguyện hè..."
+                  placeholderTextColor={theme.textTertiary}
                 />
 
                 <View style={styles.pointModalButtonsRow}>
@@ -655,7 +688,7 @@ export default function AdminUsersScreen() {
         <View style={styles.modalOverlay}>
           <KeyboardAvoidingView
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-            style={[styles.modalCard, { maxHeight: '90%' }]}
+            style={[styles.modalCard, { backgroundColor: theme.surface, maxHeight: '90%' }]}
           >
             <View style={styles.modalHeader}>
               <Text style={styles.modalTitle}>👤 Thêm Tài Khoản Mới</Text>
@@ -665,54 +698,89 @@ export default function AdminUsersScreen() {
             </View>
 
             <ScrollView showsVerticalScrollIndicator={false} style={{ padding: 16 }}>
-              <Text style={styles.modalInputLabel}>Họ và tên *</Text>
+              <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Họ và tên *</Text>
               <TextInput
-                style={styles.formInput}
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="Ví dụ: Nguyễn Văn Bảo"
+                placeholderTextColor={theme.textTertiary}
                 value={newFullName}
                 onChangeText={setNewFullName}
               />
 
-              <Text style={styles.modalInputLabel}>Mã số sinh viên (MSSV) / Mã QTV *</Text>
+              <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Mã số sinh viên (MSSV) / Mã QTV *</Text>
               <TextInput
-                style={styles.formInput}
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="Ví dụ: 21008921 hoặc AD02"
+                placeholderTextColor={theme.textTertiary}
                 value={newStudentId}
                 onChangeText={setNewStudentId}
                 autoCapitalize="characters"
               />
 
-              <Text style={styles.modalInputLabel}>Email tài khoản *</Text>
+              <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Email tài khoản *</Text>
               <TextInput
-                style={styles.formInput}
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="Ví dụ: sv.bao@iuh.edu.vn"
+                placeholderTextColor={theme.textTertiary}
                 value={newEmail}
                 onChangeText={setNewEmail}
                 keyboardType="email-address"
                 autoCapitalize="none"
               />
 
-              <Text style={styles.modalInputLabel}>Mật khẩu khởi tạo</Text>
+              <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Mật khẩu khởi tạo</Text>
               <TextInput
-                style={styles.formInput}
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="Mặc định: 123456"
+                placeholderTextColor={theme.textTertiary}
                 value={newPassword}
                 onChangeText={setNewPassword}
               />
 
-              <Text style={styles.modalInputLabel}>Vai trò hệ thống</Text>
+              <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Vai trò hệ thống</Text>
               <View style={styles.rolePickerRow}>
                 <TouchableOpacity
                   style={[
                     styles.roleOption,
-                    newRole === 'student' && styles.roleOptionActiveStudent,
+                    {
+                      backgroundColor: newRole === 'student' ? (isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF') : theme.surfaceSecondary,
+                      borderColor: newRole === 'student' ? theme.primary : theme.border,
+                    },
                   ]}
                   onPress={() => setNewRole('student')}
                 >
                   <Text
                     style={[
                       styles.roleOptionText,
-                      newRole === 'student' && styles.roleOptionTextActive,
+                      { color: newRole === 'student' ? theme.primary : theme.textSecondary },
                     ]}
                   >
                     🎓 Sinh viên
@@ -722,14 +790,17 @@ export default function AdminUsersScreen() {
                 <TouchableOpacity
                   style={[
                     styles.roleOption,
-                    newRole === 'admin' && styles.roleOptionActiveAdmin,
+                    {
+                      backgroundColor: newRole === 'admin' ? (isDark ? 'rgba(239,68,68,0.2)' : '#FEF2F2') : theme.surfaceSecondary,
+                      borderColor: newRole === 'admin' ? theme.danger : theme.border,
+                    },
                   ]}
                   onPress={() => setNewRole('admin')}
                 >
                   <Text
                     style={[
                       styles.roleOptionText,
-                      newRole === 'admin' && styles.roleOptionTextActive,
+                      { color: newRole === 'admin' ? theme.danger : theme.textSecondary },
                     ]}
                   >
                     🛡️ Quản trị viên
@@ -737,7 +808,7 @@ export default function AdminUsersScreen() {
                 </TouchableOpacity>
               </View>
 
-              <Text style={styles.modalInputLabel}>Khoa / Phòng ban</Text>
+              <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Khoa / Phòng ban</Text>
               <ScrollView
                 horizontal
                 showsHorizontalScrollIndicator={false}
@@ -748,14 +819,17 @@ export default function AdminUsersScreen() {
                     key={fac}
                     style={[
                       styles.facultyChip,
-                      newFaculty === fac && styles.facultyChipActive,
+                      {
+                        backgroundColor: newFaculty === fac ? theme.primary : theme.surfaceSecondary,
+                        borderColor: newFaculty === fac ? theme.primary : theme.border,
+                      },
                     ]}
                     onPress={() => setNewFaculty(fac)}
                   >
                     <Text
                       style={[
                         styles.facultyChipText,
-                        newFaculty === fac && styles.facultyChipTextActive,
+                        { color: newFaculty === fac ? '#FFFFFF' : theme.textSecondary },
                       ]}
                     >
                       {fac}
@@ -764,17 +838,25 @@ export default function AdminUsersScreen() {
                 ))}
               </ScrollView>
 
-              <Text style={styles.modalInputLabel}>Điểm Rèn Luyện khởi tạo (0 - 100)</Text>
+              <Text style={[styles.modalInputLabel, { color: theme.textSecondary }]}>Điểm Rèn Luyện khởi tạo (0 - 100)</Text>
               <TextInput
-                style={styles.formInput}
+                style={[
+                  styles.formInput,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 keyboardType="numeric"
                 value={newInitialPoint}
                 onChangeText={setNewInitialPoint}
                 placeholder="Mặc định: 80"
+                placeholderTextColor={theme.textTertiary}
               />
 
               <TouchableOpacity
-                style={styles.btnCreateSubmit}
+                style={[styles.btnCreateSubmit, { backgroundColor: theme.primary }]}
                 onPress={handleCreateUser}
                 disabled={creatingUser}
               >

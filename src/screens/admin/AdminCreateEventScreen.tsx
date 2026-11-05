@@ -10,6 +10,7 @@ import {
   Alert,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -24,12 +25,14 @@ import {
   openInGoogleMaps,
 } from '../../utils/permissionHandler';
 import { Colors } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 type AdminCreateNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminCreateEvent'>;
 
 const CATEGORIES = ['Học thuật', 'Phong trào', 'Tình nguyện', 'Thể thao', 'Hội thảo'];
 
 export default function AdminCreateEventScreen() {
+  const { theme, isDark } = useAppTheme();
   const navigation = useNavigation<AdminCreateNavProp>();
 
   const [title, setTitle] = useState('');
@@ -79,7 +82,6 @@ export default function AdminCreateEventScreen() {
       const pos = await getCurrentPosition(10000);
       if (pos) {
         setCoords({ latitude: pos.coords.latitude, longitude: pos.coords.longitude });
-        // Tự động dịch ngược địa chỉ
         const reverseName = await reverseGeocodeAddress(pos.coords.latitude, pos.coords.longitude);
         if (reverseName) {
           setLocation(reverseName);
@@ -136,25 +138,34 @@ export default function AdminCreateEventScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <KeyboardAvoidingView
         style={{ flex: 1 }}
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       >
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <Text style={styles.screenTitle}>➕ Thêm Sự Kiện Mới</Text>
-          <Text style={styles.screenSub}>
+          <Text style={[styles.screenTitle, { color: theme.textPrimary }]}>➕ Thêm Sự Kiện Mới</Text>
+          <Text style={[styles.screenSub, { color: theme.textSecondary }]}>
             Tạo sự kiện, gắn toạ độ GPS Anti-Fake và tự động tạo mã QR điểm danh cho sinh viên.
           </Text>
 
           {/* Form */}
-          <View style={styles.formCard}>
+          <View style={[styles.formCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
             {/* Tiêu đề */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Tiêu đề sự kiện *</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Tiêu đề sự kiện *</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="VD: Hội thảo Công nghệ Trí tuệ Nhân tạo 2026"
+                placeholderTextColor={theme.textTertiary}
                 value={title}
                 onChangeText={setTitle}
               />
@@ -162,10 +173,18 @@ export default function AdminCreateEventScreen() {
 
             {/* Đơn vị tổ chức */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Đơn vị tổ chức / Khoa</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Đơn vị tổ chức / Khoa</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="VD: Khoa Công nghệ thông tin"
+                placeholderTextColor={theme.textTertiary}
                 value={faculty}
                 onChangeText={setFaculty}
               />
@@ -173,28 +192,50 @@ export default function AdminCreateEventScreen() {
 
             {/* Danh mục */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Thể loại sự kiện</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Thể loại sự kiện</Text>
               <View style={styles.categoriesRow}>
-                {CATEGORIES.map((cat) => (
-                  <TouchableOpacity
-                    key={cat}
-                    style={[styles.catChip, category === cat && styles.catChipActive]}
-                    onPress={() => setCategory(cat)}
-                  >
-                    <Text style={[styles.catChipText, category === cat && styles.catChipTextActive]}>
-                      {cat}
-                    </Text>
-                  </TouchableOpacity>
-                ))}
+                {CATEGORIES.map((cat) => {
+                  const isActive = category === cat;
+                  return (
+                    <TouchableOpacity
+                      key={cat}
+                      style={[
+                        styles.catChip,
+                        {
+                          backgroundColor: isActive ? theme.primary : theme.surfaceSecondary,
+                          borderColor: isActive ? theme.primary : theme.border,
+                        },
+                      ]}
+                      onPress={() => setCategory(cat)}
+                    >
+                      <Text
+                        style={[
+                          styles.catChipText,
+                          { color: isActive ? '#FFFFFF' : theme.textSecondary },
+                        ]}
+                      >
+                        {cat}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
               </View>
             </View>
 
             {/* Điểm rèn luyện */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Điểm rèn luyện</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Điểm rèn luyện</Text>
               <TextInput
-                style={styles.input}
+                style={[
+                  styles.input,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="5"
+                placeholderTextColor={theme.textTertiary}
                 keyboardType="numeric"
                 value={trainingPoints}
                 onChangeText={setTrainingPoints}
@@ -203,10 +244,19 @@ export default function AdminCreateEventScreen() {
 
             {/* Địa điểm & Geocoding */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Địa điểm tổ chức sự kiện *</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Địa điểm tổ chức sự kiện *</Text>
               <TextInput
-                style={[styles.input, { height: 48 }]}
+                style={[
+                  styles.input,
+                  {
+                    height: 48,
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="Nhập địa chỉ hoặc tên hội trường..."
+                placeholderTextColor={theme.textTertiary}
                 value={location}
                 onChangeText={setLocation}
               />
@@ -214,7 +264,7 @@ export default function AdminCreateEventScreen() {
               {/* Action buttons cho GPS */}
               <View style={styles.gpsButtonsRow}>
                 <TouchableOpacity
-                  style={styles.geocodeBtn}
+                  style={[styles.geocodeBtn, { backgroundColor: theme.primary }]}
                   onPress={handleGeocode}
                   disabled={geocoding}
                   activeOpacity={0.8}
@@ -227,18 +277,18 @@ export default function AdminCreateEventScreen() {
                 </TouchableOpacity>
 
                 <TouchableOpacity
-                  style={styles.currentPosBtn}
+                  style={[styles.currentPosBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
                   onPress={handleUseCurrentLocation}
                   disabled={geocoding}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.currentPosBtnText}>🎯 Đặt tại vị trí tôi đang đứng</Text>
+                  <Text style={[styles.currentPosBtnText, { color: theme.textPrimary }]}>🎯 Đặt tại vị trí tôi</Text>
                 </TouchableOpacity>
               </View>
 
               {/* Trạng thái xác thực địa điểm */}
-              <View style={styles.coordsDisplayBox}>
-                <Text style={styles.coordsDisplayLabel}>Trạng thái bảo mật vị trí điểm danh:</Text>
+              <View style={[styles.coordsDisplayBox, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}>
+                <Text style={[styles.coordsDisplayLabel, { color: theme.textTertiary }]}>Trạng thái bảo mật vị trí điểm danh:</Text>
                 {coords ? (
                   <View style={styles.coordsSuccessRow}>
                     <Text style={styles.coordsSuccessText}>
@@ -246,9 +296,9 @@ export default function AdminCreateEventScreen() {
                     </Text>
                     <TouchableOpacity
                       onPress={() => openInGoogleMaps(coords.latitude, coords.longitude, location)}
-                      style={styles.mapLinkBtn}
+                      style={[styles.mapLinkBtn, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF' }]}
                     >
-                      <Text style={styles.mapLinkBtnText}>🗺️ Xem Map</Text>
+                      <Text style={[styles.mapLinkBtnText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>🗺️ Xem Map</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
@@ -259,10 +309,19 @@ export default function AdminCreateEventScreen() {
 
             {/* Mô tả */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Mô tả chi tiết</Text>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Mô tả chi tiết</Text>
               <TextInput
-                style={[styles.input, styles.textArea]}
+                style={[
+                  styles.input,
+                  styles.textArea,
+                  {
+                    backgroundColor: theme.inputBackground,
+                    borderColor: theme.inputBorder,
+                    color: theme.textPrimary,
+                  },
+                ]}
                 placeholder="Nhập nội dung, quyền lợi, yêu cầu sự kiện..."
+                placeholderTextColor={theme.textTertiary}
                 value={description}
                 onChangeText={setDescription}
                 multiline
@@ -326,6 +385,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 8,
+    borderWidth: 1,
   },
   catChipActive: { backgroundColor: '#2563EB' },
   catChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },

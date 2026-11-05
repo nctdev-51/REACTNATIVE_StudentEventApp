@@ -189,7 +189,7 @@ export default function FeedbackScreen() {
           Đánh giá sự kiện
         </Text>
         <Text style={[styles.headerSub, { color: theme.textSecondary }]}>
-          Dữ liệu đồng bộ trực tiếp từ db.json
+          Góp ý chất lượng và trải nghiệm tham gia sự kiện
         </Text>
 
         {/* ── Thanh chọn sự kiện từ db.json ── */}
@@ -363,12 +363,179 @@ export default function FeedbackScreen() {
           accessibilityLabel="Gửi đánh giá"
           onPress={handleSubmit}
         >
+<<<<<<< HEAD
           {submitting ? (
             <ActivityIndicator color="#fff" />
           ) : (
             <Text style={styles.submitText}>Gửi đánh giá</Text>
           )}
         </TouchableOpacity>
+=======
+          <Text style={[styles.question, { color: theme.textPrimary }]}>
+            Trải nghiệm của bạn về sự kiện này?
+          </Text>
+
+          <StarRating
+            value={rating}
+            onChange={setRating}
+            size={40}
+            starActive={theme.starActive}
+            starInactive={theme.starInactive}
+          />
+
+          {/* Ô nhập nhận xét */}
+          <Text style={[styles.inputLabel, { color: theme.textSecondary }]}>
+            Ý kiến đóng góp & nhận xét
+          </Text>
+          <TextInput
+            style={[
+              styles.commentInput,
+              {
+                backgroundColor: theme.inputBackground,
+                borderColor: isFocused ? theme.primary : theme.inputBorder,
+                color: theme.textPrimary,
+              },
+            ]}
+            placeholder="Chia sẻ cảm nhận của bạn về diễn giả, công tác tổ chức, nội dung..."
+            placeholderTextColor={theme.textTertiary}
+            multiline
+            numberOfLines={4}
+            textAlignVertical="top"
+            value={comment}
+            onChangeText={setComment}
+            onFocus={() => setIsFocused(true)}
+            onBlur={() => setIsFocused(false)}
+            maxLength={500}
+            accessibilityLabel="Ô nhập cảm nhận"
+          />
+          <Text style={[styles.charCount, { color: theme.textTertiary }]}>
+            {comment.length}/500 ký tự
+          </Text>
+
+          {/* Nút gửi đánh giá */}
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              { backgroundColor: theme.primary },
+              (rating === 0 || submitting) && styles.submitButtonDisabled,
+            ]}
+            activeOpacity={0.85}
+            disabled={rating === 0 || submitting}
+            accessibilityRole="button"
+            accessibilityLabel="Gửi đánh giá"
+            onPress={handleSubmit}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#fff" />
+            ) : (
+              <Text style={styles.submitText}>Gửi đánh giá</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* ── Danh sách đánh giá đã có từ db.json ── */}
+        <View style={styles.feedbacksHeaderRow}>
+          <Text
+            style={[
+              styles.sectionTitle,
+              { color: theme.textPrimary, marginBottom: 0 },
+            ]}
+          >
+            Đánh giá từ cộng đồng sinh viên ({feedbacks.length})
+          </Text>
+        </View>
+        <Text
+          style={[styles.feedbacksSubtitle, { color: theme.textSecondary }]}
+        >
+          Tổng hợp đánh giá khách quan từ sinh viên tham dự
+        </Text>
+
+        {feedbacks.map((item) => (
+          <View
+            key={item.id || item._id}
+            style={[
+              styles.reviewCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                shadowColor: theme.cardShadow,
+              },
+            ]}
+          >
+            <View style={styles.reviewUserRow}>
+              {item.userAvatar ? (
+                <Image
+                  source={{ uri: item.userAvatar }}
+                  style={styles.reviewAvatar}
+                  resizeMode="cover"
+                />
+              ) : (
+                <View
+                  style={[
+                    styles.reviewAvatarFallback,
+                    { backgroundColor: theme.primary },
+                  ]}
+                >
+                  <Text style={styles.reviewAvatarInitial}>
+                    {(item.userName || "S").charAt(0).toUpperCase()}
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.reviewUserInfo}>
+                <Text
+                  style={[styles.reviewUserName, { color: theme.textPrimary }]}
+                >
+                  {item.userName}
+                </Text>
+                <Text
+                  style={[
+                    styles.reviewUserFaculty,
+                    { color: theme.textSecondary },
+                  ]}
+                >
+                  {item.userFaculty || "Sinh viên IUH"}
+                </Text>
+              </View>
+
+              <View style={styles.reviewStarsBox}>
+                <Text style={[styles.reviewStars, { color: theme.starActive }]}>
+                  {"★".repeat(item.rating || 5)}
+                  {"☆".repeat(5 - (item.rating || 5))}
+                </Text>
+              </View>
+            </View>
+
+            {/* Tên sự kiện được review */}
+            <View
+              style={[
+                styles.reviewEventBox,
+                { backgroundColor: theme.surfaceSecondary },
+              ]}
+            >
+              <Text
+                style={[styles.reviewEventTitle, { color: theme.textPrimary }]}
+                numberOfLines={1}
+              >
+                🎯 {item.eventTitle}
+              </Text>
+            </View>
+
+            {/* Nội dung comment */}
+            <Text style={[styles.reviewComment, { color: theme.textPrimary }]}>
+              "{item.comment}"
+            </Text>
+
+            <Text style={[styles.reviewDate, { color: theme.textTertiary }]}>
+              {new Date(item.createdAt).toLocaleDateString("vi-VN", {
+                year: "numeric",
+                month: "short",
+                day: "numeric",
+              })}
+            </Text>
+          </View>
+        ))}
+>>>>>>> c4f94b6 (Refactor check-in screens to enhance UI and UX with theme support)
       </ScrollView>
     </SafeAreaView>
   );

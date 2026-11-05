@@ -19,6 +19,7 @@ import type { AuthStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { registerUser, clearError } from '../../features/auth/authSlice';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -79,6 +80,7 @@ const FIELDS: Field[] = [
 ];
 
 export default function RegisterScreen() {
+  const { theme, isDark } = useAppTheme();
   const navigation = useNavigation<RegisterNavProp>();
   const dispatch = useAppDispatch();
   const { loading, error } = useAppSelector((s) => s.auth);
@@ -132,12 +134,11 @@ export default function RegisterScreen() {
     if (registerUser.rejected.match(result)) {
       Alert.alert('Đăng ký thất bại', result.payload as string);
     }
-    // Nếu thành công, RootNavigator sẽ tự chuyển sang MainStack
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <KeyboardAvoidingView
         style={styles.keyboardView}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
@@ -152,33 +153,48 @@ export default function RegisterScreen() {
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
           >
-            <Text style={styles.backArrow}>‹</Text>
-            <Text style={styles.backLabel}>Đăng nhập</Text>
+            <Text style={[styles.backArrow, { color: theme.primary }]}>‹</Text>
+            <Text style={[styles.backLabel, { color: theme.primary }]}>Đăng nhập</Text>
           </TouchableOpacity>
 
           <View style={styles.titleSection}>
-            <Text style={styles.title}>Tạo tài khoản</Text>
-            <Text style={styles.subtitle}>
+            <Text style={[styles.title, { color: theme.textPrimary }]}>Tạo tài khoản</Text>
+            <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
               Đăng ký để tham gia các sự kiện của IUH
             </Text>
           </View>
 
           {/* Form */}
-          <View style={styles.card}>
+          <View
+            style={[
+              styles.card,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+                borderWidth: isDark ? 1 : 0,
+              },
+            ]}
+          >
             {FIELDS.map((field) => (
               <View key={field.key} style={styles.fieldGroup}>
-                <Text style={styles.label}>{field.label}</Text>
+                <Text style={[styles.label, { color: theme.textSecondary }]}>{field.label}</Text>
                 <View
                   style={[
                     styles.inputWrapper,
-                    focusedField === field.key && styles.inputWrapperFocused,
+                    {
+                      backgroundColor: theme.inputBackground,
+                      borderColor:
+                        focusedField === field.key
+                          ? theme.primary
+                          : theme.inputBorder,
+                    },
                   ]}
                 >
                   <Text style={styles.inputIcon}>{field.icon}</Text>
                   <TextInput
-                    style={styles.input}
+                    style={[styles.input, { color: theme.textPrimary }]}
                     placeholder={field.placeholder}
-                    placeholderTextColor={Colors.gray400}
+                    placeholderTextColor={theme.textTertiary}
                     value={form[field.key]}
                     onChangeText={(v) => updateField(field.key, v)}
                     keyboardType={field.keyboardType ?? 'default'}
@@ -208,14 +224,27 @@ export default function RegisterScreen() {
 
             {/* Error */}
             {!!error && (
-              <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠️ {error}</Text>
+              <View
+                style={[
+                  styles.errorBox,
+                  {
+                    backgroundColor: isDark
+                      ? 'rgba(239, 68, 68, 0.15)'
+                      : Colors.errorLight,
+                  },
+                ]}
+              >
+                <Text style={[styles.errorText, { color: theme.danger }]}>⚠️ {error}</Text>
               </View>
             )}
 
             {/* Submit */}
             <TouchableOpacity
-              style={[styles.submitBtn, loading && styles.submitBtnDisabled]}
+              style={[
+                styles.submitBtn,
+                { backgroundColor: theme.primary },
+                loading && styles.submitBtnDisabled,
+              ]}
               onPress={handleRegister}
               disabled={loading}
               activeOpacity={0.85}
@@ -232,9 +261,9 @@ export default function RegisterScreen() {
 
           {/* Login link */}
           <View style={styles.loginRow}>
-            <Text style={styles.loginText}>Đã có tài khoản? </Text>
+            <Text style={[styles.loginText, { color: theme.textSecondary }]}>Đã có tài khoản? </Text>
             <TouchableOpacity onPress={() => navigation.navigate('Login')}>
-              <Text style={styles.loginLink}>Đăng nhập</Text>
+              <Text style={[styles.loginLink, { color: theme.primary }]}>Đăng nhập</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -314,10 +343,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: Spacing.md,
     backgroundColor: Colors.gray50,
     height: 50,
-  },
-  inputWrapperFocused: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.background,
   },
   inputIcon: { fontSize: 15, marginRight: Spacing.sm },
   input: {

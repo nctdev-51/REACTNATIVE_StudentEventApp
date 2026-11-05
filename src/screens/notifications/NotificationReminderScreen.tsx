@@ -4,17 +4,18 @@ import {
   Text,
   TouchableOpacity,
   StyleSheet,
-  SafeAreaView,
   StatusBar,
   Platform,
   Alert,
   ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
 import Constants from 'expo-constants';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 // Configure notification behavior when app is in foreground
 Notifications.setNotificationHandler({
@@ -66,19 +67,8 @@ export interface NotificationReminderScreenProps {
   onNotificationPress?: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
-
-const ACCENT_COLOR = '#2563EB';
-const BACKGROUND = '#FFFFFF';
-const SCREEN_BG = '#F8FAFC';
-const TEXT_PRIMARY = '#111827';
-const TEXT_SECONDARY = '#6B7280';
-const BORDER_COLOR = '#E2E8F0';
-
 const DEFAULT_NOTIFICATION: NotificationPayload = {
-  appName: 'EventMate',
+  appName: 'StudentEventApp',
   timestamp: 'bây giờ',
   title: 'Sự kiện sắp bắt đầu!',
   body: 'Workshop React Native sẽ bắt đầu sau 30 phút tại Hội trường A.',
@@ -89,9 +79,9 @@ const DEFAULT_NOTIFICATION: NotificationPayload = {
 // ---------------------------------------------------------------------------
 
 /** EventMate App Logo Icon */
-function EventMateAppIcon() {
+function EventMateAppIcon({ accentColor }: { accentColor: string }) {
   return (
-    <View style={iconStyles.appIconSquare}>
+    <View style={[iconStyles.appIconSquare, { backgroundColor: accentColor }]}>
       <View style={iconStyles.appHatRoof} />
       <View style={iconStyles.appHatBase} />
     </View>
@@ -113,7 +103,7 @@ const iconStyles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 6,
-    backgroundColor: ACCENT_COLOR,
+    backgroundColor: '#2563EB',
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -156,25 +146,25 @@ const iconStyles = StyleSheet.create({
 });
 
 // ---------------------------------------------------------------------------
-// NotificationReminderScreen (Giao diện 10 - Quản lý & Trigger Thông báo)
+// NotificationReminderScreen
 // ---------------------------------------------------------------------------
 
 export default function NotificationReminderScreen({
   notification = DEFAULT_NOTIFICATION,
   onNotificationPress,
 }: NotificationReminderScreenProps) {
+  const { theme, isDark } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const [permissionGranted, setPermissionGranted] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('Đang kiểm tra quyền thông báo...');
 
-  // Yêu cầu quyền thông báo an toàn (không bị lỗi warnOfExpoGoPushUsage trên Expo Go Android SDK 53+)
   useEffect(() => {
     async function checkPermissions() {
       const isGranted = await safeRequestPermissions();
       setPermissionGranted(isGranted);
       setStatusMessage(
         isGranted
-          ? 'Sẵn sàng phát Local Notification trên Expo Go'
+          ? 'Sẵn sàng phát Local Notification trên thiết bị'
           : 'Chưa cấp quyền thông báo trên thiết bị!'
       );
     }
@@ -182,7 +172,7 @@ export default function NotificationReminderScreen({
     checkPermissions();
   }, []);
 
-  /** Gửi thông báo đẩy thật sự về thiết bị ngay lập tức */
+  /** Gửi thông báo đẩy về thiết bị ngay lập tức */
   const handleSendInstantNotification = async () => {
     try {
       const isGranted = await safeRequestPermissions();
@@ -208,7 +198,7 @@ export default function NotificationReminderScreen({
     }
   };
 
-  /** Hẹn giờ gửi thông báo sau 5 giây (để người dùng khóa màn hình thử nghiệm) */
+  /** Hẹn giờ gửi thông báo sau 5 giây */
   const handleScheduleNotification = async () => {
     try {
       const isGranted = await safeRequestPermissions();
@@ -232,7 +222,7 @@ export default function NotificationReminderScreen({
 
       Alert.alert(
         'Đã hẹn giờ (5s)',
-        'Thông báo sẽ xuất hiện trên điện thoại sau 5 giây. Bạn có thể khóa màn hình để test thông báo khóa!'
+        'Thông báo sẽ xuất hiện trên điện thoại sau 5 giây. Bạn có thể khóa màn hình để thử nghiệm!'
       );
       setStatusMessage('Đang chờ 5s để phát thông báo về thiết bị...');
     } catch (error) {
@@ -240,10 +230,9 @@ export default function NotificationReminderScreen({
     }
   };
 
-  /** Hàm mẫu: Lập lịch Local Notification trước ngày/giờ diễn ra sự kiện (Ví dụ: trước 30 phút) */
+  /** Lập lịch nhắc nhở trước khi diễn ra sự kiện */
   const handleScheduleForSpecificEventDate = async () => {
     try {
-      // Giả lập ngày giờ sự kiện: 10 giây sau thời điểm hiện tại (dùng để test)
       const targetTime = new Date(Date.now() + 10 * 1000);
 
       const notificationId = await Notifications.scheduleNotificationAsync({
@@ -260,10 +249,10 @@ export default function NotificationReminderScreen({
       });
 
       Alert.alert(
-        'Lập lịch Local Noti thành công!',
-        `Đã lên lịch nhắc nhở Local Notification cho sự kiện (ID: ${notificationId}). Thông báo sẽ đổ chuông sau 10 giây!`
+        'Lập lịch thành công!',
+        `Đã lên lịch nhắc nhở sự kiện (ID: ${notificationId}). Thông báo sẽ đổ chuông sau 10 giây!`
       );
-      setStatusMessage(`Đã lập lịch Local Notification cho sự kiện thành công!`);
+      setStatusMessage(`Đã lập lịch thông báo cho sự kiện thành công!`);
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể lập lịch: ' + (error as Error).message);
     }
@@ -273,58 +262,71 @@ export default function NotificationReminderScreen({
   const handleCancelAllScheduledLocalNotifications = async () => {
     try {
       await Notifications.cancelAllScheduledNotificationsAsync();
-      Alert.alert('Đã hủy', 'Đã xóa tất cả các lịch nhắc nhở Local Notification đã cài đặt.');
-      setStatusMessage('Đã xóa tất cả lịch Local Notification đã đặt.');
+      Alert.alert('Đã hủy', 'Đã xóa tất cả các lịch nhắc nhở đã cài đặt.');
+      setStatusMessage('Đã xóa tất cả lịch thông báo đã đặt.');
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể hủy thông báo: ' + (error as Error).message);
     }
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
 
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Nút Back + Header */}
         <View style={styles.topBar}>
           <TouchableOpacity
             style={styles.backButton}
-            onPress={() => navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home')}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Home'))}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Quay lại"
           >
-            <Text style={styles.backArrow}>‹</Text>
-            <Text style={styles.backLabel}>Quay lại</Text>
+            <Text style={[styles.backArrow, { color: theme.primary }]}>‹</Text>
+            <Text style={[styles.backLabel, { color: theme.primary }]}>Quay lại</Text>
           </TouchableOpacity>
         </View>
 
         {/* Header */}
         <View style={styles.header}>
-          <View style={styles.headerIconCircle}>
-            <BellIcon color={ACCENT_COLOR} />
+          <View
+            style={[
+              styles.headerIconCircle,
+              { backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF' },
+            ]}
+          >
+            <BellIcon color={theme.primary} />
           </View>
-          <Text style={styles.headerTitle}>Nhắc nhở sự kiện</Text>
-          <Text style={styles.headerSubtitle}>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Nhắc nhở sự kiện</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
             Kiểm tra và phát thông báo trực tiếp đến điện thoại
           </Text>
         </View>
 
         {/* Trạng thái quyền thông báo */}
-        <View style={styles.statusCard}>
+        <View
+          style={[
+            styles.statusCard,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
+        >
           <View
             style={[
               styles.statusDot,
               { backgroundColor: permissionGranted ? '#22C55E' : '#EF4444' },
             ]}
           />
-          <Text style={styles.statusText}>{statusMessage}</Text>
+          <Text style={[styles.statusText, { color: theme.textPrimary }]}>{statusMessage}</Text>
         </View>
 
-        {/* Thẻ xem trước Giao diện Thông báo (In-App Preview Card) */}
-        <Text style={styles.sectionLabel}>MẪU THÔNG BÁO</Text>
+        {/* Thẻ xem trước Giao diện Thông báo */}
+        <Text style={[styles.sectionLabel, { color: theme.textTertiary }]}>MẪU THÔNG BÁO</Text>
         <TouchableOpacity
-          style={styles.notificationCard}
+          style={[
+            styles.notificationCard,
+            { backgroundColor: theme.surface, borderColor: theme.border },
+          ]}
           onPress={onNotificationPress}
           activeOpacity={0.8}
           accessibilityRole="button"
@@ -333,23 +335,31 @@ export default function NotificationReminderScreen({
           {/* Card Header */}
           <View style={styles.cardHeader}>
             <View style={styles.appNameRow}>
-              <EventMateAppIcon />
-              <Text style={styles.appNameText}>{notification.appName || 'EventMate'}</Text>
+              <EventMateAppIcon accentColor={theme.primary} />
+              <Text style={[styles.appNameText, { color: theme.textPrimary }]}>
+                {notification.appName || 'StudentEventApp'}
+              </Text>
             </View>
-            <Text style={styles.timestampText}>{notification.timestamp || 'bây giờ'}</Text>
+            <Text style={[styles.timestampText, { color: theme.textTertiary }]}>
+              {notification.timestamp || 'bây giờ'}
+            </Text>
           </View>
 
           {/* Card Body */}
           <View style={styles.cardBody}>
-            <Text style={styles.notificationTitle}>{notification.title}</Text>
-            <Text style={styles.notificationMessage}>{notification.body}</Text>
+            <Text style={[styles.notificationTitle, { color: theme.textPrimary }]}>
+              {notification.title}
+            </Text>
+            <Text style={[styles.notificationMessage, { color: theme.textSecondary }]}>
+              {notification.body}
+            </Text>
           </View>
         </TouchableOpacity>
 
-        {/* Nút bấm Test thông báo thật về điện thoại */}
+        {/* Nút bấm Test thông báo về điện thoại */}
         <View style={styles.actionsContainer}>
           <TouchableOpacity
-            style={styles.primaryButton}
+            style={[styles.primaryButton, { backgroundColor: theme.primary }]}
             onPress={handleSendInstantNotification}
             activeOpacity={0.8}
             accessibilityRole="button"
@@ -359,33 +369,54 @@ export default function NotificationReminderScreen({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.secondaryButton}
+            style={[
+              styles.secondaryButton,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
             onPress={handleScheduleNotification}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Hẹn giờ gửi thông báo sau 5 giây"
           >
-            <Text style={styles.secondaryButtonText}>⏱️ Hẹn gửi sau 5s (Thử khóa màn hình)</Text>
+            <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>
+              ⏱️ Hẹn gửi sau 5s (Thử khóa màn hình)
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.dateScheduleButton}
+            style={[
+              styles.dateScheduleButton,
+              {
+                backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#EFF6FF',
+                borderColor: isDark ? theme.primary : '#BFDBFE',
+              },
+            ]}
             onPress={handleScheduleForSpecificEventDate}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Lập lịch nhắc nhở theo ngày giờ sự kiện"
           >
-            <Text style={styles.dateScheduleButtonText}>🗓️ Test lập lịch sự kiện (Báo sau 10s)</Text>
+            <Text style={[styles.dateScheduleButtonText, { color: theme.primary }]}>
+              🗓️ Lập lịch thông báo sự kiện (10s)
+            </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.cancelButton}
+            style={[
+              styles.cancelButton,
+              {
+                backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
+                borderColor: isDark ? '#F87171' : '#FCA5A5',
+              },
+            ]}
             onPress={handleCancelAllScheduledLocalNotifications}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Hủy tất cả lịch thông báo"
           >
-            <Text style={styles.cancelButtonText}>🗑️ Hủy toàn bộ lịch Local Notification</Text>
+            <Text style={[styles.cancelButtonText, { color: theme.danger }]}>
+              🗑️ Hủy toàn bộ lịch nhắc nhở
+            </Text>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -393,21 +424,16 @@ export default function NotificationReminderScreen({
   );
 }
 
-// ---------------------------------------------------------------------------
-// Styles (Flexbox Responsive Design)
-// ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: SCREEN_BG,
+    backgroundColor: '#F8FAFC',
   },
   container: {
     paddingHorizontal: 20,
     paddingTop: 4,
     paddingBottom: 32,
   },
-  // Top bar with back button
   topBar: {
     paddingHorizontal: 4,
     paddingVertical: 8,
@@ -422,18 +448,16 @@ const styles = StyleSheet.create({
   },
   backArrow: {
     fontSize: 26,
-    color: ACCENT_COLOR,
+    color: '#2563EB',
     fontWeight: '300',
     lineHeight: 28,
     marginRight: 4,
   },
   backLabel: {
     fontSize: 15,
-    color: ACCENT_COLOR,
+    color: '#2563EB',
     fontWeight: '500',
   },
-
-  // Header
   header: {
     alignItems: 'center',
     marginBottom: 20,
@@ -450,25 +474,23 @@ const styles = StyleSheet.create({
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: TEXT_PRIMARY,
+    color: '#0F172A',
     marginBottom: 4,
   },
   headerSubtitle: {
     fontSize: 13,
-    color: TEXT_SECONDARY,
+    color: '#64748B',
     textAlign: 'center',
   },
-
-  // Status Card
   statusCard: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: BACKGROUND,
+    backgroundColor: '#FFFFFF',
     paddingVertical: 10,
     paddingHorizontal: 14,
     borderRadius: 12,
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
+    borderColor: '#E2E8F0',
     marginBottom: 24,
     gap: 10,
   },
@@ -479,11 +501,10 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 13,
-    color: TEXT_PRIMARY,
+    color: '#0F172A',
     fontWeight: '500',
     flex: 1,
   },
-
   sectionLabel: {
     fontSize: 12,
     fontWeight: '700',
@@ -491,14 +512,12 @@ const styles = StyleSheet.create({
     letterSpacing: 0.8,
     marginBottom: 10,
   },
-
-  // Notification Card UI
   notificationCard: {
-    backgroundColor: BACKGROUND,
+    backgroundColor: '#FFFFFF',
     borderRadius: 18,
     padding: 16,
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
+    borderColor: '#E2E8F0',
     marginBottom: 28,
     ...Platform.select({
       ios: {
@@ -526,11 +545,11 @@ const styles = StyleSheet.create({
   appNameText: {
     fontSize: 13,
     fontWeight: '700',
-    color: TEXT_PRIMARY,
+    color: '#0F172A',
   },
   timestampText: {
     fontSize: 12,
-    color: TEXT_SECONDARY,
+    color: '#94A3B8',
   },
   cardBody: {
     marginTop: 2,
@@ -538,7 +557,7 @@ const styles = StyleSheet.create({
   notificationTitle: {
     fontSize: 15,
     fontWeight: '700',
-    color: TEXT_PRIMARY,
+    color: '#0F172A',
     marginBottom: 4,
   },
   notificationMessage: {
@@ -546,14 +565,12 @@ const styles = StyleSheet.create({
     color: '#475569',
     lineHeight: 20,
   },
-
-  // Action Buttons
   actionsContainer: {
     width: '100%',
     gap: 12,
   },
   primaryButton: {
-    backgroundColor: ACCENT_COLOR,
+    backgroundColor: '#2563EB',
     height: 52,
     borderRadius: 14,
     justifyContent: 'center',
@@ -561,7 +578,7 @@ const styles = StyleSheet.create({
     width: '100%',
     ...Platform.select({
       ios: {
-        shadowColor: ACCENT_COLOR,
+        shadowColor: '#2563EB',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.2,
         shadowRadius: 8,
@@ -577,17 +594,17 @@ const styles = StyleSheet.create({
     fontWeight: '600',
   },
   secondaryButton: {
-    backgroundColor: BACKGROUND,
+    backgroundColor: '#FFFFFF',
     height: 52,
     borderRadius: 14,
     justifyContent: 'center',
     alignItems: 'center',
     width: '100%',
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
+    borderColor: '#E2E8F0',
   },
   secondaryButtonText: {
-    color: TEXT_PRIMARY,
+    color: '#0F172A',
     fontSize: 14.5,
     fontWeight: '600',
   },
@@ -602,7 +619,7 @@ const styles = StyleSheet.create({
     borderColor: '#BFDBFE',
   },
   dateScheduleButtonText: {
-    color: ACCENT_COLOR,
+    color: '#2563EB',
     fontSize: 14.5,
     fontWeight: '600',
   },

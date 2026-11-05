@@ -794,6 +794,15 @@ export default function ProfileScreen({
           <TouchableOpacity
             style={styles.optionsButton}
             activeOpacity={0.7}
+<<<<<<< HEAD
+=======
+            onPress={() => {
+              Alert.alert(
+                "Thông tin tài khoản",
+                `Người dùng hiện tại: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nĐiểm rèn luyện: ${pointsAccumulated} đ\nChế độ màu: ${mode}`,
+              );
+            }}
+>>>>>>> c4f94b6 (Refactor check-in screens to enhance UI and UX with theme support)
             accessibilityRole="button"
             accessibilityLabel="Tùy chọn khác"
           >
@@ -855,9 +864,24 @@ export default function ProfileScreen({
             onPress={handleOpenEditProfile}
           />
           <MenuItem
+<<<<<<< HEAD
             icon={<SettingsCogIcon color="#334155" />}
             label="Cài đặt"
             onPress={() => Alert.alert('Cài đặt', 'Cài đặt ứng dụng')}
+=======
+            icon={<UserOutlineIcon color={theme.textSecondary} />}
+            label="Thông tin cá nhân"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() =>
+              Alert.alert(
+                "Thông tin sinh viên",
+                `Họ và tên: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nEmail: ${email}\nSố điện thoại: ${phone || "Chưa cập nhật"}\nĐiểm rèn luyện: ${pointsAccumulated} điểm`,
+              )
+            }
+>>>>>>> c4f94b6 (Refactor check-in screens to enhance UI and UX with theme support)
           />
           <MenuItem
             icon={<MoonCrescentIcon color="#334155" />}
