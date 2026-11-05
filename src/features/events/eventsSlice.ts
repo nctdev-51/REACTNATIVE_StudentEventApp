@@ -2,6 +2,7 @@ import {
   createSlice,
   createAsyncThunk,
   PayloadAction,
+  createSelector,
 } from "@reduxjs/toolkit";
 
 import { Event } from "../../types";
@@ -182,94 +183,74 @@ export const {
   clearError,
 } = eventsSlice.actions;
 
-// Danh sách sau khi lọc
-export const selectFilteredEvents = (state: {
-  events: EventsState;
-}) => {
-  const { list, filter } = state.events;
+// Danh sách sau khi lọc (memoized bằng createSelector để tránh re-render không cần thiết)
+export const selectFilteredEvents = createSelector(
+  [
+    (state: { events: EventsState }) => state.events.list,
+    (state: { events: EventsState }) => state.events.filter,
+  ],
+  (list, filter) => {
+    return list.filter((event) => {
+      // Ẩn sự kiện nếu đã bị Admin ẩn khỏi sinh viên
+      if (event.isHidden) return false;
 
-  return list.filter((event) => {
-    const matchCategory =
-      !filter.category ||
-      event.category === filter.category;
+      const matchCategory =
+        !filter.category || event.category === filter.category;
 
-    const matchFaculty =
-      !filter.faculty ||
-      event.faculty === filter.faculty;
+      const matchFaculty =
+        !filter.faculty || event.faculty === filter.faculty;
 
-    const matchStatus =
-      !filter.status ||
-      event.status === filter.status;
+      const matchStatus =
+        !filter.status || event.status === filter.status;
 
-    // Tìm kiếm
-    const search = filter.searchQuery
-      .trim()
-      .toLowerCase();
+      // Tìm kiếm
+      const search = filter.searchQuery.trim().toLowerCase();
 
-    const matchSearch =
-      !search ||
-      event.title.toLowerCase().includes(search) ||
-      event.location.toLowerCase().includes(search);
+      const matchSearch =
+        !search ||
+        event.title.toLowerCase().includes(search) ||
+        event.location.toLowerCase().includes(search);
 
-    // Lọc ngày
-    let matchDate = true;
+      // Lọc ngày
+      let matchDate = true;
 
-    if (filter.date) {
-      const eventDate = new Date(event.time.start);
-      const today = new Date();
+      if (filter.date) {
+        const eventDate = new Date(event.time.start);
+        const today = new Date();
 
-      if (filter.date === "today") {
-        matchDate =
-          eventDate.getDate() === today.getDate() &&
-          eventDate.getMonth() === today.getMonth() &&
-          eventDate.getFullYear() === today.getFullYear();
+        if (filter.date === "today") {
+          matchDate =
+            eventDate.getDate() === today.getDate() &&
+            eventDate.getMonth() === today.getMonth() &&
+            eventDate.getFullYear() === today.getFullYear();
+        } else if (filter.date === "week") {
+          const startWeek = new Date(today);
+          const day = (today.getDay() + 6) % 7;
+          startWeek.setDate(today.getDate() - day);
+          startWeek.setHours(0, 0, 0, 0);
+
+          const endWeek = new Date(startWeek);
+          endWeek.setDate(startWeek.getDate() + 7);
+
+          matchDate = eventDate >= startWeek && eventDate < endWeek;
+        } else if (filter.date === "month") {
+          matchDate =
+            eventDate.getMonth() === today.getMonth() &&
+            eventDate.getFullYear() === today.getFullYear();
+        } else {
+          matchDate = event.time.start.slice(0, 10) === filter.date;
+        }
       }
 
-      else if (filter.date === "week") {
-        const startWeek = new Date(today);
-
-        const day =
-          (today.getDay() + 6) % 7;
-
-        startWeek.setDate(
-          today.getDate() - day
-        );
-
-        startWeek.setHours(0, 0, 0, 0);
-
-        const endWeek = new Date(startWeek);
-
-        endWeek.setDate(
-          startWeek.getDate() + 7
-        );
-
-        matchDate =
-          eventDate >= startWeek &&
-          eventDate < endWeek;
-      }
-
-      else if (filter.date === "month") {
-        matchDate =
-          eventDate.getMonth() === today.getMonth() &&
-          eventDate.getFullYear() === today.getFullYear();
-      }
-
-      // Nếu sau này chọn ngày cụ thể
-      else {
-        matchDate =
-          event.time.start.slice(0, 10) ===
-          filter.date;
-      }
-    }
-
-    return (
-      matchCategory &&
-      matchFaculty &&
-      matchDate &&
-      matchStatus &&
-      matchSearch
-    );
-  });
-};
+      return (
+        matchCategory &&
+        matchFaculty &&
+        matchDate &&
+        matchStatus &&
+        matchSearch
+      );
+    });
+  }
+);
 
 export default eventsSlice.reducer;

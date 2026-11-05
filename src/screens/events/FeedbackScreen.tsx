@@ -305,13 +305,13 @@ export default function FeedbackScreen() {
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.eventChipsScroll}
         >
-          {eventsList.map((evt) => {
-            const evtId = evt.id || evt._id;
+          {eventsList.map((evt, index) => {
+            const evtId = evt.id || evt._id || `evt-${index}`;
             const isSelected =
               evtId === (currentEvent?.id || currentEvent?._id);
             return (
               <TouchableOpacity
-                key={evtId}
+                key={`${evtId}-${index}`}
                 style={[
                   styles.eventChip,
                   {

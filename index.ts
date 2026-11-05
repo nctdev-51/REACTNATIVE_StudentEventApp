@@ -1,8 +1,20 @@
-import { registerRootComponent } from 'expo';
+import { registerRootComponent } from "expo";
+import { Dimensions } from "react-native";
 
-import App from './App';
+// Polyfill window.matchMedia for Tamagui on React Native to avoid spamming warnings
+if (typeof window !== "undefined" && !window.matchMedia) {
+  window.matchMedia = ((query: string) => ({
+    matches: false,
+    media: query,
+    onchange: null,
+    addListener: () => {},
+    removeListener: () => {},
+    addEventListener: () => {},
+    removeEventListener: () => {},
+    dispatchEvent: () => false,
+  })) as any;
+}
 
-// registerRootComponent calls AppRegistry.registerComponent('main', () => App);
-// It also ensures that whether you load the app in Expo Go or in a native build,
-// the environment is set up appropriately
+import App from "./App";
+
 registerRootComponent(App);

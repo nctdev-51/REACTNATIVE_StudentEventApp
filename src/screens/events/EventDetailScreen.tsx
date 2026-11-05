@@ -9,6 +9,7 @@ import {
   ActivityIndicator,
   Alert,
   Share,
+  StatusBar,
 } from "react-native";
 
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
@@ -30,6 +31,12 @@ import {
 } from "../../features/events/eventsSlice";
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
 import { Colors } from "../../theme";
+import {
+  isEventPast,
+  toggleHideEvent,
+  deleteEvent,
+} from "../../services/api";
+import { useAppTheme } from "../../theme/ThemeContext";
 
 type EventDetailNavProp = NativeStackNavigationProp<
   MainStackParamList,
@@ -55,6 +62,7 @@ function formatDate(dateString: string) {
 
 export default function EventDetailScreen() {
   const navigation = useNavigation<EventDetailNavProp>();
+  const { theme, isDark } = useAppTheme();
 
   const route = useRoute<EventDetailRouteProp>();
 
@@ -81,6 +89,7 @@ export default function EventDetailScreen() {
   );
 
   const isRegistered = !!existingReg;
+  const isPast = isEventPast(event);
   const [adminModalVisible, setAdminModalVisible] = useState(false);
   const [userDistance, setUserDistance] = useState<number | null>(null);
 
@@ -113,6 +122,14 @@ export default function EventDetailScreen() {
   // Đăng ký sự kiện
   const handleRegister = async () => {
     if (!user || !eventId) return;
+
+    if (isPast) {
+      Alert.alert(
+        "Hết hạn đăng ký",
+        "Sự kiện này đã kết thúc thời gian tổ chức. Bạn không thể đăng ký nữa.",
+      );
+      return;
+    }
 
     if (isRegistered) {
       Alert.alert("Đã đăng ký", "Bạn đã đăng ký sự kiện này rồi.");
@@ -152,10 +169,10 @@ export default function EventDetailScreen() {
   // Loading
   if (loadingDetail) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={Colors.primary} />
-
-        <Text style={styles.loadingText}>Đang tải sự kiện...</Text>
+      <View style={[styles.loadingContainer, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={theme.statusBarStyle} />
+        <ActivityIndicator size="large" color={theme.primary} />
+        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Đang tải sự kiện...</Text>
       </View>
     );
   }
@@ -163,16 +180,14 @@ export default function EventDetailScreen() {
   // Error
   if (error || !event) {
     return (
-      <View style={styles.container}>
+      <View style={[styles.container, { backgroundColor: theme.background }]}>
+        <StatusBar barStyle={theme.statusBarStyle} />
         <View style={styles.emptyState}>
           <Text style={styles.icon}>📅</Text>
-
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>
             {error ?? "Chưa có thông tin sự kiện"}
           </Text>
-
-          <Text style={styles.description}>Vui lòng thử lại sau.</Text>
-
+          <Text style={[styles.description, { color: theme.textSecondary }]}>Vui lòng thử lại sau.</Text>
           <TouchableOpacity
             style={styles.backBtn}
             onPress={() => navigation.goBack()}
@@ -185,64 +200,70 @@ export default function EventDetailScreen() {
   }
 
   return (
-    <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
+    <ScrollView
+      style={[styles.container, { backgroundColor: theme.background }]}
+      showsVerticalScrollIndicator={false}
+    >
+      <StatusBar barStyle={theme.statusBarStyle} />
       {/* Ảnh sự kiện */}
       <Image source={{ uri: event.images[0] }} style={styles.bannerImage} />
 
       <View style={styles.body}>
         {/* Chủ đề + điểm */}
         <View style={styles.topRow}>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryText}>{event.category}</Text>
+          <View style={[
+            styles.categoryBadge,
+            { backgroundColor: isDark ? "rgba(37,99,235,0.2)" : "#DBEAFE" }
+          ]}>
+            <Text style={[styles.categoryText, { color: theme.primary }]}>{event.category}</Text>
           </View>
 
-          <View style={styles.pointBadge}>
-            <Text style={styles.pointText}>
+          <View style={[
+            styles.pointBadge,
+            { backgroundColor: isDark ? "rgba(16,185,129,0.2)" : "#DCFCE7" }
+          ]}>
+            <Text style={[styles.pointText, { color: isDark ? "#34D399" : "#16A34A" }]}>
               +{event.trainingPoints} điểm rèn luyện
             </Text>
           </View>
         </View>
 
         {/* Tiêu đề */}
-        <Text style={styles.eventTitle}>{event.title}</Text>
-
-        <Text style={styles.facultyText}>Đơn vị: {event.faculty}</Text>
+        <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>{event.title}</Text>
+        <Text style={[styles.facultyText, { color: theme.textSecondary }]}>Đơn vị: {event.faculty}</Text>
 
         {/* Thông tin */}
-        <View style={styles.infoCard}>
+        <View style={[styles.infoCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>🗓️</Text>
-
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Thời gian bắt đầu</Text>
-
-              <Text style={styles.infoValue}>
+              <Text style={[styles.infoLabel, { color: theme.textTertiary }]}>Thời gian bắt đầu</Text>
+              <Text style={[styles.infoValue, { color: theme.textPrimary }]}>
                 {formatDate(event.time.start)}
               </Text>
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
 
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>📍</Text>
-
             <View style={styles.infoContent}>
               <View style={styles.locationHeaderRow}>
-                <Text style={styles.infoLabel}>Địa điểm tổ chức</Text>
+                <Text style={[styles.infoLabel, { color: theme.textTertiary }]}>Địa điểm tổ chức</Text>
                 {user?.role === "admin" ? (
                   <TouchableOpacity
-                    style={styles.adminEditBtn}
+                    style={[styles.adminEditBtn, { backgroundColor: isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF", borderColor: isDark ? "#818CF8" : "#C7D2FE" }]}
                     onPress={() => setAdminModalVisible(true)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.adminEditBtnText}>
+                    <Text style={[styles.adminEditBtnText, { color: isDark ? "#A5B4FC" : "#4338CA" }]}>
                       📍 Đổi địa điểm (Admin)
                     </Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
-                    style={styles.mapLinkBtn}
+                    style={[styles.mapLinkBtn, { backgroundColor: isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF", borderColor: isDark ? "#818CF8" : "#C7D2FE" }]}
                     onPress={() => {
                       if (event.coordinates) {
                         openInGoogleMaps(
@@ -254,16 +275,15 @@ export default function EventDetailScreen() {
                     }}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.mapLinkBtnText}>🗺️ Chỉ đường Map</Text>
+                    <Text style={[styles.mapLinkBtnText, { color: isDark ? "#A5B4FC" : "#4338CA" }]}>🗺️ Chỉ đường Map</Text>
                   </TouchableOpacity>
                 )}
               </View>
-              <Text style={styles.infoValue}>{event.location}</Text>
+              <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{event.location}</Text>
               {event.coordinates ? (
                 <View style={styles.distanceBadgeRow}>
-                  <Text style={styles.coordsValue}>
-                    🔒 Phạm vi: Bán kính {event.coordinates.radiusMeters || 300}
-                    m quanh địa điểm
+                  <Text style={[styles.coordsValue, { color: isDark ? "#34D399" : "#059669" }]}>
+                    🔒 Phạm vi: Bán kính {event.coordinates.radiusMeters || 300}m quanh địa điểm
                   </Text>
                   {userDistance !== null && (
                     <Text
@@ -281,22 +301,20 @@ export default function EventDetailScreen() {
                   )}
                 </View>
               ) : (
-                <Text style={styles.coordsWarning}>
+                <Text style={[styles.coordsWarning, { color: isDark ? "#FCD34D" : "#D97706" }]}>
                   ℹ️ Điểm danh tự do (Không giới hạn vị trí)
                 </Text>
               )}
             </View>
           </View>
 
-          <View style={styles.divider} />
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
 
           <View style={styles.infoRow}>
             <Text style={styles.infoIcon}>🏢</Text>
-
             <View style={styles.infoContent}>
-              <Text style={styles.infoLabel}>Ban tổ chức</Text>
-
-              <Text style={styles.infoValue}>{event.organizer}</Text>
+              <Text style={[styles.infoLabel, { color: theme.textTertiary }]}>Ban tổ chức</Text>
+              <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{event.organizer}</Text>
             </View>
           </View>
         </View>
@@ -309,58 +327,103 @@ export default function EventDetailScreen() {
         )}
 
         {/* Mô tả */}
-        <View style={styles.section}>
-          <Text style={styles.sectionHeader}>Mô tả sự kiện</Text>
-
-          <Text style={styles.descriptionText}>{event.description}</Text>
+        <View style={[styles.section, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.sectionHeader, { color: theme.textPrimary }]}>Mô tả sự kiện</Text>
+          <Text style={[styles.descriptionText, { color: theme.textSecondary }]}>{event.description}</Text>
         </View>
+
+        {/* Banner thông báo khi sự kiện đã qua */}
+        {isPast && (
+          <View style={[
+            styles.pastBannerBox,
+            { backgroundColor: isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2", borderColor: isDark ? "#F87171" : "#FECACA" }
+          ]}>
+            <Text style={styles.pastBannerIcon}>⏰</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={[styles.pastBannerTitle, { color: isDark ? "#FCA5A5" : "#991B1B" }]}>Sự kiện đã kết thúc</Text>
+              <Text style={[styles.pastBannerDesc, { color: isDark ? "#FCD5D5" : "#7F1D1D" }]}>
+                Sự kiện này đã kết thúc thời gian tổ chức. Bạn chỉ có thể xem lại thông tin lưu trữ và không thể đăng ký hoặc điểm danh được nữa.
+              </Text>
+            </View>
+          </View>
+        )}
 
         {/* Các nút */}
         <View style={styles.actionButtons}>
           {/* Chia sẻ sự kiện */}
           <TouchableOpacity
-            style={styles.shareButton}
+            style={[styles.shareButton, { backgroundColor: isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF" }]}
             onPress={handleShare}
             activeOpacity={0.85}
           >
-            <Text style={styles.shareButtonText}>🔗 Chia sẻ sự kiện</Text>
+            <Text style={[styles.shareButtonText, { color: theme.primary }]}>🔗 Chia sẻ sự kiện</Text>
           </TouchableOpacity>
 
           {/* Đăng ký */}
           <TouchableOpacity
             style={[
               styles.primaryButton,
-              isRegistered && styles.registeredButton,
-              actionLoading && styles.disabledButton,
+              isPast && styles.disabledPastBtn,
+              !isPast && isRegistered && styles.registeredButton,
+              (actionLoading || isPast) && styles.disabledButton,
             ]}
             onPress={handleRegister}
-            disabled={actionLoading || isRegistered}
+            disabled={actionLoading || isRegistered || isPast}
             activeOpacity={0.85}
           >
             {actionLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.primaryButtonText}>
-                {isRegistered ? "✅ Đã đăng ký" : "📋 Đăng ký tham gia"}
+              <Text
+                style={[
+                  styles.primaryButtonText,
+                  isPast && styles.disabledPastBtnText,
+                ]}
+              >
+                {isPast
+                  ? "🛑 Đã hết hạn đăng ký"
+                  : isRegistered
+                    ? "✅ Đã đăng ký"
+                    : "📋 Đăng ký tham gia"}
               </Text>
             )}
           </TouchableOpacity>
 
           {/* Check-in */}
           <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={() => navigation.navigate("CheckIn")}
+            style={[
+              styles.secondaryButton,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+              isPast && styles.disabledPastSecondaryBtn,
+            ]}
+            onPress={() => {
+              if (isPast) {
+                Alert.alert(
+                  "Hết hạn điểm danh",
+                  "Sự kiện này đã kết thúc thời gian diễn ra. Cổng điểm danh đã đóng.",
+                );
+                return;
+              }
+              navigation.navigate("CheckIn");
+            }}
+            disabled={isPast}
             activeOpacity={0.85}
           >
-            <Text style={styles.secondaryButtonText}>
-              📷 Quét QR Điểm Danh Ngay
+            <Text
+              style={[
+                styles.secondaryButtonText,
+                { color: theme.textSecondary },
+                isPast && styles.disabledPastSecondaryBtnText,
+              ]}
+            >
+              {isPast ? "🔒 Cổng điểm danh đã đóng" : "📷 Quét QR Điểm Danh Ngay"}
             </Text>
           </TouchableOpacity>
 
           {/* Feedback */}
           {existingReg?.status === "checked_in" && (
             <TouchableOpacity
-              style={styles.feedbackButton}
+              style={[styles.feedbackButton, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
               onPress={() =>
                 navigation.navigate("Feedback", {
                   eventId: event._id,
@@ -369,10 +432,72 @@ export default function EventDetailScreen() {
               }
               activeOpacity={0.85}
             >
-              <Text style={styles.feedbackButtonText}>
+              <Text style={[styles.feedbackButtonText, { color: theme.textSecondary }]}>
                 ✍️ Gửi phản hồi sự kiện
               </Text>
             </TouchableOpacity>
+          )}
+
+          {/* Panel Quản trị Admin: Ẩn/Hiện và Xóa sự kiện */}
+          {user?.role === "admin" && (
+            <View style={[styles.adminPanel, { backgroundColor: isDark ? theme.surfaceSecondary : "#F8FAFC", borderColor: theme.border }]}>
+              <Text style={[styles.adminPanelTitle, { color: theme.textSecondary }]}>
+                ⚙️ Quản trị sự kiện (Dành cho Admin)
+              </Text>
+              <View style={styles.adminPanelRow}>
+                <TouchableOpacity
+                  style={[
+                    styles.adminToggleBtn,
+                    event.isHidden ? styles.adminUnhideBtn : styles.adminHideBtn,
+                  ]}
+                  onPress={async () => {
+                    const newHidden = await toggleHideEvent(
+                      event._id,
+                      !!event.isHidden,
+                    );
+                    if (eventId) dispatch(fetchEventById(eventId));
+                    Alert.alert(
+                      "Thành công",
+                      newHidden
+                        ? "Đã ẩn sự kiện khỏi danh sách sinh viên."
+                        : "Đã mở lại sự kiện hiển thị cho sinh viên.",
+                    );
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.adminToggleBtnText}>
+                    {event.isHidden
+                      ? "👁️ Hiển thị lại cho sinh viên"
+                      : "👁️ Ẩn khỏi sinh viên"}
+                  </Text>
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={styles.adminDeleteBtn}
+                  onPress={() => {
+                    Alert.alert(
+                      "Xóa sự kiện",
+                      `Bạn có chắc chắn muốn xóa vĩnh viễn sự kiện "${event.title}"?`,
+                      [
+                        { text: "Hủy", style: "cancel" },
+                        {
+                          text: "Xóa vĩnh viễn",
+                          style: "destructive",
+                          onPress: async () => {
+                            await deleteEvent(event._id);
+                            Alert.alert("Đã xóa", "Sự kiện đã được xóa thành công.");
+                            navigation.goBack();
+                          },
+                        },
+                      ],
+                    );
+                  }}
+                  activeOpacity={0.8}
+                >
+                  <Text style={styles.adminDeleteBtnText}>🗑️ Xóa</Text>
+                </TouchableOpacity>
+              </View>
+            </View>
           )}
         </View>
       </View>
@@ -697,5 +822,101 @@ const styles = StyleSheet.create({
   },
   textWarning: {
     color: "#D97706",
+  },
+
+  // Past Event Banner & Disabled State
+  pastBannerBox: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FEF2F2",
+    borderColor: "#FECACA",
+    borderWidth: 1,
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+    gap: 12,
+  },
+  pastBannerIcon: {
+    fontSize: 26,
+  },
+  pastBannerTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#991B1B",
+    marginBottom: 2,
+  },
+  pastBannerDesc: {
+    fontSize: 12,
+    color: "#7F1D1D",
+    lineHeight: 18,
+  },
+  disabledPastBtn: {
+    backgroundColor: "#94A3B8",
+    opacity: 0.85,
+  },
+  disabledPastBtnText: {
+    color: "#FFFFFF",
+    fontWeight: "700",
+  },
+  disabledPastSecondaryBtn: {
+    backgroundColor: "#F1F5F9",
+    borderColor: "#CBD5E1",
+    opacity: 0.6,
+  },
+  disabledPastSecondaryBtnText: {
+    color: "#94A3B8",
+    fontStyle: "italic",
+  },
+
+  // Admin Control Panel
+  adminPanel: {
+    marginTop: 20,
+    backgroundColor: "#F8FAFC",
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    padding: 14,
+  },
+  adminPanelTitle: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#334155",
+    marginBottom: 10,
+    textAlign: "center",
+  },
+  adminPanelRow: {
+    flexDirection: "row",
+    gap: 10,
+  },
+  adminToggleBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminHideBtn: {
+    backgroundColor: "#F59E0B",
+  },
+  adminUnhideBtn: {
+    backgroundColor: "#10B981",
+  },
+  adminToggleBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  adminDeleteBtn: {
+    backgroundColor: "#EF4444",
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  adminDeleteBtnText: {
+    color: "#FFFFFF",
+    fontSize: 12.5,
+    fontWeight: "700",
   },
 });

@@ -33,11 +33,13 @@ import {
   selectUnreadCount,
 } from "../../features/notifications/notificationsSlice";
 import SearchBar from "../../components/events/SearchBar";
+import { isEventPast } from "../../services/api";
 import CategoryChip from "../../components/events/CategoryChip";
 import FeaturedEventCard from "../../components/events/FeaturedEventCard";
 import EventCard from "../../components/events/EventCard";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
-import { Colors, Spacing, Typography } from "../../theme";
+import { Colors, Typography } from "../../theme";
+import { useAppTheme } from "../../theme/ThemeContext";
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">;
 
@@ -56,6 +58,7 @@ export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
+  const { theme, isDark } = useAppTheme();
 
   const { loading, error, filter } = useAppSelector((state) => state.events);
   const filteredEvents = useAppSelector(selectFilteredEvents);
@@ -93,10 +96,21 @@ export default function HomeScreen() {
 
   const selectedCategory = filter.category ?? "Tất cả";
 
-  // Event đầu tiên làm nổi bật
-  const featuredEvent = filteredEvents[0] ?? null;
+  // Sắp xếp ưu tiên các sự kiện sắp tới lên trước
+  const sortedEvents = useMemo(() => {
+    return [...filteredEvents].sort((a, b) => {
+      const aPast = isEventPast(a);
+      const bPast = isEventPast(b);
+      if (!aPast && bPast) return -1;
+      if (aPast && !bPast) return 1;
+      return 0;
+    });
+  }, [filteredEvents]);
+
+  // Event đầu tiên làm nổi bật (sắp tới)
+  const featuredEvent = sortedEvents[0] ?? null;
   // Các event còn lại
-  const upcomingEvents = filteredEvents.slice(1);
+  const upcomingEvents = sortedEvents.slice(1);
 
   // Lazy load
   const visibleEvents = useMemo(() => {
@@ -132,13 +146,21 @@ export default function HomeScreen() {
         <View style={styles.headerLeft}>
           <LeftNavbarButton hasNotification={unreadCount > 0} style={styles.navMenuBtn} />
           <View style={styles.greetingBox}>
-            <Text style={styles.hello}>Xin chào,</Text>
-            <Text style={styles.userName} numberOfLines={1}>{userName} 👋</Text>
+            <Text style={[styles.hello, { color: theme.textSecondary }]}>Xin chào,</Text>
+            <Text style={[styles.userName, { color: theme.textPrimary }]} numberOfLines={1}>
+              {userName} 👋
+            </Text>
           </View>
         </View>
 
         <TouchableOpacity
-          style={styles.avatar}
+          style={[
+            styles.avatar,
+            {
+              backgroundColor: isDark ? "#1E293B" : "#dbeafe",
+              borderColor: isDark ? "#3B82F6" : "#bfdbfe",
+            },
+          ]}
           onPress={() => navigation.navigate("Profile")}
           activeOpacity={0.8}
           accessibilityLabel="Mở hồ sơ cá nhân"
@@ -152,7 +174,13 @@ export default function HomeScreen() {
       {/* Quick Action Navigation Bar */}
       <View style={styles.quickNavContainer}>
         <TouchableOpacity
-          style={[styles.quickNavBtn, styles.checkInHighlightBtn]}
+          style={[
+            styles.quickNavBtn,
+            {
+              backgroundColor: isDark ? "rgba(37,99,235,0.18)" : "#EFF6FF",
+              borderColor: isDark ? "#3B82F6" : "#93C5FD",
+            },
+          ]}
           onPress={() => navigation.navigate("CheckIn")}
           activeOpacity={0.8}
         >
@@ -161,32 +189,55 @@ export default function HomeScreen() {
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.quickNavBtn}
+          style={[
+            styles.quickNavBtn,
+            {
+              backgroundColor: theme.surfaceSecondary,
+              borderColor: theme.border,
+            },
+          ]}
           onPress={() => navigation.navigate("MySchedule")}
           activeOpacity={0.8}
         >
           <Text style={styles.quickNavIcon}>📅</Text>
-          <Text style={styles.quickNavText}>Lịch của tôi</Text>
+          <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Lịch của tôi</Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.quickNavBtn, unreadCount > 0 && styles.notifHighlightBtn]}
+          style={[
+            styles.quickNavBtn,
+            unreadCount > 0
+              ? {
+                  backgroundColor: isDark ? "rgba(245,158,11,0.18)" : "#FEF3C7",
+                  borderColor: isDark ? "#F59E0B" : "#FCD34D",
+                }
+              : {
+                  backgroundColor: theme.surfaceSecondary,
+                  borderColor: theme.border,
+                },
+          ]}
           onPress={() => navigation.navigate("Notification")}
           activeOpacity={0.8}
         >
           <Text style={styles.quickNavIcon}>🔔</Text>
-          <Text style={styles.quickNavText}>
+          <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>
             Thông báo{unreadCount > 0 ? ` (${unreadCount})` : ""}
           </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={styles.quickNavBtn}
+          style={[
+            styles.quickNavBtn,
+            {
+              backgroundColor: theme.surfaceSecondary,
+              borderColor: theme.border,
+            },
+          ]}
           onPress={() => navigation.navigate("Profile")}
           activeOpacity={0.8}
         >
           <Text style={styles.quickNavIcon}>👤</Text>
-          <Text style={styles.quickNavText}>Hồ sơ</Text>
+          <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Hồ sơ</Text>
         </TouchableOpacity>
       </View>
 
@@ -216,8 +267,8 @@ export default function HomeScreen() {
       {/* Loading */}
       {loading && !refreshing && (
         <View style={styles.loadingBox}>
-          <ActivityIndicator color={Colors.primary} size="large" />
-          <Text style={styles.loadingText}>Đang tải sự kiện...</Text>
+          <ActivityIndicator color={theme.primary} size="large" />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Đang tải sự kiện...</Text>
         </View>
       )}
 
@@ -237,7 +288,7 @@ export default function HomeScreen() {
       {!loading && featuredEvent && (
         <>
           <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Sự kiện nổi bật</Text>
+            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Sự kiện nổi bật</Text>
             <TouchableOpacity
               onPress={() =>
                 navigation.navigate("EventDetail", {
@@ -267,20 +318,22 @@ export default function HomeScreen() {
       {/* Tiêu đề danh sách sắp tới */}
       {!loading && upcomingEvents.length > 0 && (
         <View style={styles.sectionHeader}>
-          <Text style={styles.sectionTitle}>Sự kiện sắp tới</Text>
-          <Text style={styles.eventCountText}>{upcomingEvents.length} sự kiện</Text>
+          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Sự kiện sắp tới</Text>
+          <Text style={[styles.eventCountText, { color: theme.textSecondary }]}>
+            {upcomingEvents.length} sự kiện
+          </Text>
         </View>
       )}
     </>
   );
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <FlatList
-        style={styles.container}
+        style={[styles.container, { backgroundColor: theme.background }]}
         data={visibleEvents}
-        keyExtractor={(item) => item._id}
+        keyExtractor={(item, index) => `${item._id || item.id || "evt"}-${index}`}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
@@ -290,8 +343,8 @@ export default function HomeScreen() {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={[Colors.primary]}
-            tintColor={Colors.primary}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
         onEndReached={loadMore}
@@ -312,10 +365,20 @@ export default function HomeScreen() {
         ListHeaderComponent={renderListHeader}
         ListEmptyComponent={
           !loading && !error && !featuredEvent ? (
-            <View style={styles.emptyBox}>
+            <View
+              style={[
+                styles.emptyBox,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
               <Text style={styles.emptyIcon}>🗓️</Text>
-              <Text style={styles.emptyTitle}>Không tìm thấy sự kiện</Text>
-              <Text style={styles.emptyDescription}>
+              <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+                Không tìm thấy sự kiện
+              </Text>
+              <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
                 Hãy thử tìm kiếm hoặc chọn bộ lọc khác.
               </Text>
             </View>
@@ -323,7 +386,9 @@ export default function HomeScreen() {
         }
         ListFooterComponent={
           visibleCount < upcomingEvents.length ? (
-            <Text style={styles.loadMoreText}>Cuộn xuống để xem thêm</Text>
+            <Text style={[styles.loadMoreText, { color: theme.textSecondary }]}>
+              Cuộn xuống để xem thêm
+            </Text>
           ) : undefined
         }
       />
@@ -334,11 +399,9 @@ export default function HomeScreen() {
 const styles = StyleSheet.create({
   safeArea: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
   },
   content: {
     paddingHorizontal: 16,
@@ -363,17 +426,15 @@ const styles = StyleSheet.create({
   greetingBox: {
     flex: 1,
   },
-  hello: { fontSize: 13, color: "#64748B", marginBottom: 2 },
-  userName: { fontSize: 20, fontWeight: "700", color: "#111827" },
+  hello: { fontSize: 13, marginBottom: 2 },
+  userName: { fontSize: 20, fontWeight: "700" },
   avatar: {
     width: 46,
     height: 46,
     borderRadius: 23,
-    backgroundColor: "#dbeafe",
     justifyContent: "center",
     alignItems: "center",
     borderWidth: 2,
-    borderColor: "#bfdbfe",
   },
   avatarText: {
     fontSize: 18,
@@ -388,22 +449,12 @@ const styles = StyleSheet.create({
   },
   quickNavBtn: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
     borderWidth: 1,
-    borderColor: "#E2E8F0",
     borderRadius: 12,
     paddingVertical: 10,
     paddingHorizontal: 4,
     alignItems: "center",
     justifyContent: "center",
-  },
-  checkInHighlightBtn: {
-    backgroundColor: "#EFF6FF",
-    borderColor: "#93C5FD",
-  },
-  notifHighlightBtn: {
-    backgroundColor: "#FEF3C7",
-    borderColor: "#FCD34D",
   },
   quickNavIcon: {
     fontSize: 20,
@@ -412,7 +463,6 @@ const styles = StyleSheet.create({
   quickNavText: {
     fontSize: 11,
     fontWeight: "600",
-    color: "#475569",
     textAlign: "center",
   },
   quickNavTextHighlight: {
@@ -435,11 +485,9 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
-    color: "#111827",
   },
   eventCountText: {
     fontSize: 13,
-    color: "#6b7280",
     fontWeight: "500",
   },
   viewAll: {
@@ -454,7 +502,6 @@ const styles = StyleSheet.create({
   },
   loadingText: {
     fontSize: Typography.base,
-    color: Colors.gray500,
   },
   errorBox: {
     backgroundColor: Colors.errorLight,
@@ -491,14 +538,12 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   emptyBox: {
-    backgroundColor: "#f9fafb",
     borderRadius: 16,
     paddingVertical: 24,
     paddingHorizontal: 20,
     alignItems: "center",
     marginBottom: 20,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
   },
   emptyIcon: {
     fontSize: 32,
@@ -507,17 +552,14 @@ const styles = StyleSheet.create({
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
-    color: "#111827",
     marginBottom: 6,
   },
   emptyDescription: {
     fontSize: 13,
-    color: "#6b7280",
     textAlign: "center",
   },
   loadMoreText: {
     textAlign: "center",
-    color: "#6b7280",
     paddingVertical: 16,
   },
 });

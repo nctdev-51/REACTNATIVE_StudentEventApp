@@ -6,13 +6,13 @@ import {
   TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   Platform,
   StatusBar,
   Alert,
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
 import { fetchEvents } from '../../features/events/eventsSlice';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -578,6 +579,7 @@ export default function MyScheduleScreen({
   onEventPress,
   onFilterPress,
 }: MyScheduleScreenProps) {
+  const { theme } = useAppTheme();
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const dispatch = useAppDispatch();
 
@@ -653,9 +655,11 @@ export default function MyScheduleScreen({
           location: matchedEvent?.location || 'Trường ĐH Công nghiệp TP.HCM',
           imageUrl: matchedEvent?.images?.[0] || fallbackImage,
           daysLeft: isPast ? undefined : daysLeft,
-          status: isPast ? 'past' : 'upcoming',
+          status: (isPast ? 'past' : 'upcoming') as ScheduleTabFilter,
         };
-      });
+      })
+      // Khử trùng lặp theo eventId để tránh lặp card và trùng key
+      .filter((evt, idx, arr) => arr.findIndex((x) => x.id === evt.id) === idx);
   }, [myRegistrations, eventsList]);
 
   // Use props if explicitly passed and not empty, otherwise use real backend events
@@ -701,14 +705,14 @@ export default function MyScheduleScreen({
   const isLoading = (regLoading || eventsLoading) && allEvents.length === 0;
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
 
       {/* ── Header với nút Left Navbar (☰) ──────────────────────────────────────────────────────── */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.background, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <LeftNavbarButton />
-          <Text style={styles.headerTitle}>Lịch của tôi</Text>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Lịch của tôi</Text>
         </View>
         <TouchableOpacity
           style={styles.filterButton}
@@ -717,21 +721,22 @@ export default function MyScheduleScreen({
           accessibilityRole="button"
           accessibilityLabel="Bộ lọc"
         >
-          <FilterIcon />
+          <FilterIcon color={theme.textPrimary} />
         </TouchableOpacity>
       </View>
 
       {/* ── Segmented Control / Filter Tabs ─────────────────────────────── */}
-      <View style={styles.tabsContainer}>
+      <View style={[styles.tabsContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity
-          style={[styles.tabFilter, activeFilter === 'upcoming' && styles.tabFilterActive]}
+          style={[styles.tabFilter, activeFilter === 'upcoming' && { borderBottomColor: theme.primary }]}
           onPress={() => setActiveFilter('upcoming')}
           activeOpacity={0.7}
         >
           <Text
             style={[
               styles.tabFilterText,
-              activeFilter === 'upcoming' && styles.tabFilterTextActive,
+              { color: theme.textSecondary },
+              activeFilter === 'upcoming' && { color: theme.primary, fontWeight: '600' },
             ]}
           >
             Sắp diễn ra
@@ -739,14 +744,15 @@ export default function MyScheduleScreen({
         </TouchableOpacity>
 
         <TouchableOpacity
-          style={[styles.tabFilter, activeFilter === 'past' && styles.tabFilterActive]}
+          style={[styles.tabFilter, activeFilter === 'past' && { borderBottomColor: theme.primary }]}
           onPress={() => setActiveFilter('past')}
           activeOpacity={0.7}
         >
           <Text
             style={[
               styles.tabFilterText,
-              activeFilter === 'past' && styles.tabFilterTextActive,
+              { color: theme.textSecondary },
+              activeFilter === 'past' && { color: theme.primary, fontWeight: '600' },
             ]}
           >
             Đã tham gia
@@ -757,31 +763,31 @@ export default function MyScheduleScreen({
       {/* ── Event List ─────────────────────────────────────────────────── */}
       <ScrollView
         style={styles.scrollList}
-        contentContainerStyle={styles.scrollContent}
+        contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.background }]}
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
             refreshing={refreshing}
             onRefresh={handleRefresh}
-            colors={[ACCENT_COLOR]}
-            tintColor={ACCENT_COLOR}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
           />
         }
       >
         {isLoading ? (
           <View style={{ paddingVertical: 40, alignItems: 'center' }}>
-            <ActivityIndicator size="large" color={ACCENT_COLOR} />
-            <Text style={{ marginTop: 12, color: TEXT_SECONDARY, fontSize: 14 }}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text style={{ marginTop: 12, color: theme.textSecondary, fontSize: 14 }}>
               Đang tải lịch sự kiện...
             </Text>
           </View>
         ) : filteredEvents.length > 0 ? (
-          filteredEvents.map((item) => (
-            <EventCard key={item.id} event={item} onPress={handleEventPress} />
+          filteredEvents.map((item, index) => (
+            <EventCard key={`${item.id}-${index}`} event={item} onPress={handleEventPress} />
           ))
         ) : (
           <View style={styles.emptyState}>
-            <Text style={styles.emptyText}>
+            <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
               {activeFilter === 'upcoming'
                 ? 'Bạn chưa có sự kiện nào sắp diễn ra'
                 : 'Bạn chưa tham gia sự kiện nào'}
@@ -803,7 +809,6 @@ export default function MyScheduleScreen({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: BACKGROUND,
   },
   header: {
     flexDirection: 'row',
@@ -812,12 +817,10 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     paddingTop: Platform.OS === 'android' ? 12 : 8,
     paddingBottom: 12,
-    backgroundColor: BACKGROUND,
   },
   headerTitle: {
     fontSize: 22,
     fontWeight: '700',
-    color: TEXT_PRIMARY,
   },
   filterButton: {
     padding: 6,
@@ -827,8 +830,6 @@ const styles = StyleSheet.create({
   tabsContainer: {
     flexDirection: 'row',
     borderBottomWidth: 1,
-    borderBottomColor: BORDER_COLOR,
-    backgroundColor: BACKGROUND,
   },
   tabFilter: {
     flex: 1,
@@ -837,17 +838,9 @@ const styles = StyleSheet.create({
     borderBottomWidth: 2,
     borderBottomColor: 'transparent',
   },
-  tabFilterActive: {
-    borderBottomColor: ACCENT_COLOR,
-  },
   tabFilterText: {
     fontSize: 14,
-    color: '#64748B',
     fontWeight: '500',
-  },
-  tabFilterTextActive: {
-    color: ACCENT_COLOR,
-    fontWeight: '600',
   },
 
   // List Scroll
@@ -858,7 +851,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 16,
     paddingBottom: 24,
-    backgroundColor: SCREEN_BG,
     flexGrow: 1,
   },
   emptyState: {
@@ -868,6 +860,5 @@ const styles = StyleSheet.create({
   },
   emptyText: {
     fontSize: 14,
-    color: TEXT_SECONDARY,
   },
 });

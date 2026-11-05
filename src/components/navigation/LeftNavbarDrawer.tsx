@@ -19,6 +19,7 @@ import { logout, updateUser } from '../../features/auth/authSlice';
 import { selectUnreadCount } from '../../features/notifications/notificationsSlice';
 import { navigate } from '../../navigation/navigationRef';
 import { Colors, Typography, Spacing, BorderRadius, Shadow } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 const { width: SCREEN_WIDTH } = Dimensions.get('window');
 const DRAWER_WIDTH = Math.min(SCREEN_WIDTH * 0.82, 320);
@@ -42,21 +43,42 @@ const DrawerMenuItem: React.FC<MenuItemProps> = ({
   highlight = false,
   onPress,
 }) => {
+  const { theme, isDark } = useAppTheme();
   return (
     <TouchableOpacity
-      style={[styles.menuItem, highlight && styles.menuItemHighlight]}
+      style={[
+        styles.menuItem,
+        { backgroundColor: theme.surface },
+        highlight && [
+          styles.menuItemHighlight,
+          { backgroundColor: theme.primaryLight, borderColor: isDark ? theme.primary : '#BFDBFE' },
+        ],
+      ]}
       onPress={onPress}
       activeOpacity={0.7}
     >
-      <View style={[styles.menuIconBox, highlight && styles.menuIconBoxHighlight]}>
+      <View
+        style={[
+          styles.menuIconBox,
+          { backgroundColor: theme.surfaceSecondary },
+          highlight && { backgroundColor: isDark ? 'rgba(59,130,246,0.2)' : '#DBEAFE' },
+        ]}
+      >
         <Text style={styles.menuIcon}>{icon}</Text>
       </View>
       <View style={styles.menuTextBox}>
-        <Text style={[styles.menuTitle, highlight && styles.menuTitleHighlight]} numberOfLines={1}>
+        <Text
+          style={[
+            styles.menuTitle,
+            { color: theme.textPrimary },
+            highlight && { color: theme.primary, fontWeight: '700' },
+          ]}
+          numberOfLines={1}
+        >
           {title}
         </Text>
         {subtitle ? (
-          <Text style={styles.menuSubtitle} numberOfLines={1}>
+          <Text style={[styles.menuSubtitle, { color: theme.textSecondary }]} numberOfLines={1}>
             {subtitle}
           </Text>
         ) : null}
@@ -66,7 +88,7 @@ const DrawerMenuItem: React.FC<MenuItemProps> = ({
           <Text style={styles.badgeText}>{badge}</Text>
         </View>
       )}
-      <Text style={styles.chevron}>›</Text>
+      <Text style={[styles.chevron, { color: theme.border }]}>›</Text>
     </TouchableOpacity>
   );
 };
