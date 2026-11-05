@@ -4,7 +4,6 @@ import React, {
   useCallback,
   useMemo,
 } from "react";
-
 import {
   FlatList,
   ScrollView,
@@ -16,29 +15,23 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
-
 import {
   SafeAreaView,
   useSafeAreaInsets,
 } from "react-native-safe-area-context";
-
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../navigation/types";
-
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
-
 import {
   fetchEvents,
   setFilterCategory,
   selectFilteredEvents,
 } from "../../features/events/eventsSlice";
-
 import {
   fetchNotifications,
   selectUnreadCount,
 } from "../../features/notifications/notificationsSlice";
-
 import SearchBar from "../../components/events/SearchBar";
 import CategoryChip from "../../components/events/CategoryChip";
 import FeaturedEventCard from "../../components/events/FeaturedEventCard";
@@ -51,8 +44,7 @@ import { Colors, Spacing, Typography } from "../../theme";
 
 import { Colors, Typography } from "../../theme";
 
-type NavigationProp =
-  NativeStackNavigationProp<MainStackParamList, "Home">;
+type NavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">;
 
 const CATEGORIES = [
   "Tất cả",
@@ -70,28 +62,18 @@ export default function HomeScreen() {
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
 
-  const { loading, error, filter } = useAppSelector(
-    (state) => state.events
-  );
-
+  const { loading, error, filter } = useAppSelector((state) => state.events);
   const filteredEvents = useAppSelector(selectFilteredEvents);
-
-  const user = useAppSelector(
-    (state) => state.auth.user
-  );
-
+  const user = useAppSelector((state) => state.auth.user);
   const unreadCount = useAppSelector(selectUnreadCount);
 
   const [refreshing, setRefreshing] = useState(false);
-
-  // Số sự kiện đang hiển thị
-  const [visibleCount, setVisibleCount] =
-    useState(PAGE_SIZE);
+  // Số sự kiện đang hiển thị (phân trang lazy loading)
+  const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
 
   // Load dữ liệu
   const loadData = useCallback(async () => {
     await dispatch(fetchEvents());
-
     if (user?._id) {
       await dispatch(fetchNotifications(user._id));
     }
@@ -104,32 +86,22 @@ export default function HomeScreen() {
   // Refresh
   const handleRefresh = async () => {
     setRefreshing(true);
-
     await loadData();
-
     setVisibleCount(PAGE_SIZE);
     setRefreshing(false);
   };
 
   // Chọn category
   const handleCategorySelect = (category: string) => {
-    dispatch(
-      setFilterCategory(
-        category === "Tất cả" ? null : category
-      )
-    );
+    dispatch(setFilterCategory(category === "Tất cả" ? null : category));
   };
 
-  const selectedCategory =
-    filter.category ?? "Tất cả";
+  const selectedCategory = filter.category ?? "Tất cả";
 
   // Event đầu tiên làm nổi bật
-  const featuredEvent =
-    filteredEvents[0] ?? null;
-
+  const featuredEvent = filteredEvents[0] ?? null;
   // Các event còn lại
-  const upcomingEvents =
-    filteredEvents.slice(1);
+  const upcomingEvents = filteredEvents.slice(1);
 
   // Lazy load
   const visibleEvents = useMemo(() => {
@@ -139,15 +111,12 @@ export default function HomeScreen() {
   const loadMore = useCallback(() => {
     if (visibleCount < upcomingEvents.length) {
       setVisibleCount((current) =>
-        Math.min(
-          current + PAGE_SIZE,
-          upcomingEvents.length
-        )
+        Math.min(current + PAGE_SIZE, upcomingEvents.length)
       );
     }
   }, [visibleCount, upcomingEvents.length]);
 
-  // Khi search/filter thì quay về 3 event đầu
+  // Khi search/filter thì quay về số event đầu tiên
   useEffect(() => {
     setVisibleCount(PAGE_SIZE);
   }, [
@@ -158,13 +127,163 @@ export default function HomeScreen() {
     filter.searchQuery,
   ]);
 
-  const userName =
-    user?.fullName ?? "Sinh viên";
+  const userName = user?.fullName ?? "Sinh viên";
+
+  // Header Component của danh sách
+  const renderListHeader = () => (
+    <>
+      {/* Header với Left Navbar Menu (☰) và Avatar */}
+      <View style={styles.header}>
+        <View style={styles.headerLeft}>
+          <LeftNavbarButton hasNotification={unreadCount > 0} style={styles.navMenuBtn} />
+          <View style={styles.greetingBox}>
+            <Text style={styles.hello}>Xin chào,</Text>
+            <Text style={styles.userName} numberOfLines={1}>{userName} 👋</Text>
+          </View>
+        </View>
+
+        <TouchableOpacity
+          style={styles.avatar}
+          onPress={() => navigation.navigate("Profile")}
+          activeOpacity={0.8}
+          accessibilityLabel="Mở hồ sơ cá nhân"
+        >
+          <Text style={styles.avatarText}>
+            {userName ? userName.charAt(0).toUpperCase() : "👤"}
+          </Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Quick Action Navigation Bar */}
+      <View style={styles.quickNavContainer}>
+        <TouchableOpacity
+          style={[styles.quickNavBtn, styles.checkInHighlightBtn]}
+          onPress={() => navigation.navigate("CheckIn")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.quickNavIcon}>📷</Text>
+          <Text style={styles.quickNavTextHighlight}>Quét QR Check-in</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.quickNavBtn}
+          onPress={() => navigation.navigate("MySchedule")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.quickNavIcon}>📅</Text>
+          <Text style={styles.quickNavText}>Lịch của tôi</Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={[styles.quickNavBtn, unreadCount > 0 && styles.notifHighlightBtn]}
+          onPress={() => navigation.navigate("Notification")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.quickNavIcon}>🔔</Text>
+          <Text style={styles.quickNavText}>
+            Thông báo{unreadCount > 0 ? ` (${unreadCount})` : ""}
+          </Text>
+        </TouchableOpacity>
+
+        <TouchableOpacity
+          style={styles.quickNavBtn}
+          onPress={() => navigation.navigate("Profile")}
+          activeOpacity={0.8}
+        >
+          <Text style={styles.quickNavIcon}>👤</Text>
+          <Text style={styles.quickNavText}>Hồ sơ</Text>
+        </TouchableOpacity>
+      </View>
+
+      {/* Tìm kiếm */}
+      <SearchBar />
+
+      {/* Danh mục */}
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={false}
+        style={styles.categoryContainer}
+      >
+        {CATEGORIES.map((category) => (
+          <TouchableOpacity
+            key={category}
+            onPress={() => handleCategorySelect(category)}
+            activeOpacity={0.7}
+          >
+            <CategoryChip
+              label={category}
+              selected={selectedCategory === category}
+            />
+          </TouchableOpacity>
+        ))}
+      </ScrollView>
+
+      {/* Loading */}
+      {loading && !refreshing && (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator color={Colors.primary} size="large" />
+          <Text style={styles.loadingText}>Đang tải sự kiện...</Text>
+        </View>
+      )}
+
+      {/* Error */}
+      {!!error && !loading && (
+        <View style={styles.errorBox}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorTitle}>Không thể tải sự kiện</Text>
+          <Text style={styles.errorDesc}>{error}</Text>
+          <TouchableOpacity style={styles.retryBtn} onPress={loadData}>
+            <Text style={styles.retryText}>Thử lại</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+
+      {/* Featured Event */}
+      {!loading && featuredEvent && (
+        <>
+          <View style={styles.sectionHeader}>
+            <Text style={styles.sectionTitle}>Sự kiện nổi bật</Text>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate("EventDetail", {
+                  eventId: featuredEvent._id,
+                  title: featuredEvent.title,
+                })
+              }
+            >
+              <Text style={styles.viewAll}>Chi tiết ›</Text>
+            </TouchableOpacity>
+          </View>
+
+          <TouchableOpacity
+            activeOpacity={0.9}
+            onPress={() =>
+              navigation.navigate("EventDetail", {
+                eventId: featuredEvent._id,
+                title: featuredEvent.title,
+              })
+            }
+          >
+            <FeaturedEventCard event={featuredEvent} />
+          </TouchableOpacity>
+        </>
+      )}
+
+      {/* Tiêu đề danh sách sắp tới */}
+      {!loading && upcomingEvents.length > 0 && (
+        <View style={styles.sectionHeader}>
+          <Text style={styles.sectionTitle}>Sự kiện sắp tới</Text>
+          <Text style={styles.eventCountText}>{upcomingEvents.length} sự kiện</Text>
+        </View>
+      )}
+    </>
+  );
 
   return (
     <SafeAreaView style={styles.safeArea}>
 <<<<<<< HEAD
       <StatusBar barStyle="dark-content" />
+<<<<<<< HEAD
       <ScrollView
 =======
       <StatusBar
@@ -174,6 +293,9 @@ export default function HomeScreen() {
 
       <FlatList
 >>>>>>> 8d9ed42 (Update Event)
+=======
+      <FlatList
+>>>>>>> e79c48e (abc)
         style={styles.container}
         data={visibleEvents}
         keyExtractor={(item) => item._id}
@@ -190,6 +312,7 @@ export default function HomeScreen() {
             tintColor={Colors.primary}
           />
         }
+<<<<<<< HEAD
 <<<<<<< HEAD
       >
         {/* Header với Left Navbar Menu (☰) */}
@@ -215,6 +338,12 @@ export default function HomeScreen() {
             activeOpacity={0.8}
             accessibilityLabel="Mở hồ sơ cá nhân"
 =======
+=======
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+>>>>>>> e79c48e (abc)
             activeOpacity={0.9}
             onPress={() =>
               navigation.navigate("EventDetail", {
@@ -222,11 +351,15 @@ export default function HomeScreen() {
                 title: item.title,
               })
             }
+<<<<<<< HEAD
 >>>>>>> 8d9ed42 (Update Event)
+=======
+>>>>>>> e79c48e (abc)
           >
             <EventCard event={item} />
           </TouchableOpacity>
         )}
+<<<<<<< HEAD
 
         // Phần nằm trên danh sách
         ListHeaderComponent={
@@ -464,36 +597,24 @@ export default function HomeScreen() {
         }
 
         // Không có kết quả
+=======
+        ListHeaderComponent={renderListHeader}
+>>>>>>> e79c48e (abc)
         ListEmptyComponent={
-          !loading &&
-          !error &&
-          !featuredEvent ? (
+          !loading && !error && !featuredEvent ? (
             <View style={styles.emptyBox}>
-              <Text style={styles.emptyIcon}>
-                🗓️
-              </Text>
-
-              <Text style={styles.emptyTitle}>
-                Không tìm thấy sự kiện
-              </Text>
-
-              <Text
-                style={styles.emptyDescription}
-              >
-                Hãy thử tìm kiếm hoặc chọn bộ lọc
-                khác.
+              <Text style={styles.emptyIcon}>🗓️</Text>
+              <Text style={styles.emptyTitle}>Không tìm thấy sự kiện</Text>
+              <Text style={styles.emptyDescription}>
+                Hãy thử tìm kiếm hoặc chọn bộ lọc khác.
               </Text>
             </View>
-          ) : null
+          ) : undefined
         }
-
         ListFooterComponent={
-          visibleCount <
-          upcomingEvents.length ? (
-            <Text style={styles.loadMoreText}>
-              Cuộn xuống để xem thêm
-            </Text>
-          ) : null
+          visibleCount < upcomingEvents.length ? (
+            <Text style={styles.loadMoreText}>Cuộn xuống để xem thêm</Text>
+          ) : undefined
         }
       />
     </SafeAreaView>
@@ -505,17 +626,14 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
-
   container: {
     flex: 1,
     backgroundColor: Colors.background,
   },
-
   content: {
     paddingHorizontal: 16,
     paddingBottom: 40,
   },
-
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -563,20 +681,17 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#bfdbfe",
   },
-
   avatarText: {
     fontSize: 18,
     fontWeight: "700",
     color: Colors.primary,
   },
-
   quickNavContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     marginBottom: 16,
     gap: 8,
   },
-
   quickNavBtn: {
     flex: 1,
     backgroundColor: "#F8FAFC",
@@ -588,41 +703,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-
   checkInHighlightBtn: {
     backgroundColor: "#EFF6FF",
     borderColor: "#93C5FD",
   },
-
   notifHighlightBtn: {
     backgroundColor: "#FEF3C7",
     borderColor: "#FCD34D",
   },
-
   quickNavIcon: {
     fontSize: 20,
     marginBottom: 4,
   },
-
   quickNavText: {
     fontSize: 11,
     fontWeight: "600",
     color: "#475569",
     textAlign: "center",
   },
-
   quickNavTextHighlight: {
     fontSize: 11,
     fontWeight: "700",
     color: Colors.primary,
     textAlign: "center",
   },
-
   categoryContainer: {
     marginTop: 14,
     marginBottom: 20,
   },
-
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -630,36 +738,30 @@ const styles = StyleSheet.create({
     marginBottom: 12,
     marginTop: 8,
   },
-
   sectionTitle: {
     fontSize: 18,
     fontWeight: "700",
     color: "#111827",
   },
-
   eventCountText: {
     fontSize: 13,
     color: "#6b7280",
     fontWeight: "500",
   },
-
   viewAll: {
     fontSize: 14,
     color: Colors.primary,
     fontWeight: "600",
   },
-
   loadingBox: {
     paddingVertical: 40,
     alignItems: "center",
     gap: 12,
   },
-
   loadingText: {
     fontSize: Typography.base,
     color: Colors.gray500,
   },
-
   errorBox: {
     backgroundColor: Colors.errorLight,
     borderRadius: 16,
@@ -668,38 +770,32 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 20,
   },
-
   errorIcon: {
     fontSize: 32,
     marginBottom: 10,
   },
-
   errorTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: Colors.error,
     marginBottom: 6,
   },
-
   errorDesc: {
     fontSize: 13,
     color: Colors.gray600,
     textAlign: "center",
     marginBottom: 12,
   },
-
   retryBtn: {
     backgroundColor: Colors.primary,
     borderRadius: 8,
     paddingHorizontal: 20,
     paddingVertical: 8,
   },
-
   retryText: {
     color: "#fff",
     fontWeight: "600",
   },
-
   emptyBox: {
     backgroundColor: "#f9fafb",
     borderRadius: 16,
@@ -710,25 +806,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#F1F5F9",
   },
-
   emptyIcon: {
     fontSize: 32,
     marginBottom: 10,
   },
-
   emptyTitle: {
     fontSize: 16,
     fontWeight: "700",
     color: "#111827",
     marginBottom: 6,
   },
-
   emptyDescription: {
     fontSize: 13,
     color: "#6b7280",
     textAlign: "center",
   },
-
   loadMoreText: {
     textAlign: "center",
     color: "#6b7280",

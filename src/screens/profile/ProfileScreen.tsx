@@ -13,6 +13,7 @@ import {
   Modal,
   TextInput,
   KeyboardAvoidingView,
+<<<<<<< HEAD
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -22,6 +23,19 @@ import { logout, updateUser } from '../../features/auth/authSlice';
 import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
 import api from '../../services/api';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
+=======
+} from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { MainStackParamList } from "../../navigation/types";
+import { useAppDispatch, useAppSelector } from "../../hooks/redux";
+import { logout, updateUser } from "../../features/auth/authSlice";
+import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
+import api, { setAuthToken } from "../../services/api";
+import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
+import { useAppTheme } from "../../theme";
+import { getDefaultDbUser } from "../../data/dbService";
+>>>>>>> e79c48e (abc)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -598,12 +612,14 @@ export default function ProfileScreen({
   const currentUser = useAppSelector((state) => state.auth.user);
   const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
 
+  const defaultStudent = getDefaultDbUser();
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [currentTheme, setCurrentTheme] = useState<'Sáng' | 'Tối'>(initialTheme);
   const [imageError, setImageError] = useState<boolean>(false);
 
   // Edit Profile Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
+<<<<<<< HEAD
   const [editFullName, setEditFullName] = useState('');
   const [editPhone, setEditPhone] = useState('');
   const [editFaculty, setEditFaculty] = useState('');
@@ -614,13 +630,48 @@ export default function ProfileScreen({
       dispatch(fetchMyRegistrations(currentUser._id));
     }
   }, [dispatch, currentUser?._id]);
+=======
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+  const [editFullName, setEditFullName] = useState("");
+  const [editPhone, setEditPhone] = useState("");
+  const [editFaculty, setEditFaculty] = useState("");
+  const [savingProfile, setSavingProfile] = useState(false);
+
+  useEffect(() => {
+    const targetId = currentUser?._id || defaultStudent?._id;
+    if (targetId) {
+      dispatch(fetchMyRegistrations(targetId));
+    }
+  }, [dispatch, currentUser?._id, defaultStudent?._id]);
+>>>>>>> e79c48e (abc)
 
   // Compute real user details and stats from Redux
-  const displayName = currentUser?.fullName || profile.displayName;
-  const studentId = currentUser?.studentId || profile.studentId;
-  const faculty = currentUser?.faculty || profile.faculty;
-  const avatarUrl = currentUser?.avatarUrl || profile.avatarUrl;
+  const displayName =
+    currentUser?.fullName ||
+    profile?.displayName ||
+    defaultStudent?.fullName ||
+    "Sinh viên";
+  const studentId =
+    currentUser?.studentId ||
+    profile?.studentId ||
+    defaultStudent?.studentId ||
+    "20000001";
+  const faculty =
+    currentUser?.faculty ||
+    profile?.faculty ||
+    defaultStudent?.faculty ||
+    "Khoa Công nghệ thông tin";
+  const avatarUrl =
+    currentUser?.avatarUrl || profile?.avatarUrl || defaultStudent?.avatarUrl;
+  const email =
+    currentUser?.email ||
+    profile?.email ||
+    defaultStudent?.email ||
+    "student@iuh.edu.vn";
+  const phone =
+    currentUser?.phone || profile?.phone || defaultStudent?.phone || "";
 
+<<<<<<< HEAD
   const eventsAttendedCount = myRegistrations.filter((r) => r.status === 'checked_in').length;
   const pointsAccumulated = currentUser?.point ?? 0;
   const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
@@ -629,6 +680,18 @@ export default function ProfileScreen({
     setEditFullName(currentUser?.fullName || '');
     setEditPhone(currentUser?.phone || '0912345678');
     setEditFaculty(currentUser?.faculty || 'Khoa Công nghệ thông tin');
+=======
+  const eventsAttendedCount = myRegistrations.filter(
+    (r) => r.status === "checked_in",
+  ).length;
+  const pointsAccumulated = currentUser?.point ?? defaultStudent?.point ?? 0;
+  const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
+
+  const handleOpenEditProfile = () => {
+    setEditFullName(currentUser?.fullName || displayName);
+    setEditPhone(currentUser?.phone || phone || "0912345678");
+    setEditFaculty(currentUser?.faculty || faculty || "Khoa Công nghệ thông tin");
+>>>>>>> e79c48e (abc)
     setEditModalVisible(true);
   };
 
@@ -667,7 +730,11 @@ export default function ProfileScreen({
 
   // Toggle theme locally for responsive UI feedback
   const handleToggleTheme = () => {
+<<<<<<< HEAD
     setCurrentTheme((prev) => (prev === 'Sáng' ? 'Tối' : 'Sáng'));
+=======
+    toggleTheme();
+>>>>>>> e79c48e (abc)
   };
 
   // Wire up bottom tab navigation
@@ -808,7 +875,14 @@ export default function ProfileScreen({
       </ScrollView>
 
       {/* ── Bottom navigation bar ───────────────────────────────────────── */}
-      <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
+      <BottomTabBar
+        activeTab={activeTab}
+        onTabPress={handleTabPress}
+        tabBg={theme.tabBackground}
+        borderColor={theme.tabBorder}
+        activeColor={theme.primary}
+        inactiveColor={theme.textTertiary}
+      />
 
       {/* ── Modal Chỉnh Sửa Thông Tin Cá Nhân ───────────────────────────── */}
       <Modal
@@ -884,6 +958,81 @@ export default function ProfileScreen({
               </TouchableOpacity>
             </ScrollView>
           </KeyboardAvoidingView>
+        </View>
+      </Modal>
+
+      {/* ── Modal xác nhận Đăng xuất ────────────────────────────────────── */}
+      <Modal
+        visible={logoutModalVisible}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLogoutModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View
+            style={[
+              styles.modalCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <View
+              style={[
+                styles.modalIconCircle,
+                { backgroundColor: isDark ? "#3B181A" : "#FEE2E2" },
+              ]}
+            >
+              <LogoutIcon color={theme.danger} />
+            </View>
+
+            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
+              Xác nhận đăng xuất
+            </Text>
+
+            <Text style={[styles.modalMessage, { color: theme.textSecondary }]}>
+              Bạn có chắc chắn muốn đăng xuất khỏi tài khoản{" "}
+              <Text style={{ fontWeight: "700", color: theme.textPrimary }}>
+                {displayName}
+              </Text>{" "}
+              không? Mọi phiên làm việc hiện tại sẽ kết thúc.
+            </Text>
+
+            <View style={styles.modalActions}>
+              <TouchableOpacity
+                style={[
+                  styles.modalCancelBtn,
+                  {
+                    borderColor: theme.border,
+                    backgroundColor: theme.background,
+                  },
+                ]}
+                activeOpacity={0.8}
+                onPress={() => setLogoutModalVisible(false)}
+              >
+                <Text
+                  style={[
+                    styles.modalCancelText,
+                    { color: theme.textPrimary },
+                  ]}
+                >
+                  Hủy bỏ
+                </Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.modalLogoutBtn,
+                  { backgroundColor: theme.danger },
+                ]}
+                activeOpacity={0.8}
+                onPress={confirmLogout}
+              >
+                <Text style={styles.modalLogoutText}>Đăng xuất</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
       </Modal>
     </SafeAreaView>
@@ -1015,6 +1164,112 @@ const styles = StyleSheet.create({
         elevation: 1.5,
       },
     }),
+  },
+
+  // Standalone Logout Button
+  standaloneLogoutBtn: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.06,
+        shadowRadius: 4,
+      },
+      android: {
+        elevation: 1,
+      },
+    }),
+  },
+  standaloneLogoutContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  standaloneLogoutText: {
+    fontSize: 15,
+    fontWeight: "700",
+  },
+
+  // Modal styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.65)",
+    justifyContent: "center",
+    alignItems: "center",
+    paddingHorizontal: 28,
+  },
+  modalCard: {
+    width: "100%",
+    maxWidth: 360,
+    borderRadius: 20,
+    borderWidth: 1,
+    padding: 24,
+    alignItems: "center",
+    ...Platform.select({
+      ios: {
+        shadowOffset: { width: 0, height: 4 },
+        shadowOpacity: 0.25,
+        shadowRadius: 10,
+      },
+      android: {
+        elevation: 6,
+      },
+    }),
+  },
+  modalIconCircle: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 16,
+  },
+  modalTitle: {
+    fontSize: 19,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 8,
+  },
+  modalMessage: {
+    fontSize: 14,
+    lineHeight: 21,
+    textAlign: "center",
+    marginBottom: 24,
+  },
+  modalActions: {
+    flexDirection: "row",
+    gap: 12,
+    width: "100%",
+  },
+  modalCancelBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    borderWidth: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalCancelText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  modalLogoutBtn: {
+    flex: 1,
+    paddingVertical: 13,
+    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  modalLogoutText: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
 });
 
