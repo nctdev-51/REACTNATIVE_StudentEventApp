@@ -130,7 +130,9 @@ export default function RegistrationSuccessScreen({
           {/* Subtitle message */}
           <Text style={[styles.message, { color: theme.textSecondary }]}>
             Bạn đã đăng ký tham gia{"\n"}
-            <Text style={[styles.eventTitleHighlight, { color: theme.primary }]}>
+            <Text
+              style={[styles.eventTitleHighlight, { color: theme.primary }]}
+            >
               {title}
             </Text>
             .
@@ -163,7 +165,9 @@ export default function RegistrationSuccessScreen({
             accessibilityRole="button"
             accessibilityLabel="Quay về trang chủ"
           >
-            <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>
+            <Text
+              style={[styles.secondaryButtonText, { color: theme.textPrimary }]}
+            >
               Quay về trang chủ
             </Text>
           </TouchableOpacity>

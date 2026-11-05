@@ -77,7 +77,9 @@ export default function MainStack() {
         name="MySchedule"
         component={MyScheduleScreen}
         options={{
-          headerShown: false,
+          headerShown: true,
+          title: 'Lịch của tôi',
+          headerBackTitle: 'Quay lại',
         }}
       />
 
@@ -86,7 +88,9 @@ export default function MainStack() {
         name="Notification"
         component={NotificationReminderScreen}
         options={{
-          headerShown: false,
+          headerShown: true,
+          title: 'Nhắc nhở sự kiện',
+          headerBackTitle: 'Quay lại',
         }}
       />
 
