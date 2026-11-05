@@ -43,12 +43,19 @@ import {
 >>>>>>> 8d9ed42 (Update Event)
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
 import { Colors } from "../../theme";
+<<<<<<< HEAD
 import {
   isEventPast,
   toggleHideEvent,
   deleteEvent,
 } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
+=======
+import { summarizeEvent } from "../../services/api";
+import AILoading from "../../components/ai/AILoading";
+import AIError from "../../components/ai/AIError";
+import type { AISummary as AISummaryType } from "../../types/event";
+>>>>>>> 5723ff0 (AI event)
 
 type EventDetailNavProp =
   NativeStackNavigationProp<
@@ -93,6 +100,11 @@ export default function EventDetailScreen() {
     useRoute<EventDetailRouteProp>();
 
   const dispatch = useAppDispatch();
+
+    // AI Summary states
+  const [aiSummary, setAiSummary] = useState<AISummaryType | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const eventId = route.params?.eventId;
 
@@ -202,6 +214,7 @@ export default function EventDetailScreen() {
     }
   };
 
+<<<<<<< HEAD
   // Chia sẻ Deep Link sự kiện
   const handleShare = async () => {
     if (!event) return;
@@ -215,6 +228,30 @@ export default function EventDetailScreen() {
   };
 
   // Loading
+=======
+  const handleSummarize = async () => {
+    if (!eventId || aiLoading) return;
+
+    try {
+      setAiLoading(true);
+      setAiError(null);
+
+      const result = await summarizeEvent(eventId);
+
+      setAiSummary(result);
+    } catch (error: any) {
+      console.error("AI Summary Error:", error);
+      setAiSummary(null);
+      const message = error.response?.data?.message;
+      setAiError(
+        message || "Không thể tạo tóm tắt sự kiện. Vui lòng thử lại sau.",
+      );
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+>>>>>>> 5723ff0 (AI event)
   if (loadingDetail) {
     return (
 <<<<<<< HEAD
@@ -482,6 +519,7 @@ export default function EventDetailScreen() {
           </View>
         </View>
 
+<<<<<<< HEAD
         {/* AI */}
         {event.aiSummary && (
           <View style={styles.aiSection}>
@@ -490,6 +528,37 @@ export default function EventDetailScreen() {
             />
           </View>
         )}
+=======
+        {/* AI Summary */}
+        <View style={styles.aiSection}>
+          {/* Nút gọi AI */}
+          <TouchableOpacity
+            style={[styles.aiButton, aiLoading && styles.disabledButton]}
+            onPress={handleSummarize}
+            disabled={aiLoading}
+            activeOpacity={0.85}
+          >
+            {aiLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.aiButtonText}>
+                ✨ {aiSummary ? "Tóm tắt lại bằng AI" : "Tóm tắt bằng AI"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Đang xử lý */}
+          {aiLoading && <AILoading />}
+
+          {/* Có lỗi */}
+          {!aiLoading && aiError && (
+            <AIError message={aiError} onRetry={handleSummarize} />
+          )}
+
+          {/* Thành công */}
+          {!aiLoading && aiSummary && <AISummary summary={aiSummary} />}
+        </View>
+>>>>>>> 5723ff0 (AI event)
 
         {/* Mô tả */}
 <<<<<<< HEAD
@@ -999,6 +1068,7 @@ const styles = StyleSheet.create({
   },
 <<<<<<< HEAD
   backBtnText: { color: "#fff", fontWeight: "600" },
+<<<<<<< HEAD
   locationHeaderRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1165,3 +1235,20 @@ const styles = StyleSheet.create({
   },
 });
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
+=======
+    aiButton: {
+    backgroundColor: "#7C3AED",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+
+  aiButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
+});
+>>>>>>> 5723ff0 (AI event)
