@@ -17,6 +17,10 @@ import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { fetchEventById, clearSelectedEvent } from "../../features/events/eventsSlice";
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
 import { Colors } from "../../theme";
+import { summarizeEvent } from "../../services/api";
+import AILoading from "../../components/ai/AILoading";
+import AIError from "../../components/ai/AIError";
+import type { AISummary as AISummaryType } from "../../types/event";
 
 type EventDetailNavProp = NativeStackNavigationProp<MainStackParamList, "EventDetail">;
 type EventDetailRouteProp = RouteProp<MainStackParamList, "EventDetail">;
@@ -35,6 +39,11 @@ export default function EventDetailScreen() {
   const navigation = useNavigation<EventDetailNavProp>();
   const route = useRoute<EventDetailRouteProp>();
   const dispatch = useAppDispatch();
+
+    // AI Summary states
+  const [aiSummary, setAiSummary] = useState<AISummaryType | null>(null);
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState<string | null>(null);
 
   const eventId = route.params?.eventId;
   const { selectedEvent: event, loadingDetail, error } = useAppSelector((s) => s.events);
@@ -77,6 +86,28 @@ export default function EventDetailScreen() {
       });
     } else {
       Alert.alert('Thất bại', (result.payload as string) ?? 'Đăng ký thất bại');
+    }
+  };
+
+  const handleSummarize = async () => {
+    if (!eventId || aiLoading) return;
+
+    try {
+      setAiLoading(true);
+      setAiError(null);
+
+      const result = await summarizeEvent(eventId);
+
+      setAiSummary(result);
+    } catch (error: any) {
+      console.error("AI Summary Error:", error);
+      setAiSummary(null);
+      const message = error.response?.data?.message;
+      setAiError(
+        message || "Không thể tạo tóm tắt sự kiện. Vui lòng thử lại sau.",
+      );
+    } finally {
+      setAiLoading(false);
     }
   };
 
@@ -172,11 +203,34 @@ export default function EventDetailScreen() {
         </View>
 
         {/* AI Summary */}
-        {event.aiSummary && (
-          <View style={styles.aiSection}>
-            <AISummary summary={event.aiSummary} />
-          </View>
-        )}
+        <View style={styles.aiSection}>
+          {/* Nút gọi AI */}
+          <TouchableOpacity
+            style={[styles.aiButton, aiLoading && styles.disabledButton]}
+            onPress={handleSummarize}
+            disabled={aiLoading}
+            activeOpacity={0.85}
+          >
+            {aiLoading ? (
+              <ActivityIndicator color="#FFFFFF" />
+            ) : (
+              <Text style={styles.aiButtonText}>
+                ✨ {aiSummary ? "Tóm tắt lại bằng AI" : "Tóm tắt bằng AI"}
+              </Text>
+            )}
+          </TouchableOpacity>
+
+          {/* Đang xử lý */}
+          {aiLoading && <AILoading />}
+
+          {/* Có lỗi */}
+          {!aiLoading && aiError && (
+            <AIError message={aiError} onRetry={handleSummarize} />
+          )}
+
+          {/* Thành công */}
+          {!aiLoading && aiSummary && <AISummary summary={aiSummary} />}
+        </View>
 
         {/* Mô tả */}
         <View style={styles.section}>
@@ -395,4 +449,18 @@ const styles = StyleSheet.create({
     borderRadius: 10,
   },
   backBtnText: { color: "#fff", fontWeight: "600" },
+    aiButton: {
+    backgroundColor: "#7C3AED",
+    borderRadius: 12,
+    paddingVertical: 14,
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 12,
+  },
+
+  aiButtonText: {
+    color: "#FFFFFF",
+    fontSize: 15,
+    fontWeight: "700",
+  },
 });

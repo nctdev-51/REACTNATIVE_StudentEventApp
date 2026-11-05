@@ -31,7 +31,7 @@ export interface Event {
 
   trainingPoints: number;
 
-  aiSummary: AISummary;
+  aiSummary?: AISummary;
 
   status: "upcoming" | "ongoing" | "completed";
 }

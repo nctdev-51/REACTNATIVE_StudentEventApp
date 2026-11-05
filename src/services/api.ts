@@ -12,6 +12,7 @@ import {
   CreateRegistrationPayload,
   CreateFeedbackPayload,
 } from "../types";
+import { AISummary } from "../types/event";
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
@@ -364,4 +365,10 @@ export default {
   // Notifications
   getNotificationsByUser,
   markNotificationAsRead,
+};
+
+// AI Summary
+export const summarizeEvent = async (eventId: string): Promise<AISummary> => {
+  const res = await apiClient.post(`/events/${eventId}/summarize`);
+  return res.data.data;
 };
