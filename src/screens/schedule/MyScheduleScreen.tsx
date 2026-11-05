@@ -13,7 +13,8 @@ import {
   ActivityIndicator,
   RefreshControl,
 } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useFocusEffect } from '@react-navigation/native';
+import { Button, Card } from '../../components/common';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
@@ -438,10 +439,11 @@ function EventCard({ event, onPress }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
 
   return (
-    <TouchableOpacity
+    <Card
       style={cardStyles.card}
+      padding={0}
       onPress={() => onPress?.(event)}
-      activeOpacity={0.75}
+      pressStyle={{ opacity: 0.75 }}
       accessibilityRole="button"
       accessibilityLabel={event.title}
     >
@@ -488,7 +490,7 @@ function EventCard({ event, onPress }: EventCardProps) {
           </View>
         )}
       </View>
-    </TouchableOpacity>
+    </Card>
   );
 }
 
@@ -595,9 +597,9 @@ export default function MyScheduleScreen({
     await dispatch(fetchEvents());
   }, [dispatch, currentUser?._id]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useFocusEffect(useCallback(() => {
+    void loadData();
+  }, [loadData]));
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -705,7 +707,9 @@ export default function MyScheduleScreen({
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lịch của tôi</Text>
+        <Button variant="secondary" onPress={() => navigation.navigate('Notification')}>
+          Nhắc nhở
+        </Button>
         <TouchableOpacity
           style={styles.filterButton}
           onPress={handleFilterPress}

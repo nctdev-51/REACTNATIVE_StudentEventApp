@@ -21,7 +21,7 @@ import {
  * - iOS / Web: localhost
  * - Thiết bị thật: đổi DEV_LAN_IP thành IP LAN của máy tính
  */
-export const DEV_LAN_IP = "192.168.1.100";
+export const DEV_LAN_IP = "192.168.1.15";
 
 export const BASE_URL: string = Platform.select({
   android: `http://10.0.2.2:5000/api`,
