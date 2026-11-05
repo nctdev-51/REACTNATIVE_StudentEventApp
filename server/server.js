@@ -187,6 +187,14 @@ server.post(["/api/auth/register", "/auth/register"], (req, res) => {
   });
 });
 
+// POST /api/auth/logout & /auth/logout
+server.post(["/api/auth/logout", "/auth/logout"], (req, res) => {
+  res.status(200).json({
+    success: true,
+    message: "Đăng xuất thành công",
+  });
+});
+
 // GET /api/auth/me & /auth/me
 server.get(["/api/auth/me", "/auth/me"], (req, res) => {
   const user = getAuthUser(req) || router.db.get("users").first().value();

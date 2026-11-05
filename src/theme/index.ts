@@ -95,3 +95,6 @@ export const Shadow = {
     elevation: 4,
   },
 };
+
+
+export * from './ThemeContext';
