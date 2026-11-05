@@ -149,7 +149,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     if (!isGpsHardwareOn) return 'Định vị GPS đang tắt trên máy';
     if (!locationPermissionGranted) return 'Chưa cấp quyền vị trí';
     if (realCoords) {
-      return `GPS: ${realCoords.latitude.toFixed(4)}, ${realCoords.longitude.toFixed(4)}`;
+      return realAddress ? `${realAddress}` : 'Vị trí hợp lệ • Đã kết nối định vị';
     }
     return 'Anti-Fake GPS đang bật';
   }, [fetchingGps, isGpsHardwareOn, locationPermissionGranted, realCoords]);
@@ -180,8 +180,8 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       );
 
       Alert.alert(
-        'Đã đặt toạ độ sự kiện gần bạn! 🎯',
-        `Sự kiện đã được gán toạ độ GPS thực tế của bạn:\n• Vĩ độ: ${realCoords.latitude.toFixed(6)}\n• Kinh độ: ${realCoords.longitude.toFixed(6)}\n• Địa chỉ: ${addressName}\n\nBây giờ khi bạn quét mã QR, khoảng cách đo được sẽ là 0m (thỏa điều kiện ≤ 500m) và điểm danh thành công 100%!`,
+        'Đã đặt địa điểm sự kiện tại vị trí này! 🎯',
+        `Địa điểm: ${addressName}\n\nSinh viên khi có mặt tại khu vực này sẽ được hệ thống xác thực điểm danh thành công 100%!`,
         [{ text: 'Đã hiểu' }]
       );
     } catch (e: any) {
@@ -210,8 +210,8 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       );
 
       Alert.alert(
-        'Đã dời toạ độ sự kiện ra xa (>500m)! 🚨',
-        `Sự kiện đã được đặt cách vị trí của bạn ~3km.\n\nBây giờ khi bạn quét mã QR, hệ thống sẽ phát hiện vi phạm khoảng cách và CHẶN ĐIỂM DANH ngay lập tức để chứng minh tính năng chống gian lận!`,
+        'Đã mô phỏng vị trí ở xa (>500m)! 🚨',
+        `Đã chuyển địa điểm sự kiện ra ngoài phạm vi (~3km).\n\nBây giờ khi bạn quét mã QR, hệ thống sẽ tự động phát hiện ngoài khu vực tổ chức và chặn điểm danh để thử nghiệm kiểm tra gian lận!`,
         [{ text: 'Đã hiểu' }]
       );
     } catch (e: any) {
@@ -271,7 +271,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       let calculatedDistance: number | undefined;
 
       if (eventData?.coordinates && eventData.coordinates.latitude && eventData.coordinates.longitude) {
-        setLoadingMessage('Đang định vị toạ độ GPS Google Maps thực tế...');
+        setLoadingMessage('Đang kiểm tra bạn có mặt tại địa điểm tổ chức...');
 
         // Xin quyền vị trí nếu chưa có
         const perm = await requestLocationPermission();
@@ -327,7 +327,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       }
 
       // Bước 3: Gửi request điểm danh lên server (kèm toạ độ vị trí thực tế)
-      setLoadingMessage('Toạ độ hợp lệ! Đang ghi nhận điểm danh...');
+      setLoadingMessage('Vị trí hợp lệ! Đang ghi nhận điểm danh...');
       const response = await qrCheckIn({
         eventId,
         userId: currentUser?._id,
@@ -512,7 +512,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
         <View style={styles.overlayBottom}>
           <Text style={styles.instructionText}>Đưa mã QR sự kiện vào khung</Text>
           <Text style={styles.subInstructionText}>
-            Hệ thống đối soát GPS Google Maps thực tế chống điểm danh giả mạo
+            Hệ thống tự động xác thực sự có mặt của sinh viên tại địa điểm tổ chức
           </Text>
 
           {/* Thanh công cụ kiểm thử thực tế cho Giảng viên & Hội đồng chấm thi */}
@@ -541,7 +541,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
           </View>
 
           <Text style={styles.syncLocationHint}>
-            Chạm để đổi toạ độ sự kiện tức thì: Test Điểm danh thành công hoặc Chặn gian lận GPS
+            Chạm để đổi địa điểm kiểm thử: Điểm danh hợp lệ hoặc Thử nghiệm ngoài phạm vi
           </Text>
         </View>
       </View>

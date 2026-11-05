@@ -18,6 +18,7 @@ import { logout } from '../../features/auth/authSlice';
 import { getEvents, getAllRegistrations } from '../../services/api';
 import { Event, Registration } from '../../types';
 import { Colors } from '../../theme';
+import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 
 type AdminDashboardNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminDashboard'>;
 
@@ -70,22 +71,25 @@ export default function AdminDashboardScreen() {
   return (
     <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
-        {/* Header Admin */}
+        {/* Header Admin với Hamburger Menu Button */}
         <View style={styles.header}>
-          <View style={styles.adminInfo}>
-            <Image
-              source={{ uri: user?.avatarUrl || 'https://i.pravatar.cc/300?img=5' }}
-              style={styles.avatar}
-            />
-            <View style={styles.adminText}>
-              <View style={styles.roleBadgeRow}>
-                <Text style={styles.adminName}>{user?.fullName || 'Ban Quản Trị'}</Text>
-                <View style={styles.adminBadge}>
-                  <Text style={styles.adminBadgeText}>ADMIN</Text>
+          <View style={styles.adminHeaderLeft}>
+            <LeftNavbarButton tintColor="#0F172A" style={styles.adminMenuBtn} />
+            <View style={styles.adminInfo}>
+              <Image
+                source={{ uri: user?.avatarUrl || 'https://i.pravatar.cc/300?img=5' }}
+                style={styles.avatar}
+              />
+              <View style={styles.adminText}>
+                <View style={styles.roleBadgeRow}>
+                  <Text style={styles.adminName}>{user?.fullName || 'Ban Quản Trị'}</Text>
+                  <View style={styles.adminBadge}>
+                    <Text style={styles.adminBadgeText}>ADMIN</Text>
+                  </View>
                 </View>
+                <Text style={styles.adminSub}>{user?.email} • {user?.studentId || 'AD01'}</Text>
+                <Text style={styles.adminFaculty}>{user?.faculty || 'Phòng Công tác sinh viên'}</Text>
               </View>
-              <Text style={styles.adminSub}>{user?.email} • {user?.studentId || 'AD01'}</Text>
-              <Text style={styles.adminFaculty}>{user?.faculty || 'Phòng Công tác sinh viên'}</Text>
             </View>
           </View>
 
@@ -99,7 +103,7 @@ export default function AdminDashboardScreen() {
         <View style={styles.banner}>
           <Text style={styles.bannerTitle}>🛡️ Trung Tâm Quản Trị Sự Kiện</Text>
           <Text style={styles.bannerDesc}>
-            Quản lý toạ độ GPS Anti-Fake, khởi tạo sự kiện và giám sát điểm danh sinh viên trong bán kính 500m.
+            Quản lý địa điểm tổ chức, phân quyền sinh viên và giám sát điểm danh tự động theo khuôn viên trường.
           </Text>
         </View>
 
@@ -119,7 +123,7 @@ export default function AdminDashboardScreen() {
               <Text style={styles.statNumber}>
                 {loading ? '...' : `${eventsWithGPS}/${totalEvents}`}
               </Text>
-              <Text style={styles.statLabel}>Đã cài GPS Anti-Fake</Text>
+              <Text style={styles.statLabel}>Đã xác thực địa điểm</Text>
             </View>
           </View>
 
@@ -144,6 +148,23 @@ export default function AdminDashboardScreen() {
         <Text style={styles.sectionTitle}>Chức Năng Quản Lý Chính</Text>
 
         <View style={styles.actionCardsList}>
+          {/* Quản lý người dùng & ĐRL */}
+          <TouchableOpacity
+            style={styles.actionCard}
+            onPress={() => navigation.navigate('AdminUsers')}
+            activeOpacity={0.85}
+          >
+            <View style={[styles.actionIconBox, { backgroundColor: '#F0FDF4' }]}>
+              <Text style={styles.actionCardIcon}>👥</Text>
+            </View>
+            <View style={styles.actionContent}>
+              <Text style={styles.actionCardTitle}>Quản Lý Người Dùng & Điểm Rèn Luyện</Text>
+              <Text style={styles.actionCardDesc}>
+                Danh sách sinh viên, cấp/trừ ĐRL, phân quyền Admin và quản lý trạng thái tài khoản.
+              </Text>
+            </View>
+            <Text style={styles.arrowIcon}>›</Text>
+          </TouchableOpacity>
           {/* 1. Quản lý sự kiện & vị trí GPS */}
           <TouchableOpacity
             style={styles.actionCard}
@@ -154,9 +175,9 @@ export default function AdminDashboardScreen() {
               <Text style={styles.actionCardIcon}>📍</Text>
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionCardTitle}>Cài Đặt Vị Trí & Toạ Độ GPS</Text>
+              <Text style={styles.actionCardTitle}>Cài Đặt Địa Điểm Tổ Chức Sự Kiện</Text>
               <Text style={styles.actionCardDesc}>
-                Tìm kiếm địa chỉ bằng text (Forward Geocoding), đối soát Google Maps và gán toạ độ sự kiện.
+                Chọn hội trường (A, E4, Nhà thi đấu...), thiết lập khuôn viên và bán kính điểm danh cho sinh viên.
               </Text>
             </View>
             <Text style={styles.arrowIcon}>chevron-right ›</Text>
@@ -174,7 +195,7 @@ export default function AdminDashboardScreen() {
             <View style={styles.actionContent}>
               <Text style={styles.actionCardTitle}>Tạo Sự Kiện Mới</Text>
               <Text style={styles.actionCardDesc}>
-                Nhập thông tin sự kiện, tự động tìm toạ độ địa điểm và phát hành mã QR điểm danh.
+                Nhập thông tin sự kiện, chọn địa điểm tổ chức và phát hành mã QR điểm danh.
               </Text>
             </View>
             <Text style={styles.arrowIcon}>›</Text>
@@ -245,6 +266,8 @@ const styles = StyleSheet.create({
     elevation: 2,
     marginBottom: 16,
   },
+  adminHeaderLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
+  adminMenuBtn: { marginRight: 2 },
   adminInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
   avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E2E8F0' },
   adminText: { flex: 1 },

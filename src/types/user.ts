@@ -8,6 +8,8 @@ export interface User {
   faculty?: string;
   avatarUrl?: string;
   phone?: string;
+  status?: 'active' | 'inactive';
+  isActive?: boolean;
   createdAt?: string;
 }
 
@@ -27,4 +29,25 @@ export interface RegisterPayload {
 export interface AuthResponse {
   token: string;
   user: User;
+}
+
+export interface CreateUserPayload {
+  studentId: string;
+  fullName: string;
+  email: string;
+  role: 'student' | 'admin';
+  faculty?: string;
+  point?: number;
+  phone?: string;
+  password?: string;
+}
+
+export interface UpdateUserPayload {
+  fullName?: string;
+  faculty?: string;
+  phone?: string;
+  point?: number;
+  role?: 'student' | 'admin';
+  status?: 'active' | 'inactive';
+  isActive?: boolean;
 }

@@ -45,7 +45,9 @@
     "server": "node server/server.js",
     "server:reset": "node server/reset-db.js",
     "start:tunnel": "expo start --tunnel",
-    "postinstall": "node scripts/patch-notifications.js"
+    "postinstall": "node scripts/patch-notifications.js",
+    "server:tunnel": "npx localtunnel --port 5000",
+    "server:ngrok": "npx ngrok http 5000"
   },
   "private": true
 }

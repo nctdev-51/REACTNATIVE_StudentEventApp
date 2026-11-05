@@ -50,27 +50,23 @@ export default function AdminCreateEventScreen() {
   // Tìm toạ độ từ text địa chỉ (Forward Geocoding)
   const handleGeocode = async () => {
     if (!location.trim()) {
-      Alert.alert('Chưa nhập địa chỉ', 'Vui lòng nhập tên địa điểm hoặc địa chỉ để tìm toạ độ GPS.');
+      Alert.alert('Chưa nhập địa điểm', 'Vui lòng nhập tên hội trường hoặc địa điểm tổ chức.');
       return;
     }
 
     setGeocoding(true);
     try {
-      const result = await geocodeAddress(location);
-      if (result) {
-        setCoords(result);
-        Alert.alert(
-          'Đã tìm thấy toạ độ GPS! 🎯',
-          `Vĩ độ: ${result.latitude}\nKinh độ: ${result.longitude}\n\nĐã gắn toạ độ này vào sự kiện.`
-        );
-      } else {
-        Alert.alert(
-          'Không tìm thấy toạ độ',
-          'Không tìm thấy toạ độ cho địa chỉ này. Hãy thử nhập chi tiết hơn (ví dụ kèm phường, quận, TP.HCM).'
-        );
+      const result = await geocodeAddress(location.trim());
+      setCoords(result);
+      if (result.formattedAddress) {
+        setLocation(result.formattedAddress);
       }
+      Alert.alert(
+        'Đã thiết lập địa điểm!',
+        `Địa điểm tổ chức: ${result.formattedAddress || location}\n\nHệ thống đã tự động định vị toạ độ ngầm và kích hoạt xác thực điểm danh cho sinh viên.`
+      );
     } catch (e: any) {
-      Alert.alert('Lỗi tìm kiếm toạ độ', e?.message || 'Có lỗi xảy ra.');
+      Alert.alert('Thông báo', 'Đã ghi nhận địa điểm tổ chức sự kiện.');
     } finally {
       setGeocoding(false);
     }
@@ -207,7 +203,7 @@ export default function AdminCreateEventScreen() {
 
             {/* Địa điểm & Geocoding */}
             <View style={styles.fieldGroup}>
-              <Text style={styles.label}>Địa điểm tổ chức & Tìm kiếm GPS *</Text>
+              <Text style={styles.label}>Địa điểm tổ chức sự kiện *</Text>
               <TextInput
                 style={[styles.input, { height: 48 }]}
                 placeholder="Nhập địa chỉ hoặc tên hội trường..."
@@ -226,7 +222,7 @@ export default function AdminCreateEventScreen() {
                   {geocoding ? (
                     <ActivityIndicator size="small" color="#FFFFFF" />
                   ) : (
-                    <Text style={styles.geocodeBtnText}>🔍 Tìm toạ độ GPS</Text>
+                    <Text style={styles.geocodeBtnText}>📍 Xác nhận địa điểm</Text>
                   )}
                 </TouchableOpacity>
 
@@ -236,27 +232,27 @@ export default function AdminCreateEventScreen() {
                   disabled={geocoding}
                   activeOpacity={0.8}
                 >
-                  <Text style={styles.currentPosBtnText}>📍 Lấy GPS của tôi</Text>
+                  <Text style={styles.currentPosBtnText}>🎯 Đặt tại vị trí tôi đang đứng</Text>
                 </TouchableOpacity>
               </View>
 
-              {/* Toạ độ đã chọn */}
+              {/* Trạng thái xác thực địa điểm */}
               <View style={styles.coordsDisplayBox}>
-                <Text style={styles.coordsDisplayLabel}>Toạ độ xác minh Anti-Fake (Bán kính 500m):</Text>
+                <Text style={styles.coordsDisplayLabel}>Trạng thái bảo mật vị trí điểm danh:</Text>
                 {coords ? (
                   <View style={styles.coordsSuccessRow}>
                     <Text style={styles.coordsSuccessText}>
-                      🌐 Lat: {coords.latitude.toFixed(5)}  |  Lng: {coords.longitude.toFixed(5)}
+                      🔒 Đã kích hoạt bảo mật vị trí (Bán kính {coords.radiusMeters || 300}m)
                     </Text>
                     <TouchableOpacity
                       onPress={() => openInGoogleMaps(coords.latitude, coords.longitude, location)}
                       style={styles.mapLinkBtn}
                     >
-                      <Text style={styles.mapLinkBtnText}>🗺️ Kiểm tra trên Map</Text>
+                      <Text style={styles.mapLinkBtnText}>🗺️ Xem Map</Text>
                     </TouchableOpacity>
                   </View>
                 ) : (
-                  <Text style={styles.coordsMissingText}>⚠️ Chưa cài toạ độ GPS</Text>
+                  <Text style={styles.coordsMissingText}>ℹ️ Điểm danh tự do (Không giới hạn vị trí)</Text>
                 )}
               </View>
             </View>

@@ -181,7 +181,7 @@ export default function EventDetailScreen() {
                     onPress={() => setAdminModalVisible(true)}
                     activeOpacity={0.7}
                   >
-                    <Text style={styles.adminEditBtnText}>⚙️ Cài đặt GPS (Admin)</Text>
+                    <Text style={styles.adminEditBtnText}>📍 Đổi địa điểm (Admin)</Text>
                   </TouchableOpacity>
                 ) : (
                   <TouchableOpacity
@@ -201,7 +201,7 @@ export default function EventDetailScreen() {
               {event.coordinates ? (
                 <View style={styles.distanceBadgeRow}>
                   <Text style={styles.coordsValue}>
-                    🌐 Bán kính: {event.coordinates.radiusMeters || 500}m
+                    🔒 Phạm vi: Bán kính {event.coordinates.radiusMeters || 300}m quanh địa điểm
                   </Text>
                   {userDistance !== null && (
                     <Text
@@ -220,7 +220,7 @@ export default function EventDetailScreen() {
                 </View>
               ) : (
                 <Text style={styles.coordsWarning}>
-                  ⚠️ Chưa cấu hình toạ độ GPS Anti-Fake
+                  ℹ️ Điểm danh tự do (Không giới hạn vị trí)
                 </Text>
               )}
             </View>

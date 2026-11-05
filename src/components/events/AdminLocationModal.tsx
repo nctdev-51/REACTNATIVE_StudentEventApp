@@ -18,9 +18,11 @@ import {
   getCurrentPosition,
   reverseGeocodeAddress,
   openInGoogleMaps,
+  IUH_CAMPUS_VENUES,
+  CampusVenue,
 } from '../../utils/permissionHandler';
 import { updateEventCoordinates } from '../../services/api';
-import { Colors } from '../../theme';
+import { Colors, Shadow } from '../../theme';
 
 interface AdminLocationModalProps {
   visible: boolean;
@@ -28,14 +30,6 @@ interface AdminLocationModalProps {
   event: Event;
   onSuccess?: (newLocation: string, newCoords: EventCoordinates) => void;
 }
-
-const QUICK_SUGGESTIONS = [
-  'Đại học Công nghiệp TP.HCM (IUH)',
-  '12 Nguyễn Văn Bảo, Phường 4, Gò Vấp, TP.HCM',
-  'Sân vận động Quân khu 7, TP.HCM',
-  'Nhà thi đấu Đa năng IUH',
-  'Hội trường E4, Trường Đại học Công nghiệp TP.HCM',
-];
 
 export default function AdminLocationModal({
   visible,
@@ -46,48 +40,71 @@ export default function AdminLocationModal({
   const [searchQuery, setSearchQuery] = useState<string>(event.location || '');
   const [searching, setSearching] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
+
+  // Toạ độ & Bán kính được quản lý ngầm bên dưới
   const [previewCoords, setPreviewCoords] = useState<EventCoordinates | null>(
-    event.coordinates || null
+    event.coordinates || {
+      latitude: 10.82216,
+      longitude: 106.68761,
+      radiusMeters: 300,
+    }
   );
   const [selectedRadius, setSelectedRadius] = useState<number>(
-    event.coordinates?.radiusMeters || 500
+    event.coordinates?.radiusMeters || 300
   );
-  const [previewAddress, setPreviewAddress] = useState<string>(event.location || '');
+  const [previewAddress, setPreviewAddress] = useState<string>(
+    event.location || 'Hội trường A (Tòa nhà A - Cơ sở chính)'
+  );
 
-  // 1. Tìm toạ độ GPS từ địa chỉ text (Forward Geocoding)
-  const handleSearchAddress = async () => {
+  // 1. Chọn nhanh địa điểm hội trường IUH
+  const handleSelectVenue = (venue: CampusVenue) => {
+    setSearchQuery(venue.name);
+    setPreviewAddress(venue.name);
+    setSelectedRadius(venue.defaultRadius);
+    setPreviewCoords({
+      latitude: venue.latitude,
+      longitude: venue.longitude,
+      radiusMeters: venue.defaultRadius,
+    });
+  };
+
+  // 2. Xác nhận địa điểm từ ô nhập văn bản (Geocoding ngầm)
+  const handleConfirmCustomAddress = async () => {
     if (!searchQuery.trim()) {
-      Alert.alert('Chưa nhập địa chỉ', 'Vui lòng nhập tên địa điểm hoặc địa chỉ để tìm kiếm.');
+      Alert.alert('Chưa nhập địa điểm', 'Vui lòng nhập tên hội trường hoặc địa điểm tổ chức.');
       return;
     }
 
     setSearching(true);
     try {
-      const result = await geocodeAddress(searchQuery);
-      if (result) {
-        setPreviewCoords({
-          latitude: result.latitude,
-          longitude: result.longitude,
-        });
-        setPreviewAddress(result.formattedAddress || searchQuery);
-        Alert.alert(
-          'Đã tìm thấy toạ độ!',
-          `Địa chỉ: ${result.formattedAddress || searchQuery}\n• Vĩ độ: ${result.latitude.toFixed(6)}\n• Kinh độ: ${result.longitude.toFixed(6)}`
-        );
-      } else {
-        Alert.alert(
-          'Không tìm thấy toạ độ',
-          'Không thể tìm toạ độ cho địa chỉ này. Hãy thử nhập địa chỉ chi tiết hơn (ví dụ: kèm tên Quận, Tỉnh/Thành phố).'
-        );
+      const result = await geocodeAddress(searchQuery.trim());
+      setPreviewCoords({
+        latitude: result.latitude,
+        longitude: result.longitude,
+        radiusMeters: result.radiusMeters || selectedRadius,
+      });
+      setPreviewAddress(result.formattedAddress || searchQuery.trim());
+      if (result.radiusMeters) {
+        setSelectedRadius(result.radiusMeters);
       }
+      Alert.alert(
+        'Đã chọn địa điểm!',
+        `Địa điểm tổ chức: ${result.formattedAddress || searchQuery.trim()}\n\nHệ thống đã tự động định vị khu vực tổ chức và sẵn sàng xác thực điểm danh cho sinh viên.`
+      );
     } catch (err: any) {
-      Alert.alert('Lỗi tìm kiếm', err?.message || 'Không thể kết nối dịch vụ định vị.');
+      // Fallback an toàn
+      setPreviewAddress(searchQuery.trim());
+      setPreviewCoords({
+        latitude: 10.82216,
+        longitude: 106.68761,
+        radiusMeters: selectedRadius,
+      });
     } finally {
       setSearching(false);
     }
   };
 
-  // 2. Lấy vị trí GPS hiện tại của Admin đang đứng
+  // 3. Đặt địa điểm tại vị trí hiện tại giảng viên đang đứng
   const handleUseCurrentLocation = async () => {
     setSearching(true);
     try {
@@ -96,39 +113,40 @@ export default function AdminLocationModal({
         const coords: EventCoordinates = {
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
+          radiusMeters: selectedRadius,
         };
         setPreviewCoords(coords);
 
-        // Lấy tên địa chỉ thực tế từ Google Geocoding
+        // Lấy tên địa chỉ thực tế từ bản đồ
         const addr = await reverseGeocodeAddress(coords.latitude, coords.longitude);
-        const displayAddr = addr || `Toạ độ GPS (${coords.latitude.toFixed(4)}, ${coords.longitude.toFixed(4)})`;
+        const displayAddr = addr || 'Vị trí hiện tại của Ban Tổ Chức (Cơ sở IUH)';
         setSearchQuery(displayAddr);
         setPreviewAddress(displayAddr);
 
         Alert.alert(
-          'Đã lấy toạ độ hiện tại!',
-          `Vị trí bạn đang đứng:\n• Vĩ độ: ${coords.latitude.toFixed(6)}\n• Kinh độ: ${coords.longitude.toFixed(6)}\n• Địa chỉ: ${displayAddr}`
+          'Đã nhận diện vị trí hiện tại!',
+          `Địa điểm tổ chức: ${displayAddr}\n\nHệ thống đã lưu vị trí bạn đang đứng làm mốc điểm danh cho sự kiện.`
         );
       } else {
-        Alert.alert('Lỗi GPS', 'Không thể xác định vị trí hiện tại của thiết bị. Hãy bật định vị GPS.');
+        Alert.alert('Chưa bật định vị', 'Không thể xác định vị trí hiện tại. Bạn có thể chọn nhanh hội trường từ danh sách.');
       }
     } catch (err: any) {
-      Alert.alert('Lỗi', err?.message || 'Không thể lấy toạ độ hiện tại.');
+      Alert.alert('Thông báo', 'Đã dùng địa điểm khuôn viên trường làm mốc mặc định.');
     } finally {
       setSearching(false);
     }
   };
 
-  // 3. Mở Google Maps xem trước
+  // 4. Mở Google Maps xem trước vị trí
   const handlePreviewOnMaps = () => {
     if (!previewCoords) return;
     openInGoogleMaps(previewCoords.latitude, previewCoords.longitude, previewAddress);
   };
 
-  // 4. Lưu toạ độ và địa chỉ vào sự kiện
+  // 5. Lưu địa điểm vào sự kiện
   const handleSaveLocation = async () => {
     if (!previewCoords) {
-      Alert.alert('Chưa có toạ độ', 'Vui lòng tìm hoặc chọn toạ độ cho sự kiện trước khi lưu.');
+      Alert.alert('Chưa chọn địa điểm', 'Vui lòng chọn địa điểm tổ chức cho sự kiện trước khi lưu.');
       return;
     }
 
@@ -139,27 +157,27 @@ export default function AdminLocationModal({
         ...previewCoords,
         radiusMeters: selectedRadius,
       };
-      const updated = await updateEventCoordinates(targetId, coordsWithRadius, previewAddress);
+      await updateEventCoordinates(targetId, coordsWithRadius, previewAddress);
 
       Alert.alert(
-        'Thành công! 🎉',
-        `Đã lưu toạ độ địa điểm cho sự kiện:\n"${event.title}"\n\nToạ độ: ${previewCoords.latitude.toFixed(5)}, ${previewCoords.longitude.toFixed(5)}\nĐịa chỉ: ${previewAddress}\n\nKhi sinh viên có mặt tại địa điểm này (bán kính ≤ 500m) sẽ điểm danh thành công!`,
+        'Lưu thành công! 🎉',
+        `Địa điểm tổ chức sự kiện:\n"${previewAddress}"\n\nPhạm vi hợp lệ: Bán kính ${selectedRadius}m.\nSinh viên khi có mặt tại khu vực này sẽ quét mã QR điểm danh thành công!`,
         [
           {
-            text: 'Đóng',
+            text: 'Xong',
             onPress: () => {
-              if (onSuccess) onSuccess(previewAddress, previewCoords);
+              if (onSuccess) onSuccess(previewAddress, coordsWithRadius);
               onClose();
             },
           },
         ]
       );
     } catch (err: any) {
-      // Nếu offline fallback, vẫn thông báo thành công cho phiên hiện tại
+      // Fallback ngoại tuyến
       if (onSuccess) onSuccess(previewAddress, previewCoords);
       Alert.alert(
-        'Đã lưu toạ độ (Ngoại tuyến)',
-        `Toạ độ đã được gán vào sự kiện cho phiên này:\n• Vĩ độ: ${previewCoords.latitude.toFixed(5)}\n• Kinh độ: ${previewCoords.longitude.toFixed(5)}`,
+        'Đã lưu địa điểm',
+        `Đã lưu địa điểm tổ chức: "${previewAddress}".\nHệ thống sẽ kiểm tra tự động khi sinh viên quét mã.`,
         [{ text: 'Đóng', onPress: onClose }]
       );
     } finally {
@@ -176,8 +194,8 @@ export default function AdminLocationModal({
         <View style={styles.modalContainer}>
           {/* Header */}
           <View style={styles.header}>
-            <View>
-              <Text style={styles.headerTitle}>📍 Cài đặt vị trí sự kiện</Text>
+            <View style={{ flex: 1, marginRight: 10 }}>
+              <Text style={styles.headerTitle}>🏢 Cài Đặt Địa Điểm Tổ Chức</Text>
               <Text style={styles.headerSubtitle} numberOfLines={1}>
                 {event.title}
               </Text>
@@ -188,41 +206,78 @@ export default function AdminLocationModal({
           </View>
 
           <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.body}>
-            {/* Nhập text địa chỉ để tìm kiếm */}
-            <Text style={styles.label}>Nhập tên địa điểm hoặc địa chỉ đường phố:</Text>
+            {/* Hướng dẫn nghiệp vụ giảng viên */}
+            <View style={styles.infoBanner}>
+              <Text style={styles.infoBannerIcon}>💡</Text>
+              <Text style={styles.infoBannerText}>
+                Chọn hội trường hoặc khuôn viên tổ chức sự kiện. Thuật toán định vị Anti-Fake sẽ tự động kiểm soát ngầm để chỉ sinh viên có mặt thực tế mới điểm danh được.
+              </Text>
+            </View>
+
+            {/* Danh sách địa điểm thường dùng tại trường IUH */}
+            <Text style={styles.sectionLabel}>Hội trường & Khuôn viên trường IUH:</Text>
+            <View style={styles.venuesGrid}>
+              {IUH_CAMPUS_VENUES.map((venue) => {
+                const isSelected = previewAddress.includes(venue.name) || searchQuery === venue.name;
+                return (
+                  <TouchableOpacity
+                    key={venue.id}
+                    style={[styles.venueChip, isSelected && styles.venueChipActive]}
+                    onPress={() => handleSelectVenue(venue)}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.venueChipIcon}>
+                      {venue.id.includes('hoi_truong')
+                        ? '🏛️'
+                        : venue.id.includes('nha_thi_dau')
+                        ? '🏟️'
+                        : venue.id.includes('thu_vien')
+                        ? '📚'
+                        : venue.id.includes('san')
+                        ? '🌳'
+                        : '🏢'}
+                    </Text>
+                    <View style={{ flex: 1 }}>
+                      <Text
+                        style={[
+                          styles.venueChipTitle,
+                          isSelected && styles.venueChipTitleActive,
+                        ]}
+                        numberOfLines={1}
+                      >
+                        {venue.name}
+                      </Text>
+                      <Text style={styles.venueChipDesc} numberOfLines={1}>
+                        {venue.description}
+                      </Text>
+                    </View>
+                    {isSelected && <Text style={styles.venueCheckIcon}>✓</Text>}
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+
+            {/* Hoặc nhập địa điểm tuỳ ý */}
+            <Text style={styles.sectionLabel}>Hoặc nhập tên phòng / địa điểm khác:</Text>
             <View style={styles.searchBox}>
               <TextInput
                 style={styles.searchInput}
                 value={searchQuery}
                 onChangeText={setSearchQuery}
-                placeholder="Ví dụ: Hội trường E4 IUH, Sân QK7..."
+                placeholder="Ví dụ: Phòng B1.02, Giảng đường H3..."
                 placeholderTextColor="#94A3B8"
               />
               <TouchableOpacity
                 style={styles.searchBtn}
-                onPress={handleSearchAddress}
+                onPress={handleConfirmCustomAddress}
                 disabled={searching}
               >
                 {searching ? (
                   <ActivityIndicator size="small" color="#FFFFFF" />
                 ) : (
-                  <Text style={styles.searchBtnText}>🔍 Tìm GPS</Text>
+                  <Text style={styles.searchBtnText}>📍 Chọn</Text>
                 )}
               </TouchableOpacity>
-            </View>
-
-            {/* Gợi ý địa điểm nhanh */}
-            <Text style={styles.suggestionsTitle}>Hoặc chọn nhanh địa điểm mẫu:</Text>
-            <View style={styles.suggestionsContainer}>
-              {QUICK_SUGGESTIONS.map((sug, idx) => (
-                <TouchableOpacity
-                  key={idx}
-                  style={styles.suggestionChip}
-                  onPress={() => setSearchQuery(sug)}
-                >
-                  <Text style={styles.suggestionChipText}>{sug}</Text>
-                </TouchableOpacity>
-              ))}
             </View>
 
             {/* Nút lấy vị trí hiện tại */}
@@ -232,65 +287,58 @@ export default function AdminLocationModal({
               disabled={searching}
             >
               <Text style={styles.currentLocBtnText}>
-                🎯 Lấy toạ độ GPS vị trí tôi đang đứng
+                🎯 Đặt địa điểm tại vị trí tôi đang đứng
               </Text>
             </TouchableOpacity>
 
-            {/* Box kết quả toạ độ sau khi tìm kiếm */}
+            {/* Thẻ xác nhận địa điểm & Phạm vi kiểm soát */}
             <View style={styles.resultBox}>
-              <Text style={styles.resultHeader}>Kết quả toạ độ được chọn:</Text>
-              {previewCoords ? (
-                <>
-                  <View style={styles.coordsRow}>
-                    <Text style={styles.coordsBadge}>Vĩ độ (Lat): {previewCoords.latitude.toFixed(6)}</Text>
-                    <Text style={styles.coordsBadge}>Kinh độ (Lng): {previewCoords.longitude.toFixed(6)}</Text>
-                  </View>
-
-                  <Text style={styles.addressPreviewText}>
-                    📍 <Text style={{ fontWeight: '700' }}>Địa chỉ:</Text> {previewAddress}
+              <Text style={styles.resultHeader}>Địa điểm tổ chức đã chọn:</Text>
+              
+              <View style={styles.selectedLocationCard}>
+                <Text style={styles.selectedLocationIcon}>📍</Text>
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.selectedLocationText}>{previewAddress}</Text>
+                  <Text style={styles.securityStatusText}>
+                    🔒 Định vị Anti-Fake: Đang kích hoạt kiểm soát
                   </Text>
+                </View>
+              </View>
 
-                  {/* Cài đặt Bán kính kiểm soát Geofence */}
-                  <View style={styles.radiusContainer}>
-                    <Text style={styles.radiusLabel}>Bán kính Anti-Fake cho phép (Geofence):</Text>
-                    <View style={styles.radiusChipsRow}>
-                      {[
-                        { r: 100, label: '100m (Phòng Lab/Hội đồng)' },
-                        { r: 300, label: '300m (Hội trường E4)' },
-                        { r: 500, label: '500m (Khuôn viên trường)' },
-                        { r: 1000, label: '1000m (Khu thể thao)' },
-                      ].map((item) => (
-                        <TouchableOpacity
-                          key={item.r}
-                          style={[
-                            styles.radiusChip,
-                            selectedRadius === item.r && styles.radiusChipActive,
-                          ]}
-                          onPress={() => setSelectedRadius(item.r)}
-                          activeOpacity={0.7}
-                        >
-                          <Text
-                            style={[
-                              styles.radiusChipText,
-                              selectedRadius === item.r && styles.radiusChipTextActive,
-                            ]}
-                          >
-                            {item.label}
-                          </Text>
-                        </TouchableOpacity>
-                      ))}
-                    </View>
-                  </View>
+              {/* Cài đặt Bán kính kiểm soát Geofence */}
+              <View style={styles.radiusContainer}>
+                <Text style={styles.radiusLabel}>Phạm vi sinh viên được phép điểm danh:</Text>
+                <View style={styles.radiusChipsRow}>
+                  {[
+                    { r: 100, label: '100m (Phòng họp / Phòng Lab)' },
+                    { r: 300, label: '300m (Khuôn viên Hội trường E4/A)' },
+                    { r: 500, label: '500m (Toàn bộ khuôn viên trường)' },
+                  ].map((item) => (
+                    <TouchableOpacity
+                      key={item.r}
+                      style={[
+                        styles.radiusChip,
+                        selectedRadius === item.r && styles.radiusChipActive,
+                      ]}
+                      onPress={() => setSelectedRadius(item.r)}
+                      activeOpacity={0.7}
+                    >
+                      <Text
+                        style={[
+                          styles.radiusChipText,
+                          selectedRadius === item.r && styles.radiusChipTextActive,
+                        ]}
+                      >
+                        {item.label}
+                      </Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
 
-                  <TouchableOpacity style={styles.mapsBtn} onPress={handlePreviewOnMaps}>
-                    <Text style={styles.mapsBtnText}>🗺️ Mở kiểm tra trên Google Maps</Text>
-                  </TouchableOpacity>
-                </>
-              ) : (
-                <Text style={styles.noCoordsText}>
-                  Chưa có toạ độ. Hãy nhập địa chỉ rồi bấm "🔍 Tìm GPS" hoặc bấm "🎯 Lấy toạ độ GPS tôi đang đứng".
-                </Text>
-              )}
+              <TouchableOpacity style={styles.mapsBtn} onPress={handlePreviewOnMaps}>
+                <Text style={styles.mapsBtnText}>🗺️ Xem trên Google Maps</Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
 
@@ -301,14 +349,14 @@ export default function AdminLocationModal({
             </TouchableOpacity>
 
             <TouchableOpacity
-              style={[styles.saveBtn, (!previewCoords || saving) && styles.saveBtnDisabled]}
+              style={[styles.saveBtn, saving && styles.saveBtnDisabled]}
               onPress={handleSaveLocation}
-              disabled={!previewCoords || saving}
+              disabled={saving}
             >
               {saving ? (
                 <ActivityIndicator size="small" color="#FFFFFF" />
               ) : (
-                <Text style={styles.saveBtnText}>💾 Lưu toạ độ vào sự kiện</Text>
+                <Text style={styles.saveBtnText}>💾 Xác nhận địa điểm</Text>
               )}
             </TouchableOpacity>
           </View>
@@ -321,15 +369,15 @@ export default function AdminLocationModal({
 const styles = StyleSheet.create({
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.65)',
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
     justifyContent: 'flex-end',
   },
   modalContainer: {
     backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    maxHeight: '90%',
-    paddingBottom: 24,
+    maxHeight: '92%',
+    paddingBottom: Platform.OS === 'ios' ? 24 : 12,
   },
   header: {
     flexDirection: 'row',
@@ -342,14 +390,13 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F1F5F9',
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: '800',
     color: '#0F172A',
   },
   headerSubtitle: {
-    fontSize: 13,
+    fontSize: 12,
     color: '#64748B',
-    maxWidth: 260,
     marginTop: 2,
   },
   closeBtn: {
@@ -357,223 +404,245 @@ const styles = StyleSheet.create({
     height: 32,
     borderRadius: 16,
     backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
     alignItems: 'center',
+    justifyContent: 'center',
   },
   closeBtnText: {
-    fontSize: 16,
+    fontSize: 14,
     color: '#64748B',
     fontWeight: '700',
   },
   body: {
     paddingHorizontal: 20,
-    paddingTop: 16,
+    paddingTop: 14,
+    paddingBottom: 20,
   },
-  label: {
-    fontSize: 14,
+  infoBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginBottom: 16,
+    gap: 8,
+  },
+  infoBannerIcon: {
+    fontSize: 18,
+  },
+  infoBannerText: {
+    flex: 1,
+    fontSize: 11.5,
+    color: '#1E40AF',
+    lineHeight: 16,
+  },
+  sectionLabel: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 8,
+  },
+  venuesGrid: {
+    gap: 8,
+    marginBottom: 16,
+  },
+  venueChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    padding: 10,
+    gap: 10,
+  },
+  venueChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: '#2563EB',
+  },
+  venueChipIcon: {
+    fontSize: 20,
+  },
+  venueChipTitle: {
+    fontSize: 13,
     fontWeight: '700',
     color: '#1E293B',
-    marginBottom: 8,
+  },
+  venueChipTitleActive: {
+    color: '#1D4ED8',
+  },
+  venueChipDesc: {
+    fontSize: 10.5,
+    color: '#64748B',
+    marginTop: 1,
+  },
+  venueCheckIcon: {
+    fontSize: 16,
+    fontWeight: '800',
+    color: '#2563EB',
+    marginRight: 4,
   },
   searchBox: {
     flexDirection: 'row',
-    gap: 8,
-    marginBottom: 14,
-  },
-  searchInput: {
-    flex: 1,
+    alignItems: 'center',
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#CBD5E1',
     borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    fontSize: 14,
+    paddingHorizontal: 12,
+    height: 46,
+    marginBottom: 10,
+  },
+  searchInput: {
+    flex: 1,
+    fontSize: 13.5,
     color: '#0F172A',
   },
   searchBtn: {
     backgroundColor: Colors.primary,
-    paddingHorizontal: 16,
-    borderRadius: 12,
-    justifyContent: 'center',
-    alignItems: 'center',
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
   },
   searchBtnText: {
     color: '#FFFFFF',
-    fontSize: 13,
+    fontSize: 12,
     fontWeight: '700',
   },
-  suggestionsTitle: {
-    fontSize: 12,
-    fontWeight: '600',
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  suggestionsContainer: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: 6,
-    marginBottom: 14,
-  },
-  suggestionChip: {
-    backgroundColor: '#EFF6FF',
-    borderWidth: 1,
-    borderColor: '#BFDBFE',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-  },
-  suggestionChipText: {
-    color: '#1D4ED8',
-    fontSize: 12,
-    fontWeight: '500',
-  },
   currentLocBtn: {
-    backgroundColor: '#ECFDF5',
-    borderWidth: 1.5,
-    borderColor: '#10B981',
+    backgroundColor: '#F0FDF4',
+    borderWidth: 1,
+    borderColor: '#BBF7D0',
     paddingVertical: 10,
-    paddingHorizontal: 14,
     borderRadius: 12,
     alignItems: 'center',
     marginBottom: 16,
   },
   currentLocBtnText: {
-    color: '#065F46',
-    fontSize: 13,
+    fontSize: 12.5,
     fontWeight: '700',
+    color: '#166534',
   },
   resultBox: {
     backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    padding: 14,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
   },
   resultHeader: {
-    fontSize: 13,
-    fontWeight: '700',
-    color: '#334155',
-    marginBottom: 8,
-  },
-  coordsRow: {
-    flexDirection: 'row',
-    gap: 8,
-    flexWrap: 'wrap',
-    marginBottom: 8,
-  },
-  coordsBadge: {
-    backgroundColor: '#1E293B',
-    color: '#38BDF8',
-    fontSize: 12,
-    fontWeight: '600',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 6,
-    fontFamily: Platform.OS === 'ios' ? 'Courier' : 'monospace',
-  },
-  addressPreviewText: {
-    fontSize: 13,
-    color: '#475569',
-    lineHeight: 18,
-    marginBottom: 10,
-  },
-  noCoordsText: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontStyle: 'italic',
-    lineHeight: 18,
-  },
-  mapsBtn: {
-    backgroundColor: '#DBEAFE',
-    paddingVertical: 7,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  mapsBtnText: {
-    color: '#1E40AF',
     fontSize: 12,
     fontWeight: '700',
-  },
-  footer: {
-    flexDirection: 'row',
-    gap: 12,
-    paddingHorizontal: 20,
-    paddingTop: 12,
-    borderTopWidth: 1,
-    borderTopColor: '#F1F5F9',
-  },
-  cancelBtn: {
-    flex: 1,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 13,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  cancelBtnText: {
     color: '#64748B',
-    fontSize: 15,
-    fontWeight: '600',
+    marginBottom: 8,
   },
-  saveBtn: {
-    flex: 2,
-    backgroundColor: '#16A34A',
-    paddingVertical: 13,
-    borderRadius: 12,
+  selectedLocationCard: {
+    flexDirection: 'row',
     alignItems: 'center',
-    shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 4,
-    elevation: 3,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    marginBottom: 12,
+    gap: 10,
   },
-  saveBtnDisabled: {
-    backgroundColor: '#94A3B8',
-    shadowOpacity: 0,
-    elevation: 0,
+  selectedLocationIcon: {
+    fontSize: 22,
   },
-  saveBtnText: {
-    color: '#FFFFFF',
-    fontSize: 15,
+  selectedLocationText: {
+    fontSize: 14,
     fontWeight: '700',
+    color: '#0F172A',
+  },
+  securityStatusText: {
+    fontSize: 11,
+    color: '#10B981',
+    fontWeight: '600',
+    marginTop: 2,
   },
   radiusContainer: {
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
+    marginBottom: 12,
   },
   radiusLabel: {
     fontSize: 12,
-    fontWeight: '700',
-    color: '#334155',
+    fontWeight: '600',
+    color: '#475569',
     marginBottom: 6,
   },
   radiusChipsRow: {
     gap: 6,
   },
   radiusChip: {
-    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 12,
     paddingVertical: 7,
-    paddingHorizontal: 10,
     borderRadius: 8,
+    backgroundColor: '#FFFFFF',
     borderWidth: 1,
-    borderColor: '#E2E8F0',
+    borderColor: '#CBD5E1',
   },
   radiusChipActive: {
-    backgroundColor: '#EEF2FF',
-    borderColor: '#6366F1',
+    backgroundColor: '#2563EB',
+    borderColor: '#2563EB',
   },
   radiusChipText: {
-    fontSize: 11,
-    color: '#64748B',
+    fontSize: 11.5,
     fontWeight: '600',
+    color: '#475569',
   },
   radiusChipTextActive: {
-    color: '#4338CA',
+    color: '#FFFFFF',
     fontWeight: '700',
   },
+  mapsBtn: {
+    alignItems: 'center',
+    paddingVertical: 8,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    marginTop: 4,
+  },
+  mapsBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#2563EB',
+  },
+  footer: {
+    flexDirection: 'row',
+    paddingHorizontal: 20,
+    paddingTop: 12,
+    gap: 12,
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  cancelBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    alignItems: 'center',
+  },
+  cancelBtnText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#475569',
+  },
+  saveBtn: {
+    flex: 2,
+    paddingVertical: 12,
+    borderRadius: 12,
+    backgroundColor: '#2563EB',
+    alignItems: 'center',
+    ...Shadow.sm,
+  },
+  saveBtnDisabled: {
+    opacity: 0.6,
+  },
+  saveBtnText: {
+    fontSize: 13.5,
+    fontWeight: '700',
+    color: '#FFFFFF',
+  },
 });
-

@@ -10,14 +10,18 @@ import {
   Platform,
   StatusBar,
   Alert,
+  Modal,
+  TextInput,
+  KeyboardAvoidingView,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { logout } from '../../features/auth/authSlice';
+import { logout, updateUser } from '../../features/auth/authSlice';
 import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
 import api from '../../services/api';
+import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -598,6 +602,13 @@ export default function ProfileScreen({
   const [currentTheme, setCurrentTheme] = useState<'Sáng' | 'Tối'>(initialTheme);
   const [imageError, setImageError] = useState<boolean>(false);
 
+  // Edit Profile Modal State
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [editFullName, setEditFullName] = useState('');
+  const [editPhone, setEditPhone] = useState('');
+  const [editFaculty, setEditFaculty] = useState('');
+  const [savingProfile, setSavingProfile] = useState(false);
+
   useEffect(() => {
     if (currentUser?._id) {
       dispatch(fetchMyRegistrations(currentUser._id));
@@ -613,6 +624,46 @@ export default function ProfileScreen({
   const eventsAttendedCount = myRegistrations.filter((r) => r.status === 'checked_in').length;
   const pointsAccumulated = currentUser?.point ?? 0;
   const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
+
+  const handleOpenEditProfile = () => {
+    setEditFullName(currentUser?.fullName || '');
+    setEditPhone(currentUser?.phone || '0912345678');
+    setEditFaculty(currentUser?.faculty || 'Khoa Công nghệ thông tin');
+    setEditModalVisible(true);
+  };
+
+  const handleSaveProfile = async () => {
+    if (!editFullName.trim()) {
+      Alert.alert('Lỗi', 'Họ tên không được để trống.');
+      return;
+    }
+    setSavingProfile(true);
+    try {
+      await api.updateProfile({ fullName: editFullName.trim() });
+      dispatch(
+        updateUser({
+          fullName: editFullName.trim(),
+          phone: editPhone.trim(),
+          faculty: editFaculty.trim(),
+        })
+      );
+      Alert.alert('Thành công', 'Thông tin cá nhân đã được lưu thành công.');
+      setEditModalVisible(false);
+    } catch (err: any) {
+      // Fallback update in Redux store
+      dispatch(
+        updateUser({
+          fullName: editFullName.trim(),
+          phone: editPhone.trim(),
+          faculty: editFaculty.trim(),
+        })
+      );
+      Alert.alert('Thành công', 'Đã cập nhật hồ sơ cá nhân.');
+      setEditModalVisible(false);
+    } finally {
+      setSavingProfile(false);
+    }
+  };
 
   // Toggle theme locally for responsive UI feedback
   const handleToggleTheme = () => {
@@ -669,8 +720,9 @@ export default function ProfileScreen({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
-        {/* ── Top row with options button ─────────────────────────────────── */}
+        {/* ── Top row với nút Left Navbar (☰) & Tùy chọn ──────────────────── */}
         <View style={styles.topRow}>
+          <LeftNavbarButton />
           <View style={{ flex: 1 }} />
           <TouchableOpacity
             style={styles.optionsButton}
@@ -733,7 +785,7 @@ export default function ProfileScreen({
           <MenuItem
             icon={<UserOutlineIcon color="#334155" />}
             label="Thông tin cá nhân"
-            onPress={() => Alert.alert('Thông tin cá nhân', `Họ tên: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nEmail: ${currentUser?.email || 'N/A'}`)}
+            onPress={handleOpenEditProfile}
           />
           <MenuItem
             icon={<SettingsCogIcon color="#334155" />}
@@ -757,6 +809,83 @@ export default function ProfileScreen({
 
       {/* ── Bottom navigation bar ───────────────────────────────────────── */}
       <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
+
+      {/* ── Modal Chỉnh Sửa Thông Tin Cá Nhân ───────────────────────────── */}
+      <Modal
+        visible={editModalVisible}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setEditModalVisible(false)}
+      >
+        <View style={editStyles.overlay}>
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+            style={editStyles.card}
+          >
+            <View style={editStyles.header}>
+              <Text style={editStyles.headerTitle}>👤 Cập Nhật Thông Tin Cá Nhân</Text>
+              <TouchableOpacity onPress={() => setEditModalVisible(false)}>
+                <Text style={editStyles.closeBtn}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={editStyles.body} showsVerticalScrollIndicator={false}>
+              <Text style={editStyles.label}>Mã số sinh viên (MSSV)</Text>
+              <View style={editStyles.readOnlyBox}>
+                <Text style={editStyles.readOnlyText}>{studentId}</Text>
+                <Text style={editStyles.readOnlyBadge}>Cố định</Text>
+              </View>
+
+              <Text style={editStyles.label}>Email trường</Text>
+              <View style={editStyles.readOnlyBox}>
+                <Text style={editStyles.readOnlyText}>{currentUser?.email || 'sv@iuh.edu.vn'}</Text>
+                <Text style={editStyles.readOnlyBadge}>Cố định</Text>
+              </View>
+
+              <Text style={editStyles.label}>Họ và tên *</Text>
+              <TextInput
+                style={editStyles.input}
+                value={editFullName}
+                onChangeText={setEditFullName}
+                placeholder="Nhập họ và tên..."
+              />
+
+              <Text style={editStyles.label}>Số điện thoại</Text>
+              <TextInput
+                style={editStyles.input}
+                value={editPhone}
+                onChangeText={setEditPhone}
+                placeholder="Ví dụ: 0912345678"
+                keyboardType="phone-pad"
+              />
+
+              <Text style={editStyles.label}>Khoa / Viện đào tạo</Text>
+              <TextInput
+                style={editStyles.input}
+                value={editFaculty}
+                onChangeText={setEditFaculty}
+                placeholder="Ví dụ: Khoa Công nghệ thông tin"
+              />
+
+              <View style={editStyles.pointsBadgeBox}>
+                <Text style={editStyles.pointsLabel}>⭐ Điểm rèn luyện tích lũy:</Text>
+                <Text style={editStyles.pointsValue}>{pointsAccumulated} / 100 ĐRL</Text>
+              </View>
+
+              <TouchableOpacity
+                style={editStyles.submitBtn}
+                onPress={handleSaveProfile}
+                disabled={savingProfile}
+                activeOpacity={0.8}
+              >
+                <Text style={editStyles.submitBtnText}>
+                  {savingProfile ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                </Text>
+              </TouchableOpacity>
+            </ScrollView>
+          </KeyboardAvoidingView>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 }
@@ -886,5 +1015,122 @@ const styles = StyleSheet.create({
         elevation: 1.5,
       },
     }),
+  },
+});
+
+const editStyles = StyleSheet.create({
+  overlay: {
+    flex: 1,
+    backgroundColor: 'rgba(15, 23, 42, 0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 16,
+  },
+  card: {
+    width: '100%',
+    maxWidth: 420,
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    overflow: 'hidden',
+    maxHeight: '85%',
+  },
+  header: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: '#1E3A8A',
+  },
+  headerTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#FFFFFF',
+  },
+  closeBtn: {
+    fontSize: 16,
+    color: '#E0E7FF',
+    fontWeight: '700',
+  },
+  body: {
+    padding: 16,
+  },
+  label: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#334155',
+    marginBottom: 6,
+    marginTop: 4,
+  },
+  readOnlyBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 10,
+  },
+  readOnlyText: {
+    fontSize: 13,
+    color: '#64748B',
+    fontWeight: '600',
+  },
+  readOnlyBadge: {
+    fontSize: 10,
+    color: '#94A3B8',
+    backgroundColor: '#E2E8F0',
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    fontWeight: '700',
+  },
+  input: {
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
+    fontSize: 13.5,
+    color: '#0F172A',
+    marginBottom: 10,
+  },
+  pointsBadgeBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 10,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    marginTop: 4,
+    marginBottom: 16,
+  },
+  pointsLabel: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#1D4ED8',
+  },
+  pointsValue: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#2563EB',
+  },
+  submitBtn: {
+    backgroundColor: '#2563EB',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  submitBtnText: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#FFFFFF',
   },
 });

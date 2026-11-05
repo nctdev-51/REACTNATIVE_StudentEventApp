@@ -77,7 +77,7 @@ export default function AdminEventsScreen() {
           </View>
           <View style={[styles.gpsBadge, hasGPS ? styles.gpsBadgeActive : styles.gpsBadgeMissing]}>
             <Text style={[styles.gpsBadgeText, hasGPS ? styles.gpsBadgeTextActive : styles.gpsBadgeTextMissing]}>
-              {hasGPS ? '✅ ĐÃ CÀI GPS ANTI-FAKE' : '⚠️ CHƯA CÓ TOẠ ĐỘ GPS'}
+              {hasGPS ? '🔒 XÁC THỰC VỊ TRÍ TỰ ĐỘNG' : 'ℹ️ ĐIỂM DANH TỰ DO'}
             </Text>
           </View>
         </View>
@@ -93,7 +93,7 @@ export default function AdminEventsScreen() {
           {hasGPS ? (
             <View style={styles.coordsRow}>
               <Text style={styles.coordsText}>
-                🌐 GPS: {item.coordinates!.latitude.toFixed(5)}, {item.coordinates!.longitude.toFixed(5)}
+                🔒 Phạm vi: Bán kính {item.coordinates?.radiusMeters || 300}m quanh địa điểm
               </Text>
               <TouchableOpacity
                 onPress={() => openInGoogleMaps(item.coordinates!.latitude, item.coordinates!.longitude, item.location)}
@@ -103,7 +103,7 @@ export default function AdminEventsScreen() {
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.noCoordsText}>Sinh viên quét QR sẽ không bị kiểm tra Anti-Fake GPS</Text>
+            <Text style={styles.noCoordsText}>Sự kiện chưa giới hạn vị trí điểm danh</Text>
           )}
         </View>
 
@@ -115,7 +115,7 @@ export default function AdminEventsScreen() {
             onPress={() => setSelectedEventForGPS(item)}
             activeOpacity={0.8}
           >
-            <Text style={styles.gpsEditBtnText}>⚙️ Cài đặt vị trí GPS</Text>
+            <Text style={styles.gpsEditBtnText}>📍 Đổi địa điểm tổ chức</Text>
           </TouchableOpacity>
 
           {/* Trình chiếu mã QR */}

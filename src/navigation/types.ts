@@ -34,6 +34,7 @@ export type AdminStackParamList = {
   AdminCreateEvent: undefined;
   AdminCheckInReports: { eventId?: string } | undefined;
   AdminQRDisplay: { eventId: string; eventTitle: string };
+  AdminUsers: undefined;
   StudentPreview: NavigatorScreenParams<MainStackParamList> | undefined;
 };
 
@@ -67,3 +68,4 @@ export type AdminEventsScreenProps = NativeStackScreenProps<AdminStackParamList,
 export type AdminCreateEventScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminCreateEvent'>;
 export type AdminCheckInReportsScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminCheckInReports'>;
 export type AdminQRDisplayScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminQRDisplay'>;
+export type AdminUsersScreenProps = NativeStackScreenProps<AdminStackParamList, 'AdminUsers'>;

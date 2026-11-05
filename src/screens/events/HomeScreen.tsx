@@ -23,6 +23,7 @@ import SearchBar from "../../components/events/SearchBar";
 import CategoryChip from "../../components/events/CategoryChip";
 import FeaturedEventCard from "../../components/events/FeaturedEventCard";
 import EventCard from "../../components/events/EventCard";
+import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import { Colors, Spacing, Typography } from "../../theme";
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">;
@@ -90,17 +91,21 @@ export default function HomeScreen() {
           />
         }
       >
-        {/* Header */}
+        {/* Header với Left Navbar Menu (☰) */}
         <View style={styles.header}>
-          <View>
-            <Text style={styles.hello}>Xin chào,</Text>
-            <Text style={styles.userName}>{userName} 👋</Text>
+          <View style={styles.headerLeft}>
+            <LeftNavbarButton hasNotification={unreadCount > 0} style={styles.navMenuBtn} />
+            <View style={styles.greetingBox}>
+              <Text style={styles.hello}>Xin chào,</Text>
+              <Text style={styles.userName} numberOfLines={1}>{userName} 👋</Text>
+            </View>
           </View>
 
           <TouchableOpacity
             style={styles.avatar}
             onPress={() => navigation.navigate("Profile")}
             activeOpacity={0.8}
+            accessibilityLabel="Mở hồ sơ cá nhân"
           >
             <Text style={styles.avatarText}>
               {userName ? userName.charAt(0).toUpperCase() : "👤"}
@@ -276,8 +281,21 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginBottom: 16,
   },
-  hello: { fontSize: 16, color: "#374151", marginBottom: 2 },
-  userName: { fontSize: 24, fontWeight: "700", color: "#111827" },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    marginRight: 10,
+    gap: 12,
+  },
+  navMenuBtn: {
+    marginRight: 2,
+  },
+  greetingBox: {
+    flex: 1,
+  },
+  hello: { fontSize: 13, color: "#64748B", marginBottom: 2 },
+  userName: { fontSize: 20, fontWeight: "700", color: "#111827" },
   avatar: {
     width: 46,
     height: 46,

@@ -19,6 +19,7 @@ import type { MainStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
 import { fetchEvents } from '../../features/events/eventsSlice';
+import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -703,9 +704,12 @@ export default function MyScheduleScreen({
     <SafeAreaView style={styles.safe}>
       <StatusBar barStyle="dark-content" />
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Header với nút Left Navbar (☰) ──────────────────────────────────────────────────────── */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Lịch của tôi</Text>
+        <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
+          <LeftNavbarButton />
+          <Text style={styles.headerTitle}>Lịch của tôi</Text>
+        </View>
         <TouchableOpacity
           style={styles.filterButton}
           onPress={handleFilterPress}

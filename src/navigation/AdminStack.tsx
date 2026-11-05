@@ -6,6 +6,7 @@ import AdminEventsScreen from '../screens/admin/AdminEventsScreen';
 import AdminCreateEventScreen from '../screens/admin/AdminCreateEventScreen';
 import AdminCheckInReportsScreen from '../screens/admin/AdminCheckInReportsScreen';
 import AdminQRDisplayScreen from '../screens/admin/AdminQRDisplayScreen';
+import AdminUsersScreen from '../screens/admin/AdminUsersScreen';
 import MainStack from './MainStack';
 import { Colors } from '../theme';
 
@@ -36,17 +37,25 @@ export default function AdminStack() {
         }}
       />
       <Stack.Screen
+        name="AdminUsers"
+        component={AdminUsersScreen}
+        options={{
+          title: 'Quản Lý Người Dùng & Điểm Rèn Luyện',
+          headerShown: false,
+        }}
+      />
+      <Stack.Screen
         name="AdminEvents"
         component={AdminEventsScreen}
         options={{
-          title: 'Quản Lý Địa Điểm & GPS Sự Kiện',
+          title: 'Quản Lý Địa Điểm Tổ Chức Sự Kiện',
         }}
       />
       <Stack.Screen
         name="AdminCreateEvent"
         component={AdminCreateEventScreen}
         options={{
-          title: 'Thêm Sự Kiện & Gán GPS Mới',
+          title: 'Thêm Sự Kiện Mới',
         }}
       />
       <Stack.Screen
@@ -74,4 +83,3 @@ export default function AdminStack() {
     </Stack.Navigator>
   );
 }
-

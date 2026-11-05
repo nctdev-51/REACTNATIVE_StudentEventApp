@@ -13,15 +13,19 @@ import {
   AuthResponse,
   CreateRegistrationPayload,
   CreateFeedbackPayload,
+  CreateUserPayload,
+  UpdateUserPayload,
 } from "../types";
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
 const debuggerHost = Constants.expoConfig?.hostUri;
-const isTunnel = debuggerHost?.includes("ngrok") || debuggerHost?.includes("exp.direct");
+const isTunnel =
+  debuggerHost?.includes("ngrok") || debuggerHost?.includes("exp.direct");
 const autoDevIp = !isTunnel && debuggerHost ? debuggerHost.split(":")[0] : null;
 
-export const DEV_LAN_IP = autoDevIp || (Platform.OS === "android" ? "10.0.2.2" : "localhost");
+export const DEV_LAN_IP =
+  autoDevIp || (Platform.OS === "android" ? "172.26.208.1" : "localhost");
 export const USE_DEV_LAN_IP = !!autoDevIp;
 
 /**
@@ -29,16 +33,26 @@ export const USE_DEV_LAN_IP = !!autoDevIp;
  * Điền link Cloud vào đây (ví dụ: "https://student-event-server.onrender.com/api")
  */
 export const CLOUD_API_URL: string | null = null;
+// "https://silver-walls-design.loca.lt";
+
+/**
+ * ⚡ CHẾ ĐỘ THỬ NGHIỆM ĐỘC LẬP (KHÔNG CẦN BACKEND):
+ * - Nếu = true: Ứng dụng chạy 100% bằng dữ liệu In-Memory ngay trên điện thoại (Expo Go).
+ *   Không cần mở server backend, không cần deploy, phản hồi 0ms không bao giờ lỗi Network.
+ * - Nếu = false: Ứng dụng gọi API thật qua Cloud URL / Tunnel hoặc LAN IP máy tính.
+ *   (Khi server offline, app vẫn tự động fallback an toàn về dữ liệu mock).
+ */
+export const USE_STANDALONE_MOCK: boolean = false;
 
 export const BASE_URL: string =
   CLOUD_API_URL ||
   (Platform.OS === "web"
     ? "http://localhost:5000/api"
     : Platform.OS === "android" && !autoDevIp
-    ? "http://10.0.2.2:5000/api"
-    : autoDevIp
-    ? `http://${autoDevIp}:5000/api`
-    : "http://localhost:5000/api");
+      ? "http://10.0.2.2:5000/api"
+      : autoDevIp
+        ? `http://${autoDevIp}:5000/api`
+        : "http://localhost:5000/api");
 
 // ─── Axios Instance ───────────────────────────────────────────────────────────
 
@@ -58,6 +72,11 @@ export const setAuthToken = (token: string | null) => {
 };
 
 apiClient.interceptors.request.use((config) => {
+  if (USE_STANDALONE_MOCK) {
+    const err: any = new Error("USE_STANDALONE_MOCK_ACTIVE");
+    err.code = "ERR_NETWORK";
+    return Promise.reject(err);
+  }
   if (_authToken) {
     config.headers.Authorization = `Bearer ${_authToken}`;
   }
@@ -151,6 +170,50 @@ export const MOCK_DEFAULT_USER: User = {
   avatarUrl: "https://i.pravatar.cc/300?img=12",
 };
 
+export const MOCK_STUDENT_2: User = {
+  _id: "66f1a1020000000000000002",
+  studentId: "SV02",
+  fullName: "Trần Thị Bích",
+  email: "sv02@iuh.edu.vn",
+  point: 85,
+  role: "student",
+  faculty: "Khoa Quản trị kinh doanh",
+  status: "active",
+  avatarUrl: "https://i.pravatar.cc/300?img=47",
+};
+
+export const MOCK_STUDENT_3: User = {
+  _id: "66f1a1040000000000000004",
+  studentId: "SV03",
+  fullName: "Lê Hoàng Nam",
+  email: "sv03@iuh.edu.vn",
+  point: 95,
+  role: "student",
+  faculty: "Khoa Công nghệ thông tin",
+  status: "active",
+  avatarUrl: "https://i.pravatar.cc/300?img=15",
+};
+
+export const MOCK_STUDENT_4: User = {
+  _id: "66f1a1050000000000000005",
+  studentId: "SV04",
+  fullName: "Phạm Minh Khoa",
+  email: "sv04@iuh.edu.vn",
+  point: 40,
+  role: "student",
+  faculty: "Khoa Điện - Điện tử",
+  status: "inactive",
+  avatarUrl: "https://i.pravatar.cc/300?img=33",
+};
+
+export let inMemoryUsers: User[] = [
+  MOCK_ADMIN_USER,
+  MOCK_DEFAULT_USER,
+  MOCK_STUDENT_2,
+  MOCK_STUDENT_3,
+  MOCK_STUDENT_4,
+];
+
 let inMemoryEvents = [...eventsData];
 let inMemoryRegistrations: Registration[] = [
   {
@@ -171,7 +234,7 @@ let inMemoryRegistrations: Registration[] = [
     status: "checked_in",
     checkInTime: "2026-09-20T08:10:00.000Z",
     createdAt: "2026-09-12T09:30:00.000Z",
-    checkInLocation: { latitude: 10.8225, longitude: 106.6880 },
+    checkInLocation: { latitude: 10.8225, longitude: 106.688 },
   },
 ];
 
@@ -329,7 +392,9 @@ export const getEventById = async (id: string): Promise<Event> => {
     return unwrapOne<Event>(res.data);
   } catch (err: any) {
     if (err?.code === "ERR_NETWORK" || !err?.response) {
-      const found = inMemoryEvents.find((e) => e._id === id || (e as any).id === id);
+      const found = inMemoryEvents.find(
+        (e) => e._id === id || (e as any).id === id,
+      );
       if (found) return found;
     }
     throw err;
@@ -339,34 +404,54 @@ export const getEventById = async (id: string): Promise<Event> => {
 export const updateEventCoordinates = async (
   eventId: string,
   coordinates: { latitude: number; longitude: number },
-  locationName?: string
+  locationName?: string,
 ): Promise<Event> => {
   const payload: any = { coordinates };
   if (locationName) payload.location = locationName;
 
   try {
-    const res = await apiClient.patch('/events/' + eventId, payload);
+    const res = await apiClient.patch("/events/" + eventId, payload);
     const updated = unwrapOne<Event>(res.data);
     // Cập nhật bộ nhớ ram
     inMemoryEvents = inMemoryEvents.map((e) =>
       e._id === eventId || (e as any).id === eventId
-        ? { ...e, coordinates, ...(locationName ? { location: locationName } : {}) }
-        : e
+        ? {
+            ...e,
+            coordinates,
+            ...(locationName ? { location: locationName } : {}),
+          }
+        : e,
     );
     return updated;
   } catch (err: any) {
     // Cập nhật local in-memory
     inMemoryEvents = inMemoryEvents.map((e) =>
       e._id === eventId || (e as any).id === eventId
-        ? { ...e, coordinates, ...(locationName ? { location: locationName } : {}) }
-        : e
+        ? {
+            ...e,
+            coordinates,
+            ...(locationName ? { location: locationName } : {}),
+          }
+        : e,
     );
-    const found = inMemoryEvents.find((e) => e._id === eventId || (e as any).id === eventId);
-    return found || ({ _id: eventId, title: "Sự kiện", coordinates, location: locationName || "" } as any);
+    const found = inMemoryEvents.find(
+      (e) => e._id === eventId || (e as any).id === eventId,
+    );
+    return (
+      found ||
+      ({
+        _id: eventId,
+        title: "Sự kiện",
+        coordinates,
+        location: locationName || "",
+      } as any)
+    );
   }
 };
 
-export const createEvent = async (eventData: Partial<Event> & { bannerUrl?: string }): Promise<Event> => {
+export const createEvent = async (
+  eventData: Partial<Event> & { bannerUrl?: string },
+): Promise<Event> => {
   const newEvent: Event = {
     _id: "evt_" + Date.now(),
     id: "evt_" + Date.now(),
@@ -374,7 +459,10 @@ export const createEvent = async (eventData: Partial<Event> & { bannerUrl?: stri
     description: eventData.description || "",
     category: eventData.category || "Học thuật",
     location: eventData.location || "Đại học Công nghiệp TP.HCM",
-    coordinates: eventData.coordinates || { latitude: 10.8221, longitude: 106.6876 },
+    coordinates: eventData.coordinates || {
+      latitude: 10.8221,
+      longitude: 106.6876,
+    },
     time: eventData.time || {
       start: new Date().toISOString(),
       end: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
@@ -383,7 +471,7 @@ export const createEvent = async (eventData: Partial<Event> & { bannerUrl?: stri
     faculty: eventData.faculty || "Toàn trường",
     images: [
       eventData.bannerUrl ||
-      "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
+        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
     ],
     trainingPoints: eventData.trainingPoints ?? 5,
     status: (eventData.status as any) || "upcoming",
@@ -411,10 +499,14 @@ export const createEvent = async (eventData: Partial<Event> & { bannerUrl?: stri
 export const deleteEvent = async (eventId: string): Promise<boolean> => {
   try {
     await apiClient.delete(`/events/${eventId}`);
-    inMemoryEvents = inMemoryEvents.filter((e) => e._id !== eventId && (e as any).id !== eventId);
+    inMemoryEvents = inMemoryEvents.filter(
+      (e) => e._id !== eventId && (e as any).id !== eventId,
+    );
     return true;
   } catch (e) {
-    inMemoryEvents = inMemoryEvents.filter((e) => e._id !== eventId && (e as any).id !== eventId);
+    inMemoryEvents = inMemoryEvents.filter(
+      (e) => e._id !== eventId && (e as any).id !== eventId,
+    );
     return true;
   }
 };
@@ -508,39 +600,55 @@ export const qrCheckIn = async (payload: {
       console.warn("[API] Offline QR Check-in Mock Mode");
 
       const matchedEvent = inMemoryEvents.find(
-        (e) => e._id === payload.eventId || (e as any).id === payload.eventId
+        (e) => e._id === payload.eventId || (e as any).id === payload.eventId,
       );
 
       // Nếu không tìm thấy sự kiện khớp
       if (!matchedEvent) {
         return {
           success: false,
-          message: "Mã QR không hợp lệ hoặc sự kiện không tồn tại trên hệ thống.",
+          message:
+            "Mã QR không hợp lệ hoặc sự kiện không tồn tại trên hệ thống.",
         };
       }
 
       // Kiểm tra Anti-Fake GPS trong chế độ Offline
-      if (matchedEvent.coordinates && matchedEvent.coordinates.latitude && matchedEvent.coordinates.longitude) {
-        if (!payload.userLocation || payload.userLocation.latitude === undefined) {
+      if (
+        matchedEvent.coordinates &&
+        matchedEvent.coordinates.latitude &&
+        matchedEvent.coordinates.longitude
+      ) {
+        if (
+          !payload.userLocation ||
+          payload.userLocation.latitude === undefined
+        ) {
           return {
             success: false,
-            message: "Sự kiện yêu cầu xác thực vị trí (GPS) để chống check-in giả mạo. Vui lòng cấp quyền vị trí.",
+            message:
+              "Sự kiện yêu cầu xác thực vị trí (GPS) để chống check-in giả mạo. Vui lòng cấp quyền vị trí.",
           };
         }
 
         const R = 6371000;
         const toRad = (deg: number) => (deg * Math.PI) / 180;
-        const dLat = toRad(matchedEvent.coordinates.latitude - payload.userLocation.latitude);
-        const dLon = toRad(matchedEvent.coordinates.longitude - payload.userLocation.longitude);
+        const dLat = toRad(
+          matchedEvent.coordinates.latitude - payload.userLocation.latitude,
+        );
+        const dLon = toRad(
+          matchedEvent.coordinates.longitude - payload.userLocation.longitude,
+        );
         const a =
           Math.sin(dLat / 2) ** 2 +
           Math.cos(toRad(payload.userLocation.latitude)) *
-          Math.cos(toRad(matchedEvent.coordinates.latitude)) *
-          Math.sin(dLon / 2) ** 2;
-        const dist = Math.round(R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+            Math.cos(toRad(matchedEvent.coordinates.latitude)) *
+            Math.sin(dLon / 2) ** 2;
+        const dist = Math.round(
+          R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)),
+        );
 
         if (dist > 500) {
-          const distStr = dist < 1000 ? dist + "m" : (dist / 1000).toFixed(1) + "km";
+          const distStr =
+            dist < 1000 ? dist + "m" : (dist / 1000).toFixed(1) + "km";
           return {
             success: false,
             message: `Vị trí không hợp lệ! Bạn đang cách địa điểm sự kiện ${distStr} (vượt quá bán kính cho phép 500m). Vui lòng có mặt tại địa điểm để điểm danh.`,
@@ -577,7 +685,11 @@ export const adminManualCheckIn = async (payload: {
   eventId: string;
   studentIdOrEmail: string;
   note?: string;
-}): Promise<{ success: boolean; message: string; registration?: Registration }> => {
+}): Promise<{
+  success: boolean;
+  message: string;
+  registration?: Registration;
+}> => {
   const cleanId = payload.studentIdOrEmail.trim().toLowerCase();
 
   let allUsers: User[] = [MOCK_DEFAULT_USER, MOCK_ADMIN_USER];
@@ -590,7 +702,7 @@ export const adminManualCheckIn = async (payload: {
     (u) =>
       u.studentId?.toLowerCase() === cleanId ||
       u.email?.toLowerCase() === cleanId ||
-      u.fullName?.toLowerCase().includes(cleanId)
+      u.fullName?.toLowerCase().includes(cleanId),
   ) || {
     _id: "user_" + Date.now(),
     studentId: payload.studentIdOrEmail.toUpperCase(),
@@ -637,7 +749,9 @@ export const cancelRegistration = async (
     });
     return unwrapOne<Registration>(res.data);
   } catch (e) {
-    const existing = inMemoryRegistrations.find((r) => r._id === registrationId);
+    const existing = inMemoryRegistrations.find(
+      (r) => r._id === registrationId,
+    );
     if (existing) {
       existing.status = "cancelled";
       return existing;
@@ -695,20 +809,100 @@ export const markNotificationAsRead = async (
   return unwrapOne<Notification>(res.data);
 };
 
-// ─── Users ────────────────────────────────────────────────────────────────────
+// ─── Users & Admin User Management ──────────────────────────────────────────
 
 export const getUsers = async (): Promise<User[]> => {
   try {
     const res = await apiClient.get("/users");
-    return unwrapList<User>(res.data);
+    const list = unwrapList<any>(res.data);
+    if (list && list.length > 0) {
+      return list.map(mapBackendUser);
+    }
+    return inMemoryUsers;
   } catch (e) {
-    return [MOCK_DEFAULT_USER, MOCK_ADMIN_USER];
+    return inMemoryUsers;
   }
 };
 
 export const getUserById = async (id: string): Promise<User> => {
-  const res = await apiClient.get(`/users/${id}`);
-  return mapBackendUser(res.data);
+  try {
+    const res = await apiClient.get(`/users/${id}`);
+    return mapBackendUser(res.data);
+  } catch (e) {
+    const found = inMemoryUsers.find(
+      (u) => u._id === id || (u as any).id === id,
+    );
+    if (found) return found;
+    return MOCK_DEFAULT_USER;
+  }
+};
+
+export const adminUpdateUser = async (
+  userId: string,
+  data: Partial<User>,
+): Promise<User> => {
+  try {
+    const res = await apiClient.patch(`/users/${userId}`, data);
+    return mapBackendUser(res.data);
+  } catch (e) {
+    const idx = inMemoryUsers.findIndex(
+      (u) => u._id === userId || (u as any).id === userId,
+    );
+    if (idx !== -1) {
+      inMemoryUsers[idx] = { ...inMemoryUsers[idx], ...data };
+      return inMemoryUsers[idx];
+    }
+    const updated = { ...MOCK_DEFAULT_USER, ...data, _id: userId };
+    inMemoryUsers.push(updated);
+    return updated;
+  }
+};
+
+export const adminCreateUser = async (
+  payload: CreateUserPayload,
+): Promise<User> => {
+  const newUser: User = {
+    _id: "user_" + Date.now(),
+    studentId: payload.studentId,
+    fullName: payload.fullName,
+    email: payload.email,
+    role: payload.role,
+    faculty: payload.faculty || "Khoa Công nghệ thông tin",
+    point: payload.point ?? 0,
+    phone: payload.phone,
+    status: "active",
+    isActive: true,
+    avatarUrl: `https://i.pravatar.cc/300?img=${Math.floor(Math.random() * 50) + 1}`,
+    createdAt: new Date().toISOString(),
+  };
+
+  try {
+    const res = await apiClient.post("/users", {
+      ...newUser,
+      id: newUser._id,
+      name: newUser.fullName,
+      password: payload.password || "123456",
+    });
+    return mapBackendUser(res.data);
+  } catch (e) {
+    inMemoryUsers.unshift(newUser);
+    return newUser;
+  }
+};
+
+export const adminDeleteUser = async (userId: string): Promise<boolean> => {
+  try {
+    await apiClient.delete(`/users/${userId}`);
+    inMemoryUsers = inMemoryUsers.filter(
+      (u) => u._id !== userId && (u as any).id !== userId,
+    );
+    return true;
+  } catch (e) {
+    inMemoryUsers = inMemoryUsers.filter(
+      (u) => u._id !== userId && (u as any).id !== userId,
+    );
+    return true;
+  }
 };
 
 // ─── Default Export ───────────────────────────────────────────────────────────
@@ -739,6 +933,9 @@ export default {
   markNotificationAsRead,
   getUsers,
   getUserById,
+  adminUpdateUser,
+  adminCreateUser,
+  adminDeleteUser,
   setAuthToken,
   setBaseUrl,
 };
