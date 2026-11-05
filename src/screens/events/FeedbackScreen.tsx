@@ -238,8 +238,8 @@ export default function FeedbackScreen() {
   const eventImage = currentEvent?.images?.[0];
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <ScrollView
         contentContainerStyle={styles.scroll}
         keyboardShouldPersistTaps="handled"

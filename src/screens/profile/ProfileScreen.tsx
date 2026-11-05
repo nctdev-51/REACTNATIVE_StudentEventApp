@@ -866,8 +866,8 @@ export default function ProfileScreen({
   };
 
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}

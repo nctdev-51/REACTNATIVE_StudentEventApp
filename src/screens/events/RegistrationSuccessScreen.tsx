@@ -1,4 +1,4 @@
-import React from 'react';
+import React from "react";
 import {
   View,
   Text,
@@ -7,7 +7,11 @@ import {
   SafeAreaView,
   StatusBar,
   Platform,
-} from 'react-native';
+} from "react-native";
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { MainStackParamList } from "../../navigation/types";
+import { useAppTheme } from "../../theme";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -19,17 +23,10 @@ export interface RegistrationSuccessScreenProps {
   onGoHome?: () => void;
 }
 
-// ---------------------------------------------------------------------------
-// Constants
-// ---------------------------------------------------------------------------
+type NavProp = NativeStackNavigationProp<MainStackParamList>;
+type RoutePropType = RouteProp<MainStackParamList, "RegistrationSuccess">;
 
-const ACCENT_COLOR = '#2563EB';
-const BACKGROUND = '#FFFFFF';
-const SCREEN_BG = '#FFFFFF';
-const TEXT_PRIMARY = '#111827';
-const TEXT_SECONDARY = '#6B7280';
-const SUCCESS_COLOR = '#22C55E';
-const SECONDARY_BTN_BG = '#F1F5F9';
+const SUCCESS_COLOR = "#22C55E";
 
 // ---------------------------------------------------------------------------
 // Custom Vector Icons (Pure React Native Views)
@@ -51,9 +48,9 @@ const iconStyles = StyleSheet.create({
     height: 110,
     borderRadius: 55,
     backgroundColor: SUCCESS_COLOR,
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+    justifyContent: "center",
+    alignItems: "center",
+    position: "relative",
     shadowColor: SUCCESS_COLOR,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.25,
@@ -61,22 +58,22 @@ const iconStyles = StyleSheet.create({
     elevation: 6,
   },
   checkmarkStem: {
-    position: 'absolute',
+    position: "absolute",
     width: 6,
     height: 42,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 3,
-    transform: [{ rotate: '45deg' }],
+    transform: [{ rotate: "45deg" }],
     left: 60,
     top: 32,
   },
   checkmarkKick: {
-    position: 'absolute',
+    position: "absolute",
     width: 6,
     height: 22,
-    backgroundColor: '#FFFFFF',
+    backgroundColor: "#FFFFFF",
     borderRadius: 3,
-    transform: [{ rotate: '-45deg' }],
+    transform: [{ rotate: "-45deg" }],
     left: 42,
     top: 52,
   },
@@ -87,13 +84,36 @@ const iconStyles = StyleSheet.create({
 // ---------------------------------------------------------------------------
 
 export default function RegistrationSuccessScreen({
-  eventTitle = 'Workshop React Native',
+  eventTitle: propEventTitle,
   onViewSchedule,
   onGoHome,
 }: RegistrationSuccessScreenProps) {
+  const navigation = useNavigation<NavProp>();
+  const route = useRoute<RoutePropType>();
+  const { theme, isDark } = useAppTheme();
+
+  const title =
+    route.params?.eventTitle || propEventTitle || "Sự kiện sinh viên IUH";
+
+  const handleViewSchedule = () => {
+    if (onViewSchedule) {
+      onViewSchedule();
+    } else {
+      navigation.navigate("MySchedule");
+    }
+  };
+
+  const handleGoHome = () => {
+    if (onGoHome) {
+      onGoHome();
+    } else {
+      navigation.navigate("Home");
+    }
+  };
+
   return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
 
       <View style={styles.container}>
         {/* Top Space / Graphic area */}
@@ -103,20 +123,25 @@ export default function RegistrationSuccessScreen({
           </View>
 
           {/* Headline */}
-          <Text style={styles.title}>Đăng ký thành công!</Text>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>
+            Đăng ký thành công!
+          </Text>
 
           {/* Subtitle message */}
-          <Text style={styles.message}>
-            Bạn đã đăng ký tham gia{'\n'}
-            <Text style={styles.eventTitleHighlight}>{eventTitle}</Text>.
+          <Text style={[styles.message, { color: theme.textSecondary }]}>
+            Bạn đã đăng ký tham gia{"\n"}
+            <Text style={[styles.eventTitleHighlight, { color: theme.primary }]}>
+              {title}
+            </Text>
+            .
           </Text>
         </View>
 
         {/* Action Buttons */}
         <View style={styles.buttonContainer}>
           <TouchableOpacity
-            style={styles.primaryButton}
-            onPress={onViewSchedule}
+            style={[styles.primaryButton, { backgroundColor: theme.primary }]}
+            onPress={handleViewSchedule}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Xem trong lịch của tôi"
@@ -125,13 +150,22 @@ export default function RegistrationSuccessScreen({
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={styles.secondaryButton}
-            onPress={onGoHome}
+            style={[
+              styles.secondaryButton,
+              {
+                backgroundColor: theme.surfaceSecondary,
+                borderColor: theme.border,
+                borderWidth: 1,
+              },
+            ]}
+            onPress={handleGoHome}
             activeOpacity={0.7}
             accessibilityRole="button"
             accessibilityLabel="Quay về trang chủ"
           >
-            <Text style={styles.secondaryButtonText}>Quay về trang chủ</Text>
+            <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>
+              Quay về trang chủ
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -146,21 +180,20 @@ export default function RegistrationSuccessScreen({
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: SCREEN_BG,
   },
   container: {
     flex: 1,
-    justifyContent: 'space-between',
+    justifyContent: "space-between",
     paddingHorizontal: 24,
-    paddingTop: Platform.OS === 'android' ? 40 : 20,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 32,
+    paddingTop: Platform.OS === "android" ? 40 : 20,
+    paddingBottom: Platform.OS === "ios" ? 24 : 32,
   },
 
   // Main Content
   contentContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: -40,
   },
   iconWrapper: {
@@ -168,63 +201,49 @@ const styles = StyleSheet.create({
   },
   title: {
     fontSize: 24,
-    fontWeight: '700',
-    color: TEXT_PRIMARY,
-    textAlign: 'center',
+    fontWeight: "700",
     marginBottom: 12,
+    textAlign: "center",
   },
   message: {
-    fontSize: 15,
-    color: TEXT_SECONDARY,
-    textAlign: 'center',
-    lineHeight: 22,
-    paddingHorizontal: 20,
+    fontSize: 16,
+    lineHeight: 24,
+    textAlign: "center",
+    paddingHorizontal: 16,
   },
   eventTitleHighlight: {
-    fontWeight: '600',
-    color: TEXT_PRIMARY,
+    fontWeight: "600",
   },
 
   // Buttons
   buttonContainer: {
-    width: '100%',
     gap: 12,
+    width: "100%",
   },
   primaryButton: {
-    backgroundColor: ACCENT_COLOR,
     height: 52,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
-    ...Platform.select({
-      ios: {
-        shadowColor: ACCENT_COLOR,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
-      },
-      android: {
-        elevation: 3,
-      },
-    }),
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#2563EB",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.2,
+    shadowRadius: 8,
+    elevation: 3,
   },
   primaryButtonText: {
-    color: '#FFFFFF',
-    fontSize: 15,
-    fontWeight: '600',
+    color: "#FFFFFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   secondaryButton: {
-    backgroundColor: SECONDARY_BTN_BG,
     height: 52,
-    borderRadius: 14,
-    justifyContent: 'center',
-    alignItems: 'center',
-    width: '100%',
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
   secondaryButtonText: {
-    color: ACCENT_COLOR,
-    fontSize: 15,
-    fontWeight: '600',
+    fontSize: 16,
+    fontWeight: "600",
   },
 });
