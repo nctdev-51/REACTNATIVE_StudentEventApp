@@ -97,6 +97,7 @@ export default function LeftNavbarDrawer() {
   const { isOpen, closeDrawer } = useDrawer();
   const dispatch = useAppDispatch();
   const insets = useSafeAreaInsets();
+  const { theme, isDark } = useAppTheme();
 
   const user = useAppSelector((s) => s.auth.user);
   const unreadCount = useAppSelector(selectUnreadCount);
@@ -141,7 +142,7 @@ export default function LeftNavbarDrawer() {
     const roleLabel = nextRole === 'admin' ? 'Quản trị viên' : 'Sinh viên';
 
     Alert.alert(
-      'Chuyển đổi vai trò Demo',
+      'Chuyển đổi giao diện làm việc',
       `Bạn có muốn chuyển đổi sang giao diện: ${roleLabel}?`,
       [
         { text: 'Hủy', style: 'cancel' },
@@ -220,6 +221,7 @@ export default function LeftNavbarDrawer() {
             {
               width: DRAWER_WIDTH,
               transform: [{ translateX }],
+              backgroundColor: theme.surface,
             },
           ]}
         >
@@ -316,7 +318,7 @@ export default function LeftNavbarDrawer() {
           >
             {/* Nhóm Sinh viên & Sự kiện */}
             <View style={styles.menuSection}>
-              <Text style={styles.sectionHeader}>TIỆN ÍCH SINH VIÊN</Text>
+              <Text style={[styles.sectionHeader, { color: theme.textTertiary }]}>TIỆN ÍCH SINH VIÊN</Text>
 
               <DrawerMenuItem
                 icon="🏠"
@@ -368,7 +370,7 @@ export default function LeftNavbarDrawer() {
 
             {/* Nhóm Quản trị Viên */}
             <View style={styles.menuSection}>
-              <Text style={styles.sectionHeader}>CỔNG QUẢN TRỊ VIÊN (ADMIN)</Text>
+              <Text style={[styles.sectionHeader, { color: theme.textTertiary }]}>CỔNG QUẢN TRỊ VIÊN (ADMIN)</Text>
 
               {isAdmin ? (
                 <>
@@ -413,8 +415,8 @@ export default function LeftNavbarDrawer() {
                   />
                 </>
               ) : (
-                <View style={styles.adminLockedBox}>
-                  <Text style={styles.adminLockedText}>
+                <View style={[styles.adminLockedBox, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}>
+                  <Text style={[styles.adminLockedText, { color: theme.textSecondary }]}>
                     🔒 Đang đăng nhập tài khoản Sinh viên. Bạn có thể bấm nút chuyển đổi bên dưới để trải nghiệm phân hệ Quản trị.
                   </Text>
                 </View>
@@ -423,40 +425,52 @@ export default function LeftNavbarDrawer() {
 
             {/* Nhóm Tiện ích Hệ Thống & Chuyển đổi vai trò */}
             <View style={styles.menuSection}>
-              <Text style={styles.sectionHeader}>HỆ THỐNG & ĐIỀU KHIỂN</Text>
+              <Text style={[styles.sectionHeader, { color: theme.textTertiary }]}>HỆ THỐNG & ĐIỀU KHIỂN</Text>
 
-              {/* Nút Demo Chuyển đổi vai trò */}
+              {/* Nút Chuyển đổi vai trò */}
               <TouchableOpacity
-                style={styles.roleSwitchBtn}
+                style={[
+                  styles.roleSwitchBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#F0FDF4',
+                    borderColor: isDark ? '#34D399' : '#BBF7D0',
+                  },
+                ]}
                 onPress={handleToggleRole}
                 activeOpacity={0.8}
               >
                 <Text style={styles.roleSwitchIcon}>🔄</Text>
                 <View style={styles.roleSwitchTextBox}>
-                  <Text style={styles.roleSwitchTitle}>
+                  <Text style={[styles.roleSwitchTitle, { color: isDark ? '#34D399' : '#166534' }]}>
                     {isAdmin ? 'Chuyển sang Sinh viên' : 'Chuyển sang Quản trị viên'}
                   </Text>
-                  <Text style={styles.roleSwitchSubtitle}>
-                    Chuyển đổi giao diện tức thì (Dành cho Demo)
+                  <Text style={[styles.roleSwitchSubtitle, { color: isDark ? '#6EE7B7' : '#15803D' }]}>
+                    Chuyển đổi giao diện làm việc (Cán bộ Đoàn Hội)
                   </Text>
                 </View>
               </TouchableOpacity>
 
               {/* Nút Đăng xuất */}
               <TouchableOpacity
-                style={styles.logoutBtn}
+                style={[
+                  styles.logoutBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
+                    borderColor: isDark ? '#F87171' : '#FECACA',
+                  },
+                ]}
                 onPress={handleLogout}
                 activeOpacity={0.8}
               >
                 <Text style={styles.logoutIcon}>🚪</Text>
-                <Text style={styles.logoutText}>Đăng xuất tài khoản</Text>
+                <Text style={[styles.logoutText, { color: theme.danger }]}>Đăng xuất tài khoản</Text>
               </TouchableOpacity>
             </View>
 
             {/* Footer bản quyền */}
-            <View style={styles.footer}>
-              <Text style={styles.footerApp}>EventMate IUH • Version 1.2.0</Text>
-              <Text style={styles.footerCopy}>© 2026 Trường ĐH Công Nghiệp TP.HCM</Text>
+            <View style={[styles.footer, { borderTopColor: theme.border }]}>
+              <Text style={[styles.footerApp, { color: theme.textSecondary }]}>EventMate IUH • Version 1.2.0</Text>
+              <Text style={[styles.footerCopy, { color: theme.textTertiary }]}>© 2026 Trường ĐH Công Nghiệp TP.HCM</Text>
             </View>
           </ScrollView>
         </Animated.View>
@@ -476,7 +490,6 @@ const styles = StyleSheet.create({
   },
   drawerContent: {
     height: '100%',
-    backgroundColor: '#FFFFFF',
     ...Shadow.lg,
     elevation: 20,
     zIndex: 9999,

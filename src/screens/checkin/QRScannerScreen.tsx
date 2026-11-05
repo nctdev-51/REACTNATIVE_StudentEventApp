@@ -47,6 +47,20 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
   // Lấy thông tin user đăng nhập từ Redux auth state
   const currentUser = useAppSelector((state) => state.auth.user);
 
+  // Điều hướng quay lại an toàn (hỗ trợ cả nested stack và root stack)
+  const handleGoBack = () => {
+    if (navigation.canGoBack()) {
+      navigation.goBack();
+    } else {
+      const parent = navigation.getParent();
+      if (parent && parent.canGoBack()) {
+        parent.goBack();
+      } else {
+        (navigation as any).navigate('Home');
+      }
+    }
+  };
+
   // Hook quản lý quyền Camera (Expo Camera SDK 57)
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
@@ -385,6 +399,9 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       <View style={styles.permissionContainer}>
         <ActivityIndicator size="large" color="#22C55E" />
         <Text style={styles.permissionText}>Đang kiểm tra quyền Camera...</Text>
+        <TouchableOpacity style={styles.backPermissionBtn} onPress={handleGoBack}>
+          <Text style={styles.backPermissionBtnText}>← Quay lại</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -413,6 +430,10 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
             <Text style={styles.permissionButtonText}>Mở Cài đặt hệ thống</Text>
           </TouchableOpacity>
         )}
+
+        <TouchableOpacity style={styles.backPermissionBtn} onPress={handleGoBack} activeOpacity={0.8}>
+          <Text style={styles.backPermissionBtnText}>← Quay lại màn hình trước</Text>
+        </TouchableOpacity>
       </View>
     );
   }
@@ -440,7 +461,9 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
           <View style={styles.headerBar}>
             <TouchableOpacity
               style={styles.headerButton}
-              onPress={() => navigation.canGoBack() && navigation.goBack()}
+              onPress={handleGoBack}
+              accessibilityRole="button"
+              accessibilityLabel="Quay lại"
             >
               <Text style={styles.headerButtonText}>✕</Text>
             </TouchableOpacity>
@@ -525,7 +548,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               <Text style={styles.demoSuccessBtnText}>
                 🎯 Đặt gần tôi (≤500m)
               </Text>
-              <Text style={styles.demoBtnSub}>Test Thành Công</Text>
+              <Text style={styles.demoBtnSub}>Mô phỏng tại trường</Text>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -536,7 +559,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               <Text style={styles.demoFailBtnText}>
                 🚨 Dời ra xa (&gt;500m)
               </Text>
-              <Text style={styles.demoBtnSubFail}>Test Chặn Gian Lận</Text>
+              <Text style={styles.demoBtnSubFail}>Mô phỏng ngoài trường</Text>
             </TouchableOpacity>
           </View>
 
@@ -623,6 +646,21 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     marginTop: 12,
     fontSize: 15,
+  },
+  backPermissionBtn: {
+    marginTop: 16,
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    backgroundColor: 'rgba(255,255,255,0.12)',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+  },
+  backPermissionBtnText: {
+    color: '#E2E8F0',
+    fontSize: 15,
+    fontWeight: '600',
   },
 
   // Overlay Layout

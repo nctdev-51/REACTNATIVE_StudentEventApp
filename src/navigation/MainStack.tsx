@@ -10,10 +10,13 @@ import NotificationReminderScreen from '../screens/notifications/NotificationRem
 import FeedbackScreen from '../screens/events/FeedbackScreen';
 import FilterScreen from '../screens/events/FilterScreen';
 import RegistrationSuccessScreen from '../screens/events/RegistrationSuccessScreen';
+import { useAppTheme } from '../theme/ThemeContext';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
 export default function MainStack() {
+  const { theme } = useAppTheme();
+
   return (
     <Stack.Navigator
       initialRouteName="Home"
@@ -49,6 +52,14 @@ export default function MainStack() {
           headerShown: true,
           title: 'Chi tiết sự kiện',
           headerBackTitle: 'Quay lại',
+          headerStyle: {
+            backgroundColor: theme.surface,
+          },
+          headerTintColor: theme.textPrimary,
+          headerTitleStyle: {
+            color: theme.textPrimary,
+            fontWeight: '700',
+          },
         }}
       />
 

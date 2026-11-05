@@ -4,12 +4,14 @@ import {
   Text,
   View,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckInSuccessScreenProps } from '../../navigation/CheckInStack';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function CheckInSuccessScreen({ route, navigation }: CheckInSuccessScreenProps) {
+  const { theme, isDark } = useAppTheme();
   const {
     eventId,
     eventTitle,
@@ -22,15 +24,17 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
   } = route.params || {};
 
   const handleGoHome = () => {
-    // Quay về màn hình đầu tiên của Stack hoặc đóng navigation
-    if (navigation.canGoBack()) {
-      navigation.popToTop();
+    const parent = navigation.getParent();
+    if (parent) {
+      (parent as any).navigate('Home');
+    } else {
+      (navigation as any).navigate('Home');
     }
   };
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <View style={styles.container}>
         {/* Phần trung tâm: Icon Check màu xanh lá to & Thông báo */}
         <View style={styles.centerContent}>
@@ -39,17 +43,37 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
             <Text style={styles.checkmarkIcon}>✓</Text>
           </View>
 
-          <Text style={styles.title}>Check-in thành công</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>Check-in thành công</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             Thông tin tham gia sự kiện và toạ độ hợp lệ đã được ghi nhận vào hệ thống.
           </Text>
 
           {/* Badge Anti-Fake: Xác minh vị trí thành công */}
-          <View style={styles.antiFakeBadge}>
+          <View
+            style={[
+              styles.antiFakeBadge,
+              {
+                backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5',
+                borderColor: isDark ? '#34D399' : '#A7F3D0',
+              },
+            ]}
+          >
             <Text style={styles.antiFakeBadgeIcon}>🛡️</Text>
             <View style={styles.antiFakeBadgeTextContainer}>
-              <Text style={styles.antiFakeBadgeTitle}>Xác thực vị trí thành công (Anti-Fake)</Text>
-              <Text style={styles.antiFakeBadgeSubtitle}>
+              <Text
+                style={[
+                  styles.antiFakeBadgeTitle,
+                  { color: isDark ? '#34D399' : '#065F46' },
+                ]}
+              >
+                Xác thực vị trí thành công (Anti-Fake)
+              </Text>
+              <Text
+                style={[
+                  styles.antiFakeBadgeSubtitle,
+                  { color: isDark ? '#6EE7B7' : '#047857' },
+                ]}
+              >
                 {distanceMeters !== undefined
                   ? `Vị trí cách địa điểm: ${distanceMeters}m (Trong bán kính an toàn 500m)`
                   : 'Đã đối soát toạ độ GPS hợp lệ qua Expo Location'}
@@ -58,46 +82,54 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
           </View>
 
           {/* Hộp hiển thị chi tiết */}
-          <View style={styles.detailCard}>
+          <View
+            style={[
+              styles.detailCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
+          >
             {eventTitle && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Sự kiện:</Text>
-                <Text style={styles.infoValue} numberOfLines={2}>
+                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Sự kiện:</Text>
+                <Text style={[styles.infoValue, { color: theme.textPrimary }]} numberOfLines={2}>
                   {eventTitle}
                 </Text>
               </View>
             )}
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Mã sự kiện:</Text>
-              <Text style={styles.infoValue} numberOfLines={1}>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Mã sự kiện:</Text>
+              <Text style={[styles.infoValue, { color: theme.textPrimary }]} numberOfLines={1}>
                 {eventId || data || 'N/A'}
               </Text>
             </View>
 
             {studentName && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Sinh viên:</Text>
-                <Text style={styles.infoValue}>{studentName}</Text>
+                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Sinh viên:</Text>
+                <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{studentName}</Text>
               </View>
             )}
 
             {studentId && (
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>MSSV:</Text>
-                <Text style={styles.infoValue}>{studentId}</Text>
+                <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>MSSV:</Text>
+                <Text style={[styles.infoValue, { color: theme.textPrimary }]}>{studentId}</Text>
               </View>
             )}
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Thời gian:</Text>
-              <Text style={styles.infoValue}>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Thời gian:</Text>
+              <Text style={[styles.infoValue, { color: theme.textPrimary }]}>
                 {checkInTime || new Date().toLocaleString('vi-VN')}
               </Text>
             </View>
 
             <View style={styles.infoRow}>
-              <Text style={styles.infoLabel}>Trạng thái:</Text>
+              <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Trạng thái:</Text>
               <Text style={[styles.infoValue, { color: '#16A34A', fontWeight: '700' }]}>
                 Đã điểm danh ✓
               </Text>

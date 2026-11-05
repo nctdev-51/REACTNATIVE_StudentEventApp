@@ -8,6 +8,7 @@ import {
   TextInput,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -18,10 +19,12 @@ import { Event } from '../../types';
 import AdminLocationModal from '../../components/events/AdminLocationModal';
 import { openInGoogleMaps } from '../../utils/permissionHandler';
 import { Colors } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 type AdminEventsNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminEvents'>;
 
 export default function AdminEventsScreen() {
+  const { theme, isDark } = useAppTheme();
   const navigation = useNavigation<AdminEventsNavProp>();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
@@ -69,11 +72,11 @@ export default function AdminEventsScreen() {
     const hasGPS = !!(item.coordinates?.latitude && item.coordinates?.longitude);
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         {/* Header */}
         <View style={styles.cardHeader}>
-          <View style={styles.categoryBadge}>
-            <Text style={styles.categoryBadgeText}>{item.category || 'Sự kiện'}</Text>
+          <View style={[styles.categoryBadge, { backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF' }]}>
+            <Text style={[styles.categoryBadgeText, { color: theme.primary }]}>{item.category || 'Sự kiện'}</Text>
           </View>
           <View style={[styles.gpsBadge, hasGPS ? styles.gpsBadgeActive : styles.gpsBadgeMissing]}>
             <Text style={[styles.gpsBadgeText, hasGPS ? styles.gpsBadgeTextActive : styles.gpsBadgeTextMissing]}>
@@ -89,15 +92,15 @@ export default function AdminEventsScreen() {
         )}
 
         {/* Title */}
-        <Text style={styles.cardTitle}>{item.title}</Text>
-        <Text style={styles.facultyText}>Đơn vị: {item.faculty || 'Toàn trường'}</Text>
+        <Text style={[styles.cardTitle, { color: theme.textPrimary }]}>{item.title}</Text>
+        <Text style={[styles.facultyText, { color: theme.textSecondary }]}>Đơn vị: {item.faculty || 'Toàn trường'}</Text>
 
         {/* Location Info */}
-        <View style={styles.locationBox}>
-          <Text style={styles.locationLabel}>📍 Địa điểm:</Text>
-          <Text style={styles.locationValue}>{item.location}</Text>
+        <View style={[styles.locationBox, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}>
+          <Text style={[styles.locationLabel, { color: theme.textTertiary }]}>📍 Địa điểm:</Text>
+          <Text style={[styles.locationValue, { color: theme.textPrimary }]}>{item.location}</Text>
           {hasGPS ? (
-            <View style={styles.coordsRow}>
+            <View style={[styles.coordsRow, { borderTopColor: theme.borderSubtle }]}>
               <Text style={styles.coordsText}>
                 🔒 Phạm vi: Bán kính {item.coordinates?.radiusMeters || 300}m quanh địa điểm
               </Text>
@@ -117,16 +120,16 @@ export default function AdminEventsScreen() {
         <View style={styles.actionsRow}>
           {/* Cài đặt GPS */}
           <TouchableOpacity
-            style={styles.gpsEditBtn}
+            style={[styles.gpsEditBtn, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF', borderColor: isDark ? '#818CF8' : '#C7D2FE' }]}
             onPress={() => setSelectedEventForGPS(item)}
             activeOpacity={0.8}
           >
-            <Text style={styles.gpsEditBtnText}>📍 Đổi địa điểm tổ chức</Text>
+            <Text style={[styles.gpsEditBtnText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>📍 Đổi địa điểm</Text>
           </TouchableOpacity>
 
           {/* Trình chiếu mã QR */}
           <TouchableOpacity
-            style={styles.qrBtn}
+            style={[styles.qrBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
             onPress={() =>
               navigation.navigate('AdminQRDisplay', {
                 eventId: item._id || (item as any).id,
@@ -135,12 +138,12 @@ export default function AdminEventsScreen() {
             }
             activeOpacity={0.8}
           >
-            <Text style={styles.qrBtnText}>📷 QR</Text>
+            <Text style={[styles.qrBtnText, { color: theme.textPrimary }]}>📷 QR</Text>
           </TouchableOpacity>
 
           {/* Xem điểm danh */}
           <TouchableOpacity
-            style={styles.reportBtn}
+            style={[styles.reportBtn, { backgroundColor: isDark ? 'rgba(168,85,247,0.15)' : '#FAF5FF', borderColor: isDark ? '#C084FC' : '#E9D5FF' }]}
             onPress={() =>
               navigation.navigate('AdminCheckInReports', {
                 eventId: item._id || (item as any).id,
@@ -148,7 +151,7 @@ export default function AdminEventsScreen() {
             }
             activeOpacity={0.8}
           >
-            <Text style={styles.reportBtnText}>📊 Điểm danh</Text>
+            <Text style={[styles.reportBtnText, { color: isDark ? '#C084FC' : '#7E22CE' }]}>📊 Báo cáo</Text>
           </TouchableOpacity>
 
           {/* Ẩn / Hiện sự kiện */}
@@ -179,15 +182,16 @@ export default function AdminEventsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       {/* Search & Top Action */}
-      <View style={styles.header}>
-        <View style={styles.searchBox}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
+        <View style={[styles.searchBox, { backgroundColor: theme.inputBackground }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.textPrimary }]}
             placeholder="Tìm theo tên sự kiện hoặc địa điểm..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={theme.textTertiary}
             value={search}
             onChangeText={setSearch}
           />
@@ -199,7 +203,7 @@ export default function AdminEventsScreen() {
         </View>
 
         <TouchableOpacity
-          style={styles.createBtn}
+          style={[styles.createBtn, { backgroundColor: theme.primary }]}
           onPress={() => navigation.navigate('AdminCreateEvent')}
           activeOpacity={0.85}
         >
@@ -210,8 +214,8 @@ export default function AdminEventsScreen() {
       {/* List */}
       {loading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Đang tải danh sách sự kiện...</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Đang tải danh sách sự kiện...</Text>
         </View>
       ) : (
         <FlatList
@@ -223,7 +227,7 @@ export default function AdminEventsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>📭</Text>
-              <Text style={styles.emptyText}>Không tìm thấy sự kiện nào.</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Không tìm thấy sự kiện nào.</Text>
             </View>
           }
         />
@@ -412,4 +416,3 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
 });
-

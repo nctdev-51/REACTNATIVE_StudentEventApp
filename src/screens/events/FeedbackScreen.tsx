@@ -293,7 +293,7 @@ export default function FeedbackScreen() {
           Đánh giá sự kiện
         </Text>
         <Text style={[styles.headerSub, { color: theme.textSecondary }]}>
-          Dữ liệu đồng bộ trực tiếp từ db.json
+          Góp ý chất lượng và trải nghiệm tham gia sự kiện
         </Text>
 
         {/* ── Thanh chọn sự kiện từ db.json ── */}
@@ -511,7 +511,7 @@ export default function FeedbackScreen() {
         <Text
           style={[styles.feedbacksSubtitle, { color: theme.textSecondary }]}
         >
-          Dữ liệu nạp từ feedbacks trong file server/db.json
+          Tổng hợp đánh giá khách quan từ sinh viên tham dự
         </Text>
 
         {feedbacks.map((item) => (

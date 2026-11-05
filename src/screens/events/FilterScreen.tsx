@@ -5,11 +5,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  StatusBar,
 } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
 import CategoryChip from "../../components/events/CategoryChip";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
+import { useAppTheme } from "../../theme/ThemeContext";
 
 import {
   setFilterCategory,
@@ -43,6 +46,7 @@ const DATES = [
 export default function FilterScreen() {
   const navigation = useNavigation();
   const dispatch = useAppDispatch();
+  const { theme } = useAppTheme();
 
   const filter = useAppSelector(
     (state) => state.events.filter
@@ -87,26 +91,28 @@ export default function FilterScreen() {
   };
 
   return (
-    <View style={styles.container}>
+    <SafeAreaView style={[styles.container, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.content}
       >
         {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>
             Bộ lọc sự kiện
           </Text>
 
           <TouchableOpacity
             onPress={() => navigation.goBack()}
+            style={[styles.closeBtn, { backgroundColor: theme.surfaceSecondary }]}
           >
-            <Text style={styles.close}>✕</Text>
+            <Text style={[styles.close, { color: theme.textSecondary }]}>✕</Text>
           </TouchableOpacity>
         </View>
 
         {/* Chủ đề */}
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
           Chủ đề
         </Text>
 
@@ -125,7 +131,7 @@ export default function FilterScreen() {
         </View>
 
         {/* Ngày */}
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
           Ngày diễn ra
         </Text>
 
@@ -135,8 +141,8 @@ export default function FilterScreen() {
               key={item.value}
               style={[
                 styles.option,
-                date === item.value &&
-                  styles.optionSelected,
+                { backgroundColor: theme.surfaceSecondary, borderColor: theme.border, borderWidth: 1 },
+                date === item.value && { backgroundColor: theme.primary, borderColor: theme.primary },
               ]}
               onPress={() =>
                 setDate(
@@ -149,8 +155,8 @@ export default function FilterScreen() {
               <Text
                 style={[
                   styles.optionText,
-                  date === item.value &&
-                    styles.optionTextSelected,
+                  { color: theme.textSecondary },
+                  date === item.value && { color: "#ffffff", fontWeight: "700" },
                 ]}
               >
                 {item.label}
@@ -160,7 +166,7 @@ export default function FilterScreen() {
         </View>
 
         {/* Khoa */}
-        <Text style={styles.sectionTitle}>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
           Khoa
         </Text>
 
@@ -178,36 +184,38 @@ export default function FilterScreen() {
           ))}
         </View>
 
+        {/* Divider */}
+        <View style={[styles.divider, { backgroundColor: theme.border }]} />
+
         {/* Áp dụng */}
         <TouchableOpacity
-          style={styles.applyButton}
+          style={[styles.applyButton, { backgroundColor: theme.primary }]}
           onPress={handleApply}
         >
           <Text style={styles.applyText}>
-            Áp dụng
+            ✓ Áp dụng bộ lọc
           </Text>
         </TouchableOpacity>
 
         {/* Reset */}
-        <TouchableOpacity onPress={handleReset}>
-          <Text style={styles.clearText}>
-            Xóa bộ lọc
+        <TouchableOpacity onPress={handleReset} style={styles.clearBtn}>
+          <Text style={[styles.clearText, { color: theme.textSecondary }]}>
+            Xóa toàn bộ bộ lọc
           </Text>
         </TouchableOpacity>
       </ScrollView>
-    </View>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
   },
 
   content: {
     paddingHorizontal: 20,
-    paddingTop: 30,
+    paddingTop: 24,
     paddingBottom: 40,
   },
 
@@ -215,26 +223,32 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 30,
+    marginBottom: 28,
   },
 
   title: {
     fontSize: 24,
     fontWeight: "700",
-    color: "#111827",
+  },
+
+  closeBtn: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
   },
 
   close: {
-    fontSize: 24,
-    color: "#6b7280",
+    fontSize: 16,
+    fontWeight: "600",
   },
 
   sectionTitle: {
-    fontSize: 18,
+    fontSize: 15,
     fontWeight: "700",
-    color: "#111827",
-    marginBottom: 14,
-    marginTop: 10,
+    marginBottom: 12,
+    marginTop: 8,
   },
 
   wrap: {
@@ -245,32 +259,26 @@ const styles = StyleSheet.create({
   },
 
   option: {
-    backgroundColor: "#f3f4f6",
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderRadius: 14,
   },
 
-  optionSelected: {
-    backgroundColor: "#2563eb",
-  },
-
   optionText: {
     fontSize: 14,
-    color: "#374151",
     fontWeight: "500",
   },
 
-  optionTextSelected: {
-    color: "#ffffff",
+  divider: {
+    height: 1,
+    marginVertical: 16,
   },
 
   applyButton: {
-    backgroundColor: "#2563eb",
     borderRadius: 14,
     paddingVertical: 15,
     alignItems: "center",
-    marginTop: 20,
+    marginTop: 4,
   },
 
   applyText: {
@@ -279,11 +287,15 @@ const styles = StyleSheet.create({
     fontWeight: "700",
   },
 
+  clearBtn: {
+    marginTop: 14,
+    paddingVertical: 8,
+    alignItems: "center",
+  },
+
   clearText: {
     textAlign: "center",
-    color: "#2563eb",
-    marginTop: 18,
-    fontSize: 15,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "500",
   },
 });

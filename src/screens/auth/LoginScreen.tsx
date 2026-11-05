@@ -74,8 +74,8 @@ export default function LoginScreen() {
             <View style={[styles.logoCircle, { backgroundColor: isDark ? theme.surfaceSecondary : '#EEF2FF' }]}>
               <Text style={styles.logoEmoji}>🎓</Text>
             </View>
-            <Text style={[styles.appName, { color: theme.textPrimary }]}>StudentEvent</Text>
-            <Text style={[styles.tagline, { color: theme.textSecondary }]}>Sự kiện IUH – Hệ thống Quản trị & Sinh viên</Text>
+            <Text style={[styles.appName, { color: theme.textPrimary }]}>StudentEvent IUH</Text>
+            <Text style={[styles.tagline, { color: theme.textSecondary }]}>Hệ thống Quản lý Sự kiện – Đại học Công nghiệp TP.HCM</Text>
           </View>
 
           {/* Form Card */}
@@ -96,7 +96,7 @@ export default function LoginScreen() {
                 <TextInput
                   style={[styles.input, { color: theme.textPrimary }]}
                   placeholder="sv01@iuh.edu.vn hoặc admin.doan@iuh.edu.vn"
-                  placeholderTextColor={Colors.gray400}
+                  placeholderTextColor={theme.textTertiary}
                   value={email}
                   onChangeText={setEmail}
                   keyboardType="email-address"
@@ -124,7 +124,7 @@ export default function LoginScreen() {
                 <TextInput
                   style={[styles.input, { color: theme.textPrimary }]}
                   placeholder="Nhập mật khẩu"
-                  placeholderTextColor={Colors.gray400}
+                  placeholderTextColor={theme.textTertiary}
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
@@ -168,7 +168,7 @@ export default function LoginScreen() {
               )}
             </TouchableOpacity>
 
-            {/* Demo Accounts Quick Selection */}
+            {/* Quick Login Accounts */}
             <View style={[styles.demoSection, { borderTopColor: theme.border }]}>
               <Text style={[styles.demoTitle, { color: theme.textSecondary }]}>Đăng nhập nhanh:</Text>
               <View style={styles.demoRow}>
@@ -177,7 +177,7 @@ export default function LoginScreen() {
                   style={[
                     styles.demoPill,
                     { backgroundColor: theme.surfaceSecondary, borderColor: theme.border },
-                    email === 'sv01@iuh.edu.vn' && styles.demoPillActive,
+                    email === 'sv01@iuh.edu.vn' && { borderColor: theme.primary, backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#EFF6FF' },
                   ]}
                   onPress={fillStudent}
                   activeOpacity={0.7}
@@ -193,16 +193,15 @@ export default function LoginScreen() {
                 <TouchableOpacity
                   style={[
                     styles.demoPill,
-                    styles.demoPillAdmin,
-                    { backgroundColor: theme.surfaceSecondary, borderColor: theme.border },
-                    email === 'admin.doan@iuh.edu.vn' && styles.demoPillActiveAdmin,
+                    { backgroundColor: isDark ? 'rgba(126,34,206,0.1)' : '#FDF4FF', borderColor: isDark ? '#7C3AED' : '#E9D5FF' },
+                    email === 'admin.doan@iuh.edu.vn' && { borderColor: '#9333EA', backgroundColor: isDark ? 'rgba(147,51,234,0.2)' : '#FAF5FF' },
                   ]}
                   onPress={fillAdmin}
                   activeOpacity={0.7}
                 >
                   <Text style={styles.demoEmoji}>🛡️</Text>
                   <View style={{ flex: 1 }}>
-                    <Text style={styles.demoRoleAdmin}>Quản trị viên (Admin)</Text>
+                    <Text style={[styles.demoRoleAdmin, { color: isDark ? '#C084FC' : '#7E22CE' }]}>Quản trị viên (Admin)</Text>
                     <Text style={[styles.demoAccount, { color: theme.textTertiary }]}>admin.doan@iuh.edu.vn</Text>
                   </View>
                 </TouchableOpacity>
@@ -217,7 +216,7 @@ export default function LoginScreen() {
               onPress={() => navigation.navigate('Register')}
               accessibilityRole="button"
             >
-              <Text style={styles.registerLink}>Đăng ký ngay</Text>
+              <Text style={[styles.registerLink, { color: theme.primary }]}>Đăng ký ngay</Text>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -244,16 +243,16 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xl,
   },
   logoCircle: {
-    width: 68,
-    height: 68,
-    borderRadius: 34,
+    width: 72,
+    height: 72,
+    borderRadius: 36,
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.md,
     ...Shadow.md,
   },
   logoEmoji: {
-    fontSize: 34,
+    fontSize: 36,
   },
   appName: {
     fontSize: Typography.xxl,
@@ -264,6 +263,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sm,
     marginTop: 4,
     textAlign: 'center',
+    lineHeight: 20,
   },
   card: {
     borderRadius: BorderRadius.xl,
@@ -290,7 +290,7 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.md,
     borderWidth: 1.5,
     paddingHorizontal: Spacing.md,
-    height: 48,
+    height: 50,
   },
   inputIcon: {
     fontSize: 16,
@@ -319,7 +319,7 @@ const styles = StyleSheet.create({
   loginBtn: {
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.md,
-    paddingVertical: 14,
+    paddingVertical: 15,
     alignItems: 'center',
     marginTop: Spacing.sm,
     ...Shadow.lg,
@@ -342,7 +342,7 @@ const styles = StyleSheet.create({
   demoTitle: {
     fontSize: 12,
     fontWeight: '700',
-    marginBottom: 8,
+    marginBottom: 10,
   },
   demoRow: {
     gap: 8,
@@ -350,19 +350,10 @@ const styles = StyleSheet.create({
   demoPill: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: 10,
-    borderRadius: 10,
+    padding: 11,
+    borderRadius: 12,
     borderWidth: 1.5,
     gap: 10,
-  },
-  demoPillActive: {
-    borderColor: '#2563EB',
-    backgroundColor: '#EFF6FF',
-  },
-  demoPillAdmin: {},
-  demoPillActiveAdmin: {
-    borderColor: '#9333EA',
-    backgroundColor: '#FAF5FF',
   },
   demoEmoji: {
     fontSize: 22,
@@ -374,10 +365,10 @@ const styles = StyleSheet.create({
   demoRoleAdmin: {
     fontSize: 13,
     fontWeight: '700',
-    color: '#7E22CE',
   },
   demoAccount: {
     fontSize: 11,
+    marginTop: 1,
   },
   registerRow: {
     flexDirection: 'row',
@@ -390,7 +381,6 @@ const styles = StyleSheet.create({
   },
   registerLink: {
     fontSize: Typography.base,
-    color: Colors.primary,
     fontWeight: '700',
   },
 });

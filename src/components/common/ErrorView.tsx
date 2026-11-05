@@ -1,6 +1,7 @@
 import React from 'react';
 import { View, Text, TouchableOpacity, StyleSheet } from 'react-native';
-import { Colors, Typography, BorderRadius, Spacing } from '../../theme';
+import { Typography, BorderRadius, Spacing } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 interface Props {
   message?: string;
@@ -14,13 +15,18 @@ export default function ErrorView({
   message = 'Đã xảy ra lỗi.',
   onRetry,
 }: Props) {
+  const { theme } = useAppTheme();
+
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { backgroundColor: theme.background }]}>
       <Text style={styles.icon}>⚠️</Text>
-      <Text style={styles.title}>Không thể tải dữ liệu</Text>
-      <Text style={styles.message}>{message}</Text>
+      <Text style={[styles.title, { color: theme.textPrimary }]}>Không thể tải dữ liệu</Text>
+      <Text style={[styles.message, { color: theme.textSecondary }]}>{message}</Text>
       {onRetry && (
-        <TouchableOpacity style={styles.retryBtn} onPress={onRetry}>
+        <TouchableOpacity
+          style={[styles.retryBtn, { backgroundColor: theme.primary }]}
+          onPress={onRetry}
+        >
           <Text style={styles.retryText}>Thử lại</Text>
         </TouchableOpacity>
       )}
@@ -34,25 +40,21 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: Spacing.xxl,
-    backgroundColor: Colors.background,
   },
   icon: { fontSize: 48, marginBottom: Spacing.md },
   title: {
     fontSize: Typography.xl,
     fontWeight: '700',
-    color: Colors.textPrimary,
     marginBottom: Spacing.sm,
     textAlign: 'center',
   },
   message: {
     fontSize: Typography.base,
-    color: Colors.gray500,
     textAlign: 'center',
     lineHeight: 22,
     marginBottom: Spacing.xl,
   },
   retryBtn: {
-    backgroundColor: Colors.primary,
     paddingHorizontal: Spacing.xxl,
     paddingVertical: Spacing.md,
     borderRadius: BorderRadius.md,

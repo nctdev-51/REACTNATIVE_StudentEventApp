@@ -4,17 +4,27 @@ import {
   Text,
   View,
   TouchableOpacity,
-  SafeAreaView,
   StatusBar,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckInFailedScreenProps } from '../../navigation/CheckInStack';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 export default function CheckInFailedScreen({ route, navigation }: CheckInFailedScreenProps) {
+  const { theme, isDark } = useAppTheme();
   const { reason, data, distanceMeters, isLocationError } = route.params || {};
 
   const handleRetry = () => {
-    // Quay lại màn hình quét QR (QRScannerScreen sẽ tự mở lại quét qua useFocusEffect)
     navigation.goBack();
+  };
+
+  const handleGoHome = () => {
+    const parent = navigation.getParent();
+    if (parent) {
+      (parent as any).navigate('Home');
+    } else {
+      (navigation as any).navigate('Home');
+    }
   };
 
   const isGpsIssue =
@@ -26,8 +36,8 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
         reason.toLowerCase().includes('khoảng cách')));
 
   return (
-    <SafeAreaView style={styles.safeArea}>
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <View style={styles.container}>
         {/* Phần trung tâm: Icon X màu đỏ to & Thông báo lỗi */}
         <View style={styles.centerContent}>
@@ -36,18 +46,38 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
             <Text style={styles.closeIcon}>✕</Text>
           </View>
 
-          <Text style={styles.title}>Không thể check-in</Text>
-          <Text style={styles.subtitle}>
+          <Text style={[styles.title, { color: theme.textPrimary }]}>Không thể check-in</Text>
+          <Text style={[styles.subtitle, { color: theme.textSecondary }]}>
             {reason || 'Đã có lỗi xảy ra khi xác thực thông tin check-in. Vui lòng kiểm tra lại.'}
           </Text>
 
           {/* Cảnh báo riêng cho vi phạm Anti-Fake GPS */}
           {isGpsIssue && (
-            <View style={styles.antiFakeAlertBox}>
+            <View
+              style={[
+                styles.antiFakeAlertBox,
+                {
+                  backgroundColor: isDark ? 'rgba(239,68,68,0.15)' : '#FEF2F2',
+                  borderColor: isDark ? '#F87171' : '#FECACA',
+                },
+              ]}
+            >
               <Text style={styles.antiFakeAlertIcon}>📍</Text>
               <View style={styles.antiFakeAlertContent}>
-                <Text style={styles.antiFakeAlertTitle}>Cảnh báo chống gian lận (Anti-Fake)</Text>
-                <Text style={styles.antiFakeAlertDesc}>
+                <Text
+                  style={[
+                    styles.antiFakeAlertTitle,
+                    { color: isDark ? '#FCA5A5' : '#991B1B' },
+                  ]}
+                >
+                  Cảnh báo chống gian lận (Anti-Fake)
+                </Text>
+                <Text
+                  style={[
+                    styles.antiFakeAlertDesc,
+                    { color: isDark ? '#FCD5D5' : '#B91C1C' },
+                  ]}
+                >
                   Hệ thống yêu cầu sinh viên phải có mặt trong bán kính ≤ 500m quanh sự kiện để điểm danh.
                 </Text>
               </View>
@@ -55,14 +85,22 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
           )}
 
           {/* Hộp gợi ý & chi tiết */}
-          <View style={styles.detailCard}>
-            <Text style={styles.cardHeader}>Nguyên nhân & Hướng xử lý:</Text>
+          <View
+            style={[
+              styles.detailCard,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
+          >
+            <Text style={[styles.cardHeader, { color: theme.textPrimary }]}>Nguyên nhân & Hướng xử lý:</Text>
 
             {isGpsIssue ? (
               <>
                 <View style={styles.bulletItem}>
                   <Text style={styles.bulletDot}>•</Text>
-                  <Text style={styles.bulletText}>
+                  <Text style={[styles.bulletText, { color: theme.textSecondary }]}>
                     Bạn đang ở quá xa địa điểm sự kiện
                     {distanceMeters ? ` (~${distanceMeters}m).` : '.'} Hãy di chuyển vào khu vực tổ chức.
                   </Text>
@@ -70,7 +108,7 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
 
                 <View style={styles.bulletItem}>
                   <Text style={styles.bulletDot}>•</Text>
-                  <Text style={styles.bulletText}>
+                  <Text style={[styles.bulletText, { color: theme.textSecondary }]}>
                     Đảm bảo đã cấp quyền Vị trí (Location) và bật GPS độ chính xác cao.
                   </Text>
                 </View>
@@ -79,14 +117,14 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
               <>
                 <View style={styles.bulletItem}>
                   <Text style={styles.bulletDot}>•</Text>
-                  <Text style={styles.bulletText}>
+                  <Text style={[styles.bulletText, { color: theme.textSecondary }]}>
                     Mã QR không hợp lệ hoặc sự kiện đã kết thúc/hủy.
                   </Text>
                 </View>
 
                 <View style={styles.bulletItem}>
                   <Text style={styles.bulletDot}>•</Text>
-                  <Text style={styles.bulletText}>
+                  <Text style={[styles.bulletText, { color: theme.textSecondary }]}>
                     Kết nối mạng bị gián đoạn khi gửi dữ liệu lên máy chủ.
                   </Text>
                 </View>
@@ -94,9 +132,23 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
             )}
 
             {data && (
-              <View style={styles.dataBox}>
-                <Text style={styles.dataLabel}>Dữ liệu mã nhận diện:</Text>
-                <Text style={styles.dataCode} numberOfLines={1}>
+              <View
+                style={[
+                  styles.dataBox,
+                  { borderTopColor: theme.borderSubtle },
+                ]}
+              >
+                <Text style={[styles.dataLabel, { color: theme.textTertiary }]}>Dữ liệu mã nhận diện:</Text>
+                <Text
+                  style={[
+                    styles.dataCode,
+                    {
+                      backgroundColor: theme.surfaceSecondary,
+                      color: theme.textPrimary,
+                    },
+                  ]}
+                  numberOfLines={1}
+                >
                   {data}
                 </Text>
               </View>
@@ -104,14 +156,27 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
           </View>
         </View>
 
-        {/* Nút bấm bên dưới: "Thử lại" */}
+        {/* Nút bấm bên dưới: "Thử lại" và "Về trang chủ" */}
         <View style={styles.footer}>
           <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.8}
             onPress={handleRetry}
           >
-            <Text style={styles.primaryButtonText}>Thử lại</Text>
+            <Text style={styles.primaryButtonText}>Thử lại quét QR</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.secondaryButton,
+              { backgroundColor: theme.surface, borderColor: theme.border },
+            ]}
+            activeOpacity={0.8}
+            onPress={handleGoHome}
+          >
+            <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>
+              Về trang chủ
+            </Text>
           </TouchableOpacity>
         </View>
       </View>
@@ -260,10 +325,11 @@ const styles = StyleSheet.create({
   footer: {
     width: '100%',
     paddingTop: 12,
+    gap: 10,
   },
   primaryButton: {
     backgroundColor: '#DC2626',
-    paddingVertical: 15,
+    paddingVertical: 14,
     borderRadius: 14,
     alignItems: 'center',
     shadowColor: '#DC2626',
@@ -274,7 +340,17 @@ const styles = StyleSheet.create({
   },
   primaryButtonText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
+  },
+  secondaryButton: {
+    paddingVertical: 13,
+    borderRadius: 14,
+    alignItems: 'center',
+    borderWidth: 1,
+  },
+  secondaryButtonText: {
+    fontSize: 15,
+    fontWeight: '600',
   },
 });

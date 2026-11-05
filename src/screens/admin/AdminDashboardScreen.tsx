@@ -8,6 +8,7 @@ import {
   Image,
   ActivityIndicator,
   Alert,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
@@ -17,12 +18,13 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { logout } from '../../features/auth/authSlice';
 import { getEvents, getAllRegistrations } from '../../services/api';
 import { Event, Registration } from '../../types';
-import { Colors } from '../../theme';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 type AdminDashboardNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminDashboard'>;
 
 export default function AdminDashboardScreen() {
+  const { theme, isDark } = useAppTheme();
   const navigation = useNavigation<AdminDashboardNavProp>();
   const dispatch = useAppDispatch();
   const user = useAppSelector((s) => s.auth.user);
@@ -69,12 +71,13 @@ export default function AdminDashboardScreen() {
   const checkedInCount = registrations.filter((r) => r.status === 'checked_in').length;
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
         {/* Header Admin với Hamburger Menu Button */}
-        <View style={styles.header}>
+        <View style={[styles.header, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}>
           <View style={styles.adminHeaderLeft}>
-            <LeftNavbarButton tintColor="#0F172A" style={styles.adminMenuBtn} />
+            <LeftNavbarButton tintColor={theme.textPrimary} style={styles.adminMenuBtn} />
             <View style={styles.adminInfo}>
               <Image
                 source={{ uri: user?.avatarUrl || 'https://i.pravatar.cc/300?img=5' }}
@@ -82,25 +85,32 @@ export default function AdminDashboardScreen() {
               />
               <View style={styles.adminText}>
                 <View style={styles.roleBadgeRow}>
-                  <Text style={styles.adminName}>{user?.fullName || 'Ban Quản Trị'}</Text>
+                  <Text style={[styles.adminName, { color: theme.textPrimary }]}>{user?.fullName || 'Ban Quản Trị'}</Text>
                   <View style={styles.adminBadge}>
                     <Text style={styles.adminBadgeText}>ADMIN</Text>
                   </View>
                 </View>
-                <Text style={styles.adminSub}>{user?.email} • {user?.studentId || 'AD01'}</Text>
-                <Text style={styles.adminFaculty}>{user?.faculty || 'Phòng Công tác sinh viên'}</Text>
+                <Text style={[styles.adminSub, { color: theme.textSecondary }]}>{user?.email} • {user?.studentId || 'AD01'}</Text>
+                <Text style={[styles.adminFaculty, { color: theme.textTertiary }]}>{user?.faculty || 'Phòng Công tác sinh viên'}</Text>
               </View>
             </View>
           </View>
 
-          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout} activeOpacity={0.8}>
+          <TouchableOpacity
+            style={[
+              styles.logoutBtn,
+              { backgroundColor: isDark ? 'rgba(239, 68, 68, 0.15)' : '#FEE2E2' },
+            ]}
+            onPress={handleLogout}
+            activeOpacity={0.8}
+          >
             <Text style={styles.logoutIcon}>🚪</Text>
-            <Text style={styles.logoutText}>Thoát</Text>
+            <Text style={[styles.logoutText, { color: theme.danger }]}>Thoát</Text>
           </TouchableOpacity>
         </View>
 
         {/* Title banner */}
-        <View style={styles.banner}>
+        <View style={[styles.banner, { backgroundColor: isDark ? theme.surfaceSecondary : '#1E293B' }]}>
           <Text style={styles.bannerTitle}>🛡️ Trung Tâm Quản Trị Sự Kiện</Text>
           <Text style={styles.bannerDesc}>
             Quản lý địa điểm tổ chức, phân quyền sinh viên và giám sát điểm danh tự động theo khuôn viên trường.
@@ -109,140 +119,145 @@ export default function AdminDashboardScreen() {
 
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
-          <View style={[styles.statCard, { borderLeftColor: '#3B82F6' }]}>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#3B82F6', borderColor: theme.border, borderWidth: 1 }]}>
             <Text style={styles.statIcon}>📅</Text>
             <View>
-              <Text style={styles.statNumber}>{loading ? '...' : totalEvents}</Text>
-              <Text style={styles.statLabel}>Tổng sự kiện</Text>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : totalEvents}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tổng sự kiện</Text>
             </View>
           </View>
 
-          <View style={[styles.statCard, { borderLeftColor: '#10B981' }]}>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#10B981', borderColor: theme.border, borderWidth: 1 }]}>
             <Text style={styles.statIcon}>📍</Text>
             <View>
-              <Text style={styles.statNumber}>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
                 {loading ? '...' : `${eventsWithGPS}/${totalEvents}`}
               </Text>
-              <Text style={styles.statLabel}>Đã xác thực địa điểm</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Đã xác thực địa điểm</Text>
             </View>
           </View>
 
-          <View style={[styles.statCard, { borderLeftColor: '#8B5CF6' }]}>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#8B5CF6', borderColor: theme.border, borderWidth: 1 }]}>
             <Text style={styles.statIcon}>👥</Text>
             <View>
-              <Text style={styles.statNumber}>{loading ? '...' : totalRegistrations}</Text>
-              <Text style={styles.statLabel}>Lượt đăng ký</Text>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : totalRegistrations}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Lượt đăng ký</Text>
             </View>
           </View>
 
-          <View style={[styles.statCard, { borderLeftColor: '#F59E0B' }]}>
+          <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#F59E0B', borderColor: theme.border, borderWidth: 1 }]}>
             <Text style={styles.statIcon}>🎯</Text>
             <View>
-              <Text style={styles.statNumber}>{loading ? '...' : checkedInCount}</Text>
-              <Text style={styles.statLabel}>Đã Check-in QR</Text>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : checkedInCount}</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Đã Check-in QR</Text>
             </View>
           </View>
         </View>
 
         {/* Section Actions */}
-        <Text style={styles.sectionTitle}>Chức Năng Quản Lý Chính</Text>
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Chức Năng Quản Lý Chính</Text>
 
         <View style={styles.actionCardsList}>
           {/* Quản lý người dùng & ĐRL */}
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={() => navigation.navigate('AdminUsers')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: '#F0FDF4' }]}>
+            <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#F0FDF4' }]}>
               <Text style={styles.actionCardIcon}>👥</Text>
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionCardTitle}>Quản Lý Người Dùng & Điểm Rèn Luyện</Text>
-              <Text style={styles.actionCardDesc}>
+              <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Quản Lý Người Dùng & Điểm Rèn Luyện</Text>
+              <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>
                 Danh sách sinh viên, cấp/trừ ĐRL, phân quyền Admin và quản lý trạng thái tài khoản.
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
+            <Text style={[styles.arrowIcon, { color: theme.textTertiary }]}>›</Text>
           </TouchableOpacity>
+
           {/* 1. Quản lý sự kiện & vị trí GPS */}
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={() => navigation.navigate('AdminEvents')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: '#EFF6FF' }]}>
+            <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#EFF6FF' }]}>
               <Text style={styles.actionCardIcon}>📍</Text>
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionCardTitle}>Cài Đặt Địa Điểm Tổ Chức Sự Kiện</Text>
-              <Text style={styles.actionCardDesc}>
+              <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Cài Đặt Địa Điểm Tổ Chức Sự Kiện</Text>
+              <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>
                 Chọn hội trường (A, E4, Nhà thi đấu...), thiết lập khuôn viên và bán kính điểm danh cho sinh viên.
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>chevron-right ›</Text>
+            <Text style={[styles.arrowIcon, { color: theme.textTertiary }]}>›</Text>
           </TouchableOpacity>
 
           {/* 2. Thêm sự kiện mới */}
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={() => navigation.navigate('AdminCreateEvent')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: '#ECFDF5' }]}>
+            <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5' }]}>
               <Text style={styles.actionCardIcon}>➕</Text>
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionCardTitle}>Tạo Sự Kiện Mới</Text>
-              <Text style={styles.actionCardDesc}>
+              <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Tạo Sự Kiện Mới</Text>
+              <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>
                 Nhập thông tin sự kiện, chọn địa điểm tổ chức và phát hành mã QR điểm danh.
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
+            <Text style={[styles.arrowIcon, { color: theme.textTertiary }]}>›</Text>
           </TouchableOpacity>
 
           {/* 3. Báo cáo điểm danh & Anti-Fake */}
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={() => navigation.navigate('AdminCheckInReports')}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: '#F5F3FF' }]}>
+            <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(139,92,246,0.15)' : '#F5F3FF' }]}>
               <Text style={styles.actionCardIcon}>📊</Text>
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionCardTitle}>Báo Cáo Điểm Danh & Anti-Fake</Text>
-              <Text style={styles.actionCardDesc}>
+              <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Báo Cáo Điểm Danh & Anti-Fake</Text>
+              <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>
                 Xem danh sách sinh viên check-in, toạ độ GPS lúc quét và phát hiện vi phạm bán kính 500m.
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
+            <Text style={[styles.arrowIcon, { color: theme.textTertiary }]}>›</Text>
           </TouchableOpacity>
 
           {/* 4. Xem giao diện sinh viên */}
           <TouchableOpacity
-            style={styles.actionCard}
+            style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
             onPress={() => navigation.navigate('StudentPreview', { screen: 'Home' } as any)}
             activeOpacity={0.85}
           >
-            <View style={[styles.actionIconBox, { backgroundColor: '#FFFBEB' }]}>
+            <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB' }]}>
               <Text style={styles.actionCardIcon}>👨‍🎓</Text>
             </View>
             <View style={styles.actionContent}>
-              <Text style={styles.actionCardTitle}>Xem Giao Diện Sinh Viên</Text>
-              <Text style={styles.actionCardDesc}>
+              <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Xem Giao Diện Sinh Viên</Text>
+              <Text style={[styles.actionCardDesc, { color: theme.textSecondary }]}>
                 Trải nghiệm ứng dụng với vai trò sinh viên: xem chi tiết, quét QR điểm danh thực tế.
               </Text>
             </View>
-            <Text style={styles.arrowIcon}>›</Text>
+            <Text style={[styles.arrowIcon, { color: theme.textTertiary }]}>›</Text>
           </TouchableOpacity>
         </View>
 
-        <TouchableOpacity style={styles.refreshBtn} onPress={loadData} activeOpacity={0.8}>
+        <TouchableOpacity
+          style={[styles.refreshBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
+          onPress={loadData}
+          activeOpacity={0.8}
+        >
           {loading ? (
-            <ActivityIndicator size="small" color="#4B5563" />
+            <ActivityIndicator size="small" color={theme.textSecondary} />
           ) : (
-            <Text style={styles.refreshBtnText}>🔄 Làm mới dữ liệu hệ thống</Text>
+            <Text style={[styles.refreshBtnText, { color: theme.textPrimary }]}>🔄 Làm mới dữ liệu hệ thống</Text>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -366,4 +381,3 @@ const styles = StyleSheet.create({
   },
   refreshBtnText: { color: '#475569', fontSize: 13, fontWeight: '600' },
 });
-

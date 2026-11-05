@@ -12,6 +12,7 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
+  StatusBar,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRoute, RouteProp } from '@react-navigation/native';
@@ -21,11 +22,13 @@ import { Registration, Event, User } from '../../types';
 import { getDistanceMeters, formatDistance } from '../../utils/locationUtils';
 import { openInGoogleMaps } from '../../utils/permissionHandler';
 import { Colors } from '../../theme';
+import { useAppTheme } from '../../theme/ThemeContext';
 
 type RouteType = RouteProp<AdminStackParamList, 'AdminCheckInReports'>;
 type FilterType = 'all' | 'valid' | 'violation' | 'manual';
 
 export default function AdminCheckInReportsScreen() {
+  const { theme, isDark } = useAppTheme();
   const route = useRoute<RouteType>();
   const initialEventId = route.params?.eventId;
 
@@ -104,18 +107,19 @@ export default function AdminCheckInReportsScreen() {
           event!.coordinates!.latitude,
           event!.coordinates!.longitude
         );
-        isSafe = dist <= (event!.coordinates!.radiusMeters || 500);
+        isSafe = dist <= 500;
       }
 
-      if (filterType === 'valid') return hasGPS && isSafe;
-      if (filterType === 'violation') return hasGPS && !isSafe;
-      if (filterType === 'manual') return item.checkInMethod === 'admin_manual';
+      const isManual = item.checkInMethod === 'admin_manual';
 
+      if (filterType === 'valid') return isSafe && !isManual;
+      if (filterType === 'violation') return !isSafe && !isManual;
+      if (filterType === 'manual') return isManual;
       return true;
     });
   }, [checkedInList, selectedEventId, searchQuery, filterType, events, users]);
 
-  // Thống kê nhanh
+  // Tính toán KPI
   const stats = useMemo(() => {
     const total = filteredList.length;
     let validGpsCount = 0;
@@ -198,14 +202,14 @@ export default function AdminCheckInReportsScreen() {
     }
 
     return (
-      <View style={styles.card}>
+      <View style={[styles.card, { backgroundColor: theme.surface, borderColor: theme.border }]}>
         {/* Header */}
         <View style={styles.cardHeader}>
           <View style={styles.studentTitleRow}>
-            <Text style={styles.studentName}>{student?.fullName || 'Sinh viên'}</Text>
+            <Text style={[styles.studentName, { color: theme.textPrimary }]}>{student?.fullName || 'Sinh viên'}</Text>
             {isManual && (
-              <View style={styles.manualTag}>
-                <Text style={styles.manualTagText}>✍️ ĐIỂM DANH BÙ</Text>
+              <View style={[styles.manualTag, { backgroundColor: isDark ? 'rgba(124,58,237,0.2)' : '#EDE9FE' }]}>
+                <Text style={[styles.manualTagText, { color: isDark ? '#A78BFA' : '#6D28D9' }]}>✍️ ĐIỂM DANH BÙ</Text>
               </View>
             )}
           </View>
@@ -223,27 +227,27 @@ export default function AdminCheckInReportsScreen() {
           </View>
         </View>
 
-        <Text style={styles.studentSub}>
-          Mã SV: <Text style={{ fontWeight: '700', color: '#1E293B' }}>{student?.studentId || 'SV-N/A'}</Text> • Khoa: {student?.faculty || 'Toàn trường'}
+        <Text style={[styles.studentSub, { color: theme.textSecondary }]}>
+          Mã SV: <Text style={{ fontWeight: '700', color: theme.textPrimary }}>{student?.studentId || 'SV-N/A'}</Text> • Khoa: {student?.faculty || 'Toàn trường'}
         </Text>
 
-        <View style={styles.divider} />
+        <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
 
         {/* Thông tin sự kiện */}
-        <Text style={styles.eventTitle}>🎯 Sự kiện: {event?.title || 'Sự kiện IUH'}</Text>
-        <Text style={styles.timeText}>
+        <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>🎯 Sự kiện: {event?.title || 'Sự kiện IUH'}</Text>
+        <Text style={[styles.timeText, { color: theme.textTertiary }]}>
           🕒 Thời gian: {item.checkInTime ? new Date(item.checkInTime).toLocaleString('vi-VN') : 'Không rõ'}
         </Text>
 
         {item.note && (
-          <Text style={styles.noteText}>
+          <Text style={[styles.noteText, { color: isDark ? '#818CF8' : '#4F46E5' }]}>
             📝 Ghi chú: <Text style={{ fontStyle: 'italic' }}>{item.note}</Text>
           </Text>
         )}
 
         {/* Vị trí check-in */}
         {item.checkInLocation && (
-          <View style={styles.locationBox}>
+          <View style={[styles.locationBox, { backgroundColor: theme.surfaceSecondary }]}>
             <Text style={styles.locCoords}>
               📍 GPS: {item.checkInLocation.latitude.toFixed(5)}, {item.checkInLocation.longitude.toFixed(5)}
             </Text>
@@ -255,10 +259,10 @@ export default function AdminCheckInReportsScreen() {
                   `Vị trí điểm danh của ${student?.fullName || 'sinh viên'}`
                 )
               }
-              style={styles.mapBtn}
+              style={[styles.mapBtn, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF' }]}
               activeOpacity={0.7}
             >
-              <Text style={styles.mapBtnText}>🗺️ Mở Maps đối soát</Text>
+              <Text style={[styles.mapBtnText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>🗺️ Mở Maps</Text>
             </TouchableOpacity>
           </View>
         )}
@@ -267,18 +271,19 @@ export default function AdminCheckInReportsScreen() {
   };
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top', 'left', 'right']}>
+    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
+      <StatusBar barStyle={theme.statusBarStyle} />
       {/* Header */}
-      <View style={styles.header}>
+      <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <View style={styles.headerTopRow}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.headerTitle}>📊 Quản Lý Điểm Danh & Anti-Fake</Text>
-            <Text style={styles.headerSub}>
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>📊 Quản Lý Điểm Danh & Anti-Fake</Text>
+            <Text style={[styles.headerSub, { color: theme.textSecondary }]}>
               Hệ thống giám sát trắc địa GPS & Hỗ trợ điểm danh bù cho sinh viên
             </Text>
           </View>
           <TouchableOpacity
-            style={styles.manualBtn}
+            style={[styles.manualBtn, { backgroundColor: theme.primary }]}
             onPress={() => setManualModalVisible(true)}
             activeOpacity={0.8}
           >
@@ -287,30 +292,30 @@ export default function AdminCheckInReportsScreen() {
         </View>
 
         {/* Metrics KPI Bar */}
-        <View style={styles.metricsBar}>
+        <View style={[styles.metricsBar, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}>
           <View style={styles.metricItem}>
-            <Text style={styles.metricNum}>{stats.total}</Text>
-            <Text style={styles.metricLabel}>Đã check-in</Text>
+            <Text style={[styles.metricNum, { color: theme.textPrimary }]}>{stats.total}</Text>
+            <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Đã check-in</Text>
           </View>
-          <View style={styles.metricDivider} />
+          <View style={[styles.metricDivider, { backgroundColor: theme.border }]} />
           <View style={styles.metricItem}>
             <Text style={[styles.metricNum, { color: '#059669' }]}>{stats.validGpsRate}%</Text>
-            <Text style={styles.metricLabel}>GPS Hợp lệ</Text>
+            <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>GPS Hợp lệ</Text>
           </View>
-          <View style={styles.metricDivider} />
+          <View style={[styles.metricDivider, { backgroundColor: theme.border }]} />
           <View style={styles.metricItem}>
-            <Text style={[styles.metricNum, { color: '#7C3AED' }]}>+{stats.totalPoints}</Text>
-            <Text style={styles.metricLabel}>Tổng ĐRL cấp</Text>
+            <Text style={[styles.metricNum, { color: isDark ? '#A78BFA' : '#7C3AED' }]}>+{stats.totalPoints}</Text>
+            <Text style={[styles.metricLabel, { color: theme.textSecondary }]}>Tổng ĐRL cấp</Text>
           </View>
         </View>
 
         {/* Search Input */}
-        <View style={styles.searchBox}>
+        <View style={[styles.searchBox, { backgroundColor: theme.inputBackground }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
-            style={styles.searchInput}
+            style={[styles.searchInput, { color: theme.textPrimary }]}
             placeholder="Tìm theo MSSV, Họ tên hoặc Email sinh viên..."
-            placeholderTextColor="#94A3B8"
+            placeholderTextColor={theme.textTertiary}
             value={searchQuery}
             onChangeText={setSearchQuery}
           />
@@ -324,37 +329,49 @@ export default function AdminCheckInReportsScreen() {
         {/* Status Filter Chips */}
         <View style={styles.filterChipRow}>
           <TouchableOpacity
-            style={[styles.filterChip, filterType === 'all' && styles.filterChipActive]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: filterType === 'all' ? theme.primary : theme.surfaceSecondary },
+            ]}
             onPress={() => setFilterType('all')}
           >
-            <Text style={[styles.filterChipText, filterType === 'all' && styles.filterChipTextActive]}>
+            <Text style={[styles.filterChipText, { color: filterType === 'all' ? '#FFFFFF' : theme.textSecondary }]}>
               Tất cả ({checkedInList.length})
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filterType === 'valid' && styles.filterChipActiveSuccess]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: filterType === 'valid' ? '#059669' : theme.surfaceSecondary },
+            ]}
             onPress={() => setFilterType('valid')}
           >
-            <Text style={[styles.filterChipText, filterType === 'valid' && styles.filterChipTextActiveSuccess]}>
+            <Text style={[styles.filterChipText, { color: filterType === 'valid' ? '#FFFFFF' : theme.textSecondary }]}>
               ✅ Hợp lệ GPS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filterType === 'violation' && styles.filterChipActiveDanger]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: filterType === 'violation' ? '#DC2626' : theme.surfaceSecondary },
+            ]}
             onPress={() => setFilterType('violation')}
           >
-            <Text style={[styles.filterChipText, filterType === 'violation' && styles.filterChipTextActiveDanger]}>
+            <Text style={[styles.filterChipText, { color: filterType === 'violation' ? '#FFFFFF' : theme.textSecondary }]}>
               🚨 Vi phạm GPS
             </Text>
           </TouchableOpacity>
 
           <TouchableOpacity
-            style={[styles.filterChip, filterType === 'manual' && styles.filterChipActiveManual]}
+            style={[
+              styles.filterChip,
+              { backgroundColor: filterType === 'manual' ? (isDark ? '#7C3AED' : '#6D28D9') : theme.surfaceSecondary },
+            ]}
             onPress={() => setFilterType('manual')}
           >
-            <Text style={[styles.filterChipText, filterType === 'manual' && styles.filterChipTextActiveManual]}>
+            <Text style={[styles.filterChipText, { color: filterType === 'manual' ? '#FFFFFF' : theme.textSecondary }]}>
               ✍️ Điểm danh bù
             </Text>
           </TouchableOpacity>
@@ -364,8 +381,8 @@ export default function AdminCheckInReportsScreen() {
       {/* List */}
       {loading ? (
         <View style={styles.loadingBox}>
-          <ActivityIndicator size="large" color={Colors.primary} />
-          <Text style={styles.loadingText}>Đang tải báo cáo điểm danh...</Text>
+          <ActivityIndicator size="large" color={theme.primary} />
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Đang tải báo cáo điểm danh...</Text>
         </View>
       ) : (
         <FlatList
@@ -377,8 +394,8 @@ export default function AdminCheckInReportsScreen() {
           ListEmptyComponent={
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>📝</Text>
-              <Text style={styles.emptyTitle}>Không có dữ liệu phù hợp</Text>
-              <Text style={styles.emptyText}>Thử xoá bộ lọc hoặc tìm kiếm với từ khoá khác.</Text>
+              <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>Không có dữ liệu phù hợp</Text>
+              <Text style={[styles.emptyText, { color: theme.textSecondary }]}>Thử xoá bộ lọc hoặc tìm kiếm với từ khoá khác.</Text>
             </View>
           }
         />
@@ -395,24 +412,32 @@ export default function AdminCheckInReportsScreen() {
           style={styles.modalOverlay}
           behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         >
-          <View style={styles.modalContent}>
+          <View style={[styles.modalContent, { backgroundColor: theme.surface }]}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>✍️ Điểm Danh Bù Cho Sinh Viên</Text>
+              <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>✍️ Điểm Danh Bù Cho Sinh Viên</Text>
               <TouchableOpacity onPress={() => setManualModalVisible(false)}>
                 <Text style={styles.modalCloseBtn}>✕</Text>
               </TouchableOpacity>
             </View>
 
-            <Text style={styles.modalDesc}>
+            <Text style={[styles.modalDesc, { color: theme.textSecondary }]}>
               Sử dụng khi sinh viên gặp sự cố thiết bị (hết pin, hỏng camera) và đã xác nhận có mặt thực tế tại hội trường.
             </Text>
 
             <ScrollView showsVerticalScrollIndicator={false}>
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Mã số sinh viên (MSSV) hoặc Email *</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Mã số sinh viên (MSSV) hoặc Email *</Text>
                 <TextInput
-                  style={styles.modalInput}
+                  style={[
+                    styles.modalInput,
+                    {
+                      backgroundColor: theme.inputBackground,
+                      borderColor: theme.inputBorder,
+                      color: theme.textPrimary,
+                    },
+                  ]}
                   placeholder="VD: SV01, 23644661 hoặc sv01@iuh.edu.vn"
+                  placeholderTextColor={theme.textTertiary}
                   value={manualMssv}
                   onChangeText={setManualMssv}
                   autoCapitalize="characters"
@@ -420,10 +445,19 @@ export default function AdminCheckInReportsScreen() {
               </View>
 
               <View style={styles.fieldGroup}>
-                <Text style={styles.fieldLabel}>Lý do / Ghi chú của Ban Tổ Chức</Text>
+                <Text style={[styles.fieldLabel, { color: theme.textSecondary }]}>Lý do / Ghi chú của Ban Tổ Chức</Text>
                 <TextInput
-                  style={[styles.modalInput, { height: 70 }]}
+                  style={[
+                    styles.modalInput,
+                    {
+                      height: 70,
+                      backgroundColor: theme.inputBackground,
+                      borderColor: theme.inputBorder,
+                      color: theme.textPrimary,
+                    },
+                  ]}
                   placeholder="VD: Thiết bị hết pin, đã xuất trình thẻ sinh viên tại bàn lễ tân..."
+                  placeholderTextColor={theme.textTertiary}
                   value={manualNote}
                   onChangeText={setManualNote}
                   multiline
@@ -431,7 +465,7 @@ export default function AdminCheckInReportsScreen() {
               </View>
 
               <TouchableOpacity
-                style={[styles.modalSubmitBtn, submittingManual && { opacity: 0.7 }]}
+                style={[styles.modalSubmitBtn, { backgroundColor: theme.primary }, submittingManual && { opacity: 0.7 }]}
                 onPress={handleManualCheckInSubmit}
                 disabled={submittingManual}
                 activeOpacity={0.85}

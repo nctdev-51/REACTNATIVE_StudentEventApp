@@ -1,5 +1,6 @@
 import { ImageBackground, StyleSheet, Text, View } from "react-native";
 import { Event } from "../../types/event";
+import { useAppTheme } from "../../theme/ThemeContext";
 
 interface FeaturedEventCardProps {
   event: Event;
@@ -18,6 +19,8 @@ function formatDate(dateString: string) {
 export default function FeaturedEventCard({
   event,
 }: FeaturedEventCardProps) {
+  const { theme } = useAppTheme();
+
   return (
     <View style={styles.card}>
       <ImageBackground
@@ -28,7 +31,7 @@ export default function FeaturedEventCard({
         <View style={styles.overlay} />
 
         <View style={styles.content}>
-          <View style={styles.badge}>
+          <View style={[styles.badge, { backgroundColor: theme.primary }]}>
             <Text style={styles.badgeText}>
               {event.category}
             </Text>

@@ -886,7 +886,7 @@ export default function ProfileScreen({
             activeOpacity={0.7}
             onPress={() => {
               Alert.alert(
-                "Dữ liệu db.json",
+                "Thông tin tài khoản",
                 `Người dùng hiện tại: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nĐiểm rèn luyện: ${pointsAccumulated} đ\nChế độ màu: ${mode}`,
               );
             }}
@@ -1002,7 +1002,7 @@ export default function ProfileScreen({
             chevronColor={theme.textTertiary}
             onPress={() =>
               Alert.alert(
-                "Thông tin sinh viên (db.json)",
+                "Thông tin sinh viên",
                 `Họ và tên: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nEmail: ${email}\nSố điện thoại: ${phone || "Chưa cập nhật"}\nĐiểm rèn luyện: ${pointsAccumulated} điểm`,
               )
             }
