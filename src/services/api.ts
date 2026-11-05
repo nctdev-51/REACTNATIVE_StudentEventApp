@@ -16,6 +16,7 @@ import {
   CreateUserPayload,
   UpdateUserPayload,
 } from "../types";
+import { AISummary } from "../types/event";
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
@@ -1018,4 +1019,10 @@ export default {
   adminDeleteUser,
   setAuthToken,
   setBaseUrl,
+};
+
+// AI Summary
+export const summarizeEvent = async (eventId: string): Promise<AISummary> => {
+  const res = await apiClient.post(`/events/${eventId}/summarize`);
+  return res.data.data;
 };
