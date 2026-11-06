@@ -9,6 +9,7 @@ import {
   Platform,
   Alert,
   ScrollView,
+<<<<<<< HEAD
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import * as Notifications from 'expo-notifications';
@@ -28,6 +29,16 @@ import { useAppSelector } from '../../hooks/redux';
 import type { MainStackParamList } from '../../navigation/types';
 <<<<<<< HEAD
 import { useAppTheme } from '../../theme/ThemeContext';
+=======
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import * as Notifications from "expo-notifications";
+import Constants from "expo-constants";
+import { useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { MainStackParamList } from "../../navigation/types";
+import { useAppTheme } from "../../theme/ThemeContext";
+>>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
 
 // Configure notification behavior when app is in foreground
 Notifications.setNotificationHandler({

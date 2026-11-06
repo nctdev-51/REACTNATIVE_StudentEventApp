@@ -11,6 +11,7 @@ import {
   Alert,
   ActivityIndicator,
   RefreshControl,
+<<<<<<< HEAD
 } from 'react-native';
 <<<<<<< HEAD
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -26,6 +27,19 @@ import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice
 import { fetchEvents } from '../../features/events/eventsSlice';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 import { useAppTheme } from '../../theme/ThemeContext';
+=======
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useFocusEffect, useNavigation } from "@react-navigation/native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { MainStackParamList } from "../../navigation/types";
+import { useAppDispatch, useAppSelector } from "../../hooks/redux";
+import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
+import { fetchEvents } from "../../features/events/eventsSlice";
+import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
+import { Card } from "../../components/common";
+import { useAppTheme } from "../../theme/ThemeContext";
+>>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
 
 // ---------------------------------------------------------------------------
 // Types

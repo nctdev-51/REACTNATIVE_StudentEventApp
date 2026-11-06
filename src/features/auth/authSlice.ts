@@ -1,6 +1,10 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { User, AuthCredentials, RegisterPayload } from '../../types';
 import api from '../../services/api';
+<<<<<<< HEAD
+=======
+import { loadAuthSession } from '../../services/authSession';
+>>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -8,6 +12,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   loading: boolean;
+  isHydrating: boolean;
   error: string | null;
   isAuthenticated: boolean;
 }
@@ -16,15 +21,26 @@ const initialState: AuthState = {
   user: null,
   token: null,
   loading: false,
+  isHydrating: true,
   error: null,
   isAuthenticated: false,
 };
 
 // ─── Async Thunks ────────────────────────────────────────────────────────────
 
+/** Restore a previously validated session before choosing the initial navigator. */
+export const hydrateSession = createAsyncThunk(
+  'auth/hydrateSession',
+  async () => loadAuthSession()
+);
+
 /**
  * Đăng nhập: POST /auth/login → { token, user }
+<<<<<<< HEAD
  * Nếu backend chưa có /auth, tạm fallback GET /users?email=...
+=======
+ * Credentials are always validated by the configured API (or explicit mock mode).
+>>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
  */
 export const loginUser = createAsyncThunk(
   'auth/login',
@@ -96,6 +112,7 @@ const authSlice = createSlice({
       state.token = action.payload.token;
       state.user = action.payload.user;
       state.isAuthenticated = true;
+      state.isHydrating = false;
     },
     /** Cập nhật thông tin user sau khi chỉnh sửa profile */
     updateUser(state, action: PayloadAction<Partial<User>>) {
@@ -107,6 +124,18 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     // Login
     builder
+      .addCase(hydrateSession.fulfilled, (state, action) => {
+        state.isHydrating = false;
+        if (action.payload) {
+          state.token = action.payload.token;
+          state.user = action.payload.user;
+          state.isAuthenticated = true;
+        }
+      })
+      .addCase(hydrateSession.rejected, (state) => {
+        // A failed local read must not prevent a user from reaching Login.
+        state.isHydrating = false;
+      })
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;
