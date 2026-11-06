@@ -38,6 +38,7 @@ import CategoryChip from "../../components/events/CategoryChip";
 import FeaturedEventCard from "../../components/events/FeaturedEventCard";
 import EventCard from "../../components/events/EventCard";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
+import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { Colors, Typography } from "../../theme";
 import { useAppTheme } from "../../theme/ThemeContext";
 
@@ -137,6 +138,12 @@ export default function HomeScreen() {
   ]);
 
   const userName = user?.fullName ?? "Sinh viên";
+
+  const handleTabPress = useCallback((tab: AppTabKey) => {
+    if (tab === "schedule") navigation.navigate("MySchedule");
+    if (tab === "checkin") navigation.navigate("CheckIn");
+    if (tab === "profile") navigation.navigate("Profile");
+  }, [navigation]);
 
   // Header Component của danh sách
   const renderListHeader = () => (
@@ -337,7 +344,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 16 },
+          { paddingTop: insets.top + 16, paddingBottom: 16 },
         ]}
         refreshControl={
           <RefreshControl
@@ -392,6 +399,7 @@ export default function HomeScreen() {
           ) : undefined
         }
       />
+      <AppBottomTab activeTab="home" onTabPress={handleTabPress} />
     </SafeAreaView>
   );
 }
@@ -405,7 +413,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: "row",

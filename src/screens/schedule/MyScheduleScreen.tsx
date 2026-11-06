@@ -21,6 +21,7 @@ import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice
 import { fetchEvents } from "../../features/events/eventsSlice";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import { Card } from "../../components/common";
+import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme/ThemeContext";
 
 // ---------------------------------------------------------------------------
@@ -727,7 +728,7 @@ export default function MyScheduleScreen({
   const filteredEvents = allEvents.filter((e) => e.status === activeFilter);
 
   // Wire up bottom tab navigation
-  const handleTabPress = (tab: TabKey) => {
+  const handleTabPress = (tab: AppTabKey) => {
     setActiveTab(tab);
     switch (tab) {
       case "home":
@@ -904,7 +905,7 @@ export default function MyScheduleScreen({
       </ScrollView>
 
       {/* ── Bottom Navigation Bar ───────────────────────────────────────── */}
-      <BottomTabBar activeTab={activeTab} onTabPress={handleTabPress} />
+      <AppBottomTab activeTab={activeTab} onTabPress={handleTabPress} />
     </SafeAreaView>
   );
 }

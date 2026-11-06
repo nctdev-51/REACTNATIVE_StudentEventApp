@@ -12,7 +12,7 @@ import {
   Alert,
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
-import { useFocusEffect } from '@react-navigation/native';
+import { useFocusEffect, useIsFocused } from '@react-navigation/native';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
@@ -27,6 +27,7 @@ import { qrCheckIn, getEventById, updateEventCoordinates } from '../../services/
 import { useAppSelector } from '../../hooks/redux';
 import {
   requestLocationPermission,
+  checkLocationPermission,
   getCurrentPosition,
   reverseGeocodeAddress,
   openInGoogleMaps,
@@ -42,8 +43,29 @@ const { width } = Dimensions.get('window');
 
 // Kích thước của khung quét QR hình vuông ở giữa màn hình
 const SCANNER_SIZE = Math.min(width * 0.72, 280);
+const MOCK_EVENT_ID = '66f1e2010000000000000001';
+
+function parseEventId(rawData: string): string | null {
+  let eventId = rawData;
+  if (rawData.startsWith('EVENTMATE:')) eventId = rawData.slice('EVENTMATE:'.length);
+  else if (rawData.startsWith('{') && rawData.endsWith('}')) {
+    try {
+      const parsed: unknown = JSON.parse(rawData);
+      if (!parsed || typeof parsed !== 'object') return null;
+      const candidate = (parsed as { eventId?: unknown; id?: unknown }).eventId ?? (parsed as { id?: unknown }).id;
+      if (typeof candidate !== 'string') return null;
+      eventId = candidate;
+    } catch {
+      return null;
+    }
+  }
+
+  const normalized = eventId.trim();
+  return /^[A-Za-z0-9_-]{1,128}$/.test(normalized) ? normalized : null;
+}
 
 export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
+  const isFocused = useIsFocused();
   // Lấy thông tin user đăng nhập từ Redux auth state
   const currentUser = useAppSelector((state) => state.auth.user);
 
@@ -114,15 +136,18 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
   }));
 
   // ─── CLO6: Khởi tạo quyền vị trí & Lấy toạ độ GPS Google Maps thực tế ────────
-  const refreshRealLocation = useCallback(async () => {
+  const refreshRealLocation = useCallback(async (requestPermission = false) => {
     setFetchingGps(true);
     try {
       // 1. Kiểm tra GPS phần cứng
       const gpsEnabled = await checkLocationServicesEnabled();
       setIsGpsHardwareOn(gpsEnabled);
 
-      // 2. Xin quyền vị trí
-      const permResult = await requestLocationPermission();
+      // Do not interrupt the scanner with a GPS prompt on entry. Permission is
+      // requested only after a scan or an explicit user action.
+      const permResult = requestPermission
+        ? await requestLocationPermission()
+        : await checkLocationPermission();
       setLocationPermissionGranted(permResult.granted);
 
       if (permResult.granted) {
@@ -174,7 +199,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       Alert.alert(
         'Chưa có toạ độ GPS',
         'Máy đang lấy toạ độ vị trí thực tế của bạn. Vui lòng bật GPS và đợi trong giây lát.',
-        [{ text: 'Thử lại', onPress: refreshRealLocation }]
+        [{ text: 'Thử lại', onPress: () => void refreshRealLocation(true) }]
       );
       return;
     }
@@ -243,7 +268,10 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
    * 4. Tính khoảng cách Haversine. Nếu > 500m -> Chặn ngay lập tức
    * 5. Nếu <= 500m -> Gửi kèm userLocation lên API Backend xác thực
    */
-  const handleBarCodeScanned = async (result: BarcodeScanningResult) => {
+  const handleBarCodeScanned = async (
+    result: BarcodeScanningResult,
+    options: { mockLocation?: boolean } = {},
+  ) => {
     if (scanned || loading) return;
 
     // Tạm dừng quét
@@ -254,20 +282,14 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     // Rung nhẹ phản hồi đã đọc mã
     Vibration.vibrate(100);
 
-    const rawData = result.data?.trim();
-    if (!rawData) return;
-
-    // Hỗ trợ mã dạng JSON { eventId: "..." }, tiền tố "EVENTMATE:id" hoặc eventId thuần
-    let eventId = rawData;
-    if (rawData.startsWith('EVENTMATE:')) {
-      eventId = rawData.replace('EVENTMATE:', '');
-    } else if (rawData.startsWith('{') && rawData.endsWith('}')) {
-      try {
-        const parsed = JSON.parse(rawData);
-        eventId = parsed.eventId || parsed.id || rawData;
-      } catch (e) {
-        eventId = rawData;
-      }
+    const eventId = result.data ? parseEventId(result.data.trim()) : null;
+    if (!eventId) {
+      navigation.navigate('CheckInFailed', {
+        reason: 'Mã QR không đúng định dạng. Vui lòng quét mã do hệ thống sự kiện tạo.',
+        data: result.data,
+      });
+      setLoading(false);
+      return;
     }
 
     try {
@@ -286,6 +308,14 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
 
       if (eventData?.coordinates && eventData.coordinates.latitude && eventData.coordinates.longitude) {
         setLoadingMessage('Đang kiểm tra bạn có mặt tại địa điểm tổ chức...');
+
+        if (options.mockLocation) {
+          verifiedLocation = {
+            latitude: eventData.coordinates.latitude,
+            longitude: eventData.coordinates.longitude,
+          };
+          calculatedDistance = 0;
+        } else {
 
         // Xin quyền vị trí nếu chưa có
         const perm = await requestLocationPermission();
@@ -337,6 +367,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
             isLocationError: true,
           });
           return;
+        }
         }
       }
 
@@ -393,6 +424,14 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     }
   };
 
+  /** Development-only path for emulator/simulator testing without a camera. */
+  const handleMockScan = () => {
+    void handleBarCodeScanned(
+      { data: `EVENTMATE:${MOCK_EVENT_ID}`, type: 'qr' } as BarcodeScanningResult,
+      { mockLocation: true },
+    );
+  };
+
   // 1. Trạng thái đang kiểm tra quyền Camera
   if (!cameraPermission) {
     return (
@@ -431,6 +470,12 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
           </TouchableOpacity>
         )}
 
+        {__DEV__ && (
+          <TouchableOpacity style={[styles.permissionButton, styles.mockButton]} onPress={handleMockScan}>
+            <Text style={styles.permissionButtonText}>Chạy QR mock (Development)</Text>
+          </TouchableOpacity>
+        )}
+
         <TouchableOpacity style={styles.backPermissionBtn} onPress={handleGoBack} activeOpacity={0.8}>
           <Text style={styles.backPermissionBtnText}>← Quay lại màn hình trước</Text>
         </TouchableOpacity>
@@ -444,6 +489,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       <StatusBar barStyle="light-content" />
 
       {/* CameraView phiên bản mới nhất từ Expo Camera SDK 57 */}
+      {isFocused && (
       <CameraView
         style={StyleSheet.absoluteFill}
         facing="back"
@@ -453,6 +499,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
         }}
         onBarcodeScanned={scanned || loading ? undefined : handleBarCodeScanned}
       />
+      )}
 
       {/* ================= LỚP OVERLAY LÀM TỐI XUNG QUANH (rgba(0,0,0,0.5)) ================= */}
       <View style={styles.overlayContainer} pointerEvents="box-none">
@@ -486,7 +533,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               if (realCoords) {
                 openInGoogleMaps(realCoords.latitude, realCoords.longitude, 'Vị trí hiện tại của tôi');
               } else {
-                refreshRealLocation();
+                void refreshRealLocation(true);
               }
             }}
           >
@@ -566,6 +613,12 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
           <Text style={styles.syncLocationHint}>
             Chạm để đổi địa điểm kiểm thử: Điểm danh hợp lệ hoặc Thử nghiệm ngoài phạm vi
           </Text>
+
+          {__DEV__ && (
+            <TouchableOpacity style={styles.mockScanButton} onPress={handleMockScan} accessibilityRole="button">
+              <Text style={styles.mockScanButtonText}>Chạy QR mock trên Emulator</Text>
+            </TouchableOpacity>
+          )}
         </View>
       </View>
 
@@ -636,6 +689,10 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     backgroundColor: '#3B82F6',
+  },
+  mockButton: {
+    marginTop: 12,
+    backgroundColor: '#2563EB',
   },
   permissionButtonText: {
     color: '#FFFFFF',
@@ -890,6 +947,16 @@ const styles = StyleSheet.create({
     marginTop: 6,
     textAlign: 'center',
   },
+  mockScanButton: {
+    marginTop: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    borderRadius: 10,
+    backgroundColor: 'rgba(37, 99, 235, 0.28)',
+    borderWidth: 1,
+    borderColor: '#60A5FA',
+  },
+  mockScanButtonText: { color: '#BFDBFE', fontSize: 12, fontWeight: '700' },
 
   // Loading Overlay
   loadingOverlay: {
