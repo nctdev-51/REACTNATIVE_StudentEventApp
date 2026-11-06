@@ -56,10 +56,17 @@ import {
   fetchEventById,
   clearSelectedEvent,
 } from "../../features/events/eventsSlice";
+<<<<<<< HEAD
 
 >>>>>>> 8d9ed42 (Update Event)
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
 <<<<<<< HEAD
+=======
+import {
+  fetchMyRegistrations,
+  registerForEvent,
+} from "../../features/check-in/registrationsSlice";
+>>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 import { Colors } from "../../theme";
 <<<<<<< HEAD
 import {
@@ -164,6 +171,7 @@ export default function EventDetailScreen() {
   );
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const user = useAppSelector(
     (state) => state.auth.user
   );
@@ -207,6 +215,17 @@ export default function EventDetailScreen() {
       registration.status !== "cancelled",
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   );
+=======
+  // Kiểm tra đã đăng ký chưa
+  const existingReg = myRegistrations.find((registration) => {
+    const registrationEventId =
+      typeof registration.eventId === "object" && registration.eventId !== null
+        ? (registration.eventId as { _id?: string; id?: string })._id ??
+          (registration.eventId as { id?: string }).id
+        : registration.eventId;
+    return registrationEventId === eventId && registration.status !== "cancelled";
+  });
+>>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 
   const isRegistered = !!existingReg;
   const isPast = isEventPast(event);
@@ -259,10 +278,17 @@ export default function EventDetailScreen() {
       dispatch(fetchEventById(eventId));
     }
 
+    // A QR check-in can create/update a registration while this screen is not
+    // mounted. Refresh the source of truth before deciding whether to enable
+    // registration again.
+    if (user?._id) {
+      void dispatch(fetchMyRegistrations(user._id));
+    }
+
     return () => {
       dispatch(clearSelectedEvent());
     };
-  }, [eventId, dispatch]);
+  }, [eventId, dispatch, user?._id]);
 
   // Đăng ký sự kiện
   const handleRegister = async () => {
@@ -278,8 +304,15 @@ export default function EventDetailScreen() {
 
     if (isRegistered) {
       Alert.alert(
+<<<<<<< HEAD
         "Đã đăng ký",
         "Bạn đã đăng ký sự kiện này rồi."
+=======
+        existingReg?.status === "checked_in" ? "Đã check-in" : "Đã đăng ký",
+        existingReg?.status === "checked_in"
+          ? "Bạn đã check-in sự kiện này, không thể đăng ký lại."
+          : "Bạn đã đăng ký sự kiện này rồi.",
+>>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
       );
       return;
     }
@@ -1157,10 +1190,18 @@ const handleShare = async () => {
               >
                 {isPast
                   ? "🛑 Đã hết hạn đăng ký"
+<<<<<<< HEAD
                   : isRegistered
                     ? "✅ Đã đăng ký"
                     : "📋 Đăng ký tham gia"}
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
+=======
+                  : existingReg?.status === "checked_in"
+                    ? "Đã check-in"
+                    : isRegistered
+                      ? "Đã đăng ký"
+                      : "Đăng ký tham gia"}
+>>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
               </Text>
 =======
               <XStack alignItems="center" gap={8}>

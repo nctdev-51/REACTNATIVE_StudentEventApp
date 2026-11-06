@@ -631,12 +631,32 @@ export default function MyScheduleScreen({
   const backendEvents: RegisteredEvent[] = useMemo(() => {
     if (!myRegistrations || myRegistrations.length === 0) return [];
 
+<<<<<<< HEAD
     return myRegistrations
       .filter((r) => r.status !== 'cancelled')
       .map((r) => {
         const rawEventId = typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId as any)._id : r.eventId;
         const populatedEvent = typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId as any) : null;
         const matchedEvent = populatedEvent || eventsList.find((e) => e._id === rawEventId);
+=======
+    return (
+      myRegistrations
+        .filter((r) => r.status !== "cancelled")
+        .map((r) => {
+          const rawEventId =
+            typeof r.eventId === "object" && r.eventId !== null
+              ? (r.eventId as any)._id
+              : r.eventId;
+          const populatedEvent =
+            typeof r.eventId === "object" && r.eventId !== null
+              ? (r.eventId as any)
+              : null;
+          const matchedEvent =
+            populatedEvent ||
+            eventsList.find(
+              (e) => e._id === rawEventId || (e as { id?: string }).id === rawEventId,
+            );
+>>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 
         let dateStr = 'Sắp diễn ra';
         let timeStr = '08:00';

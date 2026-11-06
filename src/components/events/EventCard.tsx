@@ -1,5 +1,6 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Event } from "../../types/event";
 import { isEventPast } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -74,6 +75,7 @@ export default function EventCard({ event }: EventCardProps) {
           {event.title}
         </Text>
 
+<<<<<<< HEAD
         <Text style={[styles.info, { color: theme.textSecondary }]}>
           📅 {formatDate(event.time?.start)}
         </Text>
@@ -84,6 +86,17 @@ export default function EventCard({ event }: EventCardProps) {
         >
           📍 {event.location || "Đang cập nhật địa điểm"}
         </Text>
+=======
+        <View style={styles.infoRow}>
+          <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
+          <Text style={[styles.info, { color: theme.textSecondary }]}>{formatDate(event.time.start)}</Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <Ionicons name="location-outline" size={14} color={theme.textSecondary} />
+          <Text style={[styles.info, { color: theme.textSecondary }]} numberOfLines={1}>{event.location}</Text>
+        </View>
+>>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 
         <View style={styles.bottomRow}>
           <View
@@ -190,6 +203,12 @@ const styles = StyleSheet.create({
 
   info: {
     fontSize: 13,
+    flex: 1,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 5,
     marginBottom: 4,
   },
 

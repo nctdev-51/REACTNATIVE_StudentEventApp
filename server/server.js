@@ -388,6 +388,35 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
 });
 
 // ─── ID auto-population middleware for POST ───────────────────────────────────
+// A registration represents one student's participation in one event. Enforce
+// that invariant on the server too; UI state alone cannot prevent concurrent
+// or replayed requests from creating duplicates.
+server.use((req, res, next) => {
+  if (req.method !== "POST" || !["/registrations", "/api/registrations"].includes(req.path)) {
+    return next();
+  }
+
+  const { eventId, userId } = req.body || {};
+  if (!eventId || !userId) return next();
+
+  const existing = router.db
+    .get("registrations")
+    .find((registration) =>
+      (registration.eventId === eventId || registration.eventId?._id === eventId) &&
+      (registration.userId === userId || registration.userId?._id === userId) &&
+      registration.status !== "cancelled",
+    )
+    .value();
+
+  if (existing) {
+    return res.status(409).json({
+      success: false,
+      message: "Bạn đã đăng ký hoặc check-in sự kiện này rồi.",
+    });
+  }
+  next();
+});
+
 server.use((req, res, next) => {
   if (req.method === "POST" && req.body && typeof req.body === "object") {
     if (!req.body.id && !req.body._id) {

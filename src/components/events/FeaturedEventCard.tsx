@@ -1,5 +1,6 @@
 import React from "react";
 import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Event } from "../../types/event";
 import { useAppTheme } from "../../theme/ThemeContext";
 
@@ -55,6 +56,7 @@ export default function FeaturedEventCard({
             {event.title}
           </Text>
 
+<<<<<<< HEAD
           <Text style={styles.info}>
             📅 {formatDate(event.time?.start)}
           </Text>
@@ -65,6 +67,17 @@ export default function FeaturedEventCard({
           >
             📍 {event.location || "Đang cập nhật địa điểm"}
           </Text>
+=======
+          <View style={styles.infoRow}>
+            <Ionicons name="calendar-outline" size={15} color="#FFFFFF" />
+            <Text style={styles.info}>{formatDate(event.time.start)}</Text>
+          </View>
+
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={15} color="#FFFFFF" />
+            <Text style={styles.info} numberOfLines={1}>{event.location}</Text>
+          </View>
+>>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
         </View>
       </ImageBackground>
     </View>
@@ -122,6 +135,12 @@ const styles = StyleSheet.create({
   info: {
     color: "#ffffff",
     fontSize: 14,
+    flex: 1,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     marginBottom: 4,
   },
 });

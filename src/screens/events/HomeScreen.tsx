@@ -15,6 +15,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -197,9 +198,11 @@ export default function HomeScreen() {
           activeOpacity={0.8}
           accessibilityLabel="Mở hồ sơ cá nhân"
         >
-          <Text style={styles.avatarText}>
-            {userName ? userName.charAt(0).toUpperCase() : "👤"}
-          </Text>
+          {userName ? (
+            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
+          ) : (
+            <Ionicons name="person-outline" size={22} color={theme.primary} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -216,7 +219,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("CheckIn")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>📷</Text>
+          <Ionicons name="qr-code-outline" size={21} color={theme.primary} />
           <Text style={styles.quickNavTextHighlight}>Quét QR Check-in</Text>
         </TouchableOpacity>
 
@@ -231,7 +234,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("MySchedule")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>📅</Text>
+          <Ionicons name="calendar-outline" size={21} color={theme.textSecondary} />
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Lịch của tôi</Text>
         </TouchableOpacity>
 
@@ -251,7 +254,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("Notification")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>🔔</Text>
+          <Ionicons name="notifications-outline" size={21} color={unreadCount > 0 ? "#D97706" : theme.textSecondary} />
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>
             Thông báo{unreadCount > 0 ? ` (${unreadCount})` : ""}
           </Text>
@@ -268,7 +271,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("Profile")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>👤</Text>
+          <Ionicons name="person-outline" size={21} color={theme.textSecondary} />
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Hồ sơ</Text>
         </TouchableOpacity>
       </View>
@@ -281,9 +284,10 @@ export default function HomeScreen() {
   onPress={() => navigation.navigate("Filter")}
   activeOpacity={0.8}
 >
-  <Text style={styles.filterButtonText}>
-    ⚙️ Bộ lọc nâng cao
-  </Text>
+  <View style={styles.filterButtonContent}>
+    <Ionicons name="options-outline" size={17} color={theme.primary} />
+    <Text style={styles.filterButtonText}>Bộ lọc nâng cao</Text>
+  </View>
 </TouchableOpacity>
       {/* Danh mục */}
       <ScrollView
@@ -316,7 +320,7 @@ export default function HomeScreen() {
       {/* Error */}
       {!!error && !loading && (
         <View style={styles.errorBox}>
-          <Text style={styles.errorIcon}>⚠️</Text>
+          <Ionicons name="warning-outline" size={32} color={Colors.error} style={styles.errorIcon} />
           <Text style={styles.errorTitle}>Không thể tải sự kiện</Text>
           <Text style={styles.errorDesc}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={loadData}>
@@ -711,7 +715,7 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              <Text style={styles.emptyIcon}>🗓️</Text>
+              <Ionicons name="calendar-clear-outline" size={32} color={theme.textTertiary} style={styles.emptyIcon} />
               <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
                 Không tìm thấy sự kiện
               </Text>
