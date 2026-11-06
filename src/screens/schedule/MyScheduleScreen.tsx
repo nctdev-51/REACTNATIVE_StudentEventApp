@@ -37,7 +37,6 @@ import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import { fetchEvents } from "../../features/events/eventsSlice";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
-import { Card } from "../../components/common";
 import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme/ThemeContext";
 >>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
@@ -460,11 +459,10 @@ function EventCard({ event, onPress }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
 
   return (
-    <Card
+    <TouchableOpacity
       style={cardStyles.card}
-      padding={0}
       onPress={() => onPress?.(event)}
-      pressStyle={{ opacity: 0.75 }}
+      activeOpacity={0.75}
       accessibilityRole="button"
       accessibilityLabel={event.title}
     >
@@ -511,7 +509,7 @@ function EventCard({ event, onPress }: EventCardProps) {
           </View>
         )}
       </View>
-    </Card>
+    </TouchableOpacity>
   );
 }
 
