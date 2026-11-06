@@ -40,12 +40,16 @@ import EventCard from "../../components/events/EventCard";
 <<<<<<< HEAD
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Colors, Spacing, Typography } from "../../theme";
 =======
 >>>>>>> 8d9ed42 (Update Event)
 
 import { Colors, Typography } from "../../theme";
 =======
+=======
+import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
+>>>>>>> 3fca7b4 (feat: integrate bottom tab navigation and enhance QR scanner functionality)
 import { Colors, Typography } from "../../theme";
 import { useAppTheme } from "../../theme/ThemeContext";
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
@@ -146,6 +150,12 @@ export default function HomeScreen() {
   ]);
 
   const userName = user?.fullName ?? "Sinh viên";
+
+  const handleTabPress = useCallback((tab: AppTabKey) => {
+    if (tab === "schedule") navigation.navigate("MySchedule");
+    if (tab === "checkin") navigation.navigate("CheckIn");
+    if (tab === "profile") navigation.navigate("Profile");
+  }, [navigation]);
 
   // Header Component của danh sách
   const renderListHeader = () => (
@@ -366,7 +376,7 @@ export default function HomeScreen() {
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
-          { paddingTop: insets.top + 16 },
+          { paddingTop: insets.top + 16, paddingBottom: 16 },
         ]}
         refreshControl={
           <RefreshControl
@@ -693,6 +703,7 @@ export default function HomeScreen() {
           ) : undefined
         }
       />
+      <AppBottomTab activeTab="home" onTabPress={handleTabPress} />
     </SafeAreaView>
   );
 }
@@ -706,7 +717,7 @@ const styles = StyleSheet.create({
   },
   content: {
     paddingHorizontal: 16,
-    paddingBottom: 40,
+    paddingBottom: 16,
   },
   header: {
     flexDirection: "row",

@@ -33,6 +33,7 @@ import { logout, updateUser } from "../../features/auth/authSlice";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
+import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme";
 import { getDefaultDbUser } from "../../data/dbService";
 >>>>>>> e79c48e (abc)
@@ -750,8 +751,13 @@ export default function ProfileScreen({
 >>>>>>> e79c48e (abc)
   };
 
+<<<<<<< HEAD
   // Wire up bottom tab navigation
   const handleTabPress = (tab: TabKey) => {
+=======
+  // Xử lý chuyển tab dưới cùng
+  const handleTabPress = (tab: AppTabKey) => {
+>>>>>>> 3fca7b4 (feat: integrate bottom tab navigation and enhance QR scanner functionality)
     setActiveTab(tab);
     switch (tab) {
       case 'home':
@@ -912,14 +918,7 @@ export default function ProfileScreen({
       </ScrollView>
 
       {/* ── Bottom navigation bar ───────────────────────────────────────── */}
-      <BottomTabBar
-        activeTab={activeTab}
-        onTabPress={handleTabPress}
-        tabBg={theme.tabBackground}
-        borderColor={theme.tabBorder}
-        activeColor={theme.primary}
-        inactiveColor={theme.textTertiary}
-      />
+      <AppBottomTab activeTab={activeTab} onTabPress={handleTabPress} />
 
       {/* ── Modal Chỉnh Sửa Thông Tin Cá Nhân ───────────────────────────── */}
       <Modal
