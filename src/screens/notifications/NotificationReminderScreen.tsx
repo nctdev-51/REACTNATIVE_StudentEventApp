@@ -14,10 +14,6 @@ import * as Notifications from "expo-notifications";
 import Constants from "expo-constants";
 import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import * as Notifications from "../../services/localNotifications";
-import { Text } from "tamagui";
-import { Button, Card, Input, Modal } from "../../components/common";
-import { useAppSelector } from "../../hooks/redux";
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppTheme } from "../../theme/ThemeContext";
 

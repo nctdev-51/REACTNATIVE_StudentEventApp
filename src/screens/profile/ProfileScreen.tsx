@@ -788,7 +788,11 @@ export default function ProfileScreen({
     }
     setSavingProfile(true);
     try {
-      await api.updateProfile({ fullName: editFullName.trim() });
+      await api.updateProfile({
+        fullName: editFullName.trim(),
+        phone: editPhone.trim(),
+        faculty: editFaculty.trim(),
+      });
       dispatch(
         updateUser({
           fullName: editFullName.trim(),
@@ -799,16 +803,12 @@ export default function ProfileScreen({
       Alert.alert("Thành công", "Thông tin cá nhân đã được lưu thành công.");
       setEditModalVisible(false);
     } catch (err: any) {
-      // Fallback update in Redux store
-      dispatch(
-        updateUser({
-          fullName: editFullName.trim(),
-          phone: editPhone.trim(),
-          faculty: editFaculty.trim(),
-        }),
+      Alert.alert(
+        "Không thể lưu hồ sơ",
+        err?.response?.data?.message ??
+          err?.message ??
+          "Kiểm tra kết nối mạng và thử lại.",
       );
-      Alert.alert("Thành công", "Đã cập nhật hồ sơ cá nhân.");
-      setEditModalVisible(false);
     } finally {
       setSavingProfile(false);
     }

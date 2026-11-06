@@ -1,7 +1,7 @@
 import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { User, AuthCredentials, RegisterPayload } from '../../types';
 import api from '../../services/api';
-import { getDbUsers } from '../../data/dbService';
+import { loadAuthSession } from '../../services/authSession';
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -9,6 +9,7 @@ interface AuthState {
   user: User | null;
   token: string | null;
   loading: boolean;
+  isHydrating: boolean;
   error: string | null;
   isAuthenticated: boolean;
 }
@@ -17,15 +18,22 @@ const initialState: AuthState = {
   user: null,
   token: null,
   loading: false,
+  isHydrating: true,
   error: null,
   isAuthenticated: false,
 };
 
 // ─── Async Thunks ────────────────────────────────────────────────────────────
 
+/** Restore a previously validated session before choosing the initial navigator. */
+export const hydrateSession = createAsyncThunk(
+  'auth/hydrateSession',
+  async () => loadAuthSession()
+);
+
 /**
  * Đăng nhập: POST /auth/login → { token, user }
- * Nếu backend chưa có /auth hoặc offline, fallback kiểm tra từ db.json
+ * Credentials are always validated by the configured API (or explicit mock mode).
  */
 export const loginUser = createAsyncThunk(
   'auth/login',
@@ -33,35 +41,6 @@ export const loginUser = createAsyncThunk(
     try {
       return await api.login(credentials);
     } catch (err: any) {
-      // Fallback xác thực trực tiếp qua dữ liệu db.json nếu server offline
-      try {
-        const dbUsers = getDbUsers();
-        const matched = dbUsers.find(
-          (u) =>
-            u.email?.toLowerCase() === credentials.email?.toLowerCase().trim() &&
-            u.password === credentials.password
-        );
-        if (matched) {
-          return {
-            token: 'jwt_token_db_' + (matched.id || matched._id),
-            user: {
-              _id: matched.id || matched._id,
-              studentId: matched.studentId || 'SV01',
-              fullName: matched.name || matched.fullName || 'Nguyễn Văn A',
-              email: matched.email,
-              point: matched.point ?? 120,
-              role: matched.role || 'student',
-              faculty: matched.faculty || 'Khoa Công nghệ thông tin',
-              phone: matched.phone || '0901234567',
-              avatarUrl: matched.avatarUrl || matched.avatar,
-              isActive: true,
-            },
-          };
-        }
-      } catch (dbErr) {
-        // Bỏ qua lỗi fallback
-      }
-
       return rejectWithValue(
         err?.response?.data?.message ?? err?.message ?? 'Đăng nhập thất bại'
       );
@@ -126,6 +105,7 @@ const authSlice = createSlice({
       state.token = action.payload.token;
       state.user = action.payload.user;
       state.isAuthenticated = true;
+      state.isHydrating = false;
     },
     /** Cập nhật thông tin user sau khi chỉnh sửa profile */
     updateUser(state, action: PayloadAction<Partial<User>>) {
@@ -137,6 +117,18 @@ const authSlice = createSlice({
   extraReducers: (builder) => {
     // Login
     builder
+      .addCase(hydrateSession.fulfilled, (state, action) => {
+        state.isHydrating = false;
+        if (action.payload) {
+          state.token = action.payload.token;
+          state.user = action.payload.user;
+          state.isAuthenticated = true;
+        }
+      })
+      .addCase(hydrateSession.rejected, (state) => {
+        // A failed local read must not prevent a user from reaching Login.
+        state.isHydrating = false;
+      })
       .addCase(loginUser.pending, (state) => {
         state.loading = true;
         state.error = null;

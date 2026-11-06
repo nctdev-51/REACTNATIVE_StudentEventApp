@@ -39,15 +39,16 @@ npm run server
    cd StudentEventApp
    npm install
    ```
-2. Cấu hình IP kết nối Backend trong file `src/services/api.ts`:
+2. Cấu hình kết nối Backend:
    - Chạy trên Web hoặc iOS Simulator: Giữ nguyên mặc định `http://localhost:5000/api`.
    - Chạy trên Android Emulator: Giữ nguyên mặc định `http://10.0.2.2:5000/api`.
    - Chạy trên điện thoại thật (Expo Go qua Wi-Fi):
-     - Mở cmd gõ `ipconfig` lấy IPv4 của máy tính (ví dụ: `192.168.1.15`).
-     - Đổi giá trị `DEV_LAN_IP` trong `src/services/api.ts` thành IP đó:
-       ```typescript
-       export const DEV_LAN_IP = "192.168.1.15";
-       ```
+     - Expo tự nhận IP của máy đang chạy Metro. Đảm bảo điện thoại và máy tính cùng Wi-Fi, sau đó chạy `npm run server`.
+   - Dùng backend đã deploy: tạo file `.env.local` ở thư mục gốc và cấu hình URL ổn định (không dùng Localtunnel tạm thời):
+     ```env
+     EXPO_PUBLIC_API_URL=https://your-api.example.com/api
+     ```
+     Sau khi đổi biến môi trường, reload hoàn toàn ứng dụng hoặc chạy `npx expo start --clear`.
 3. Chạy ứng dụng:
    ```bash
    npm start

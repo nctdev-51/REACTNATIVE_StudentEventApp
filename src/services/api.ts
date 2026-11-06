@@ -30,10 +30,11 @@ export const DEV_LAN_IP =
 export const USE_DEV_LAN_IP = !!autoDevIp;
 
 /**
- * URL Backend Cloud (Deploy Render / Localtunnel):
- * Điền link Cloud vào đây (ví dụ: "https://student-event-server.onrender.com/api")
+ * Optional deployed API URL. Never hard-code a temporary Localtunnel address:
+ * tunnels expire and surface as 503 errors for every app user. Expo inlines
+ * EXPO_PUBLIC_* values from .env files at build time.
  */
-export const CLOUD_API_URL: string | null = "https://easy-cups-roll.loca.lt"; // Localtunnel/Render URL — điền vào khi deploy lên cloud
+export const CLOUD_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim() || null;
 
 /**
  * ⚡ CHẾ ĐỘ THỬ NGHIỆM ĐỘC LẬP (KHÔNG CẦN BACKEND):
@@ -247,49 +248,23 @@ export const login = async (
     const res = await apiClient.post("/auth/login", credentials);
     return mapBackendAuth(res.data);
   } catch (err: any) {
-    // Tự động kích hoạt Offline Fallback khi không thấy server hoặc lỗi 5xx để app luôn chạy mượt mà
-    const httpStatus = err?.response?.status;
-    if (
-      err?.code === "ERR_NETWORK" ||
-      !err?.response ||
-      (httpStatus && httpStatus >= 500)
-    ) {
-      console.warn(
-        "[API] Offline Login Fallback Mode (Server không phản hồi / lỗi:",
-        httpStatus ?? err?.code,
-        ")",
-      );
-      const email = credentials.email?.toLowerCase().trim();
+    // Network failures must never authenticate an arbitrary account. Demo
+    // credentials are available only when the explicit standalone mode is on.
+    if (!USE_STANDALONE_MOCK) throw err;
 
-      if (email.includes("admin")) {
-        return {
-          token: "offline-mock-admin-token",
-          user: MOCK_ADMIN_USER,
-        };
-      }
-
-      if (email === "sv02@iuh.edu.vn") {
-        return {
-          token: "offline-mock-student-token-2",
-          user: {
-            _id: "66f1a1020000000000000002",
-            studentId: "SV02",
-            fullName: "Trần Thị Bích",
-            email: "sv02@iuh.edu.vn",
-            point: 85,
-            role: "student",
-            faculty: "Khoa Kinh tế",
-            avatarUrl: "https://i.pravatar.cc/300?img=47",
-          },
-        };
-      }
-
-      return {
-        token: "offline-mock-student-token",
-        user: MOCK_DEFAULT_USER,
-      };
+    const email = credentials.email?.toLowerCase().trim();
+    const password = credentials.password;
+    if (email === "admin.doan@iuh.edu.vn" && password === "admin123") {
+      return { token: "offline-mock-admin-token", user: MOCK_ADMIN_USER };
     }
-    throw err;
+    if (email === "sv02@iuh.edu.vn" && password === "123456") {
+      return { token: "offline-mock-student-token-2", user: MOCK_STUDENT_2 };
+    }
+    if (email === "sv01@iuh.edu.vn" && password === "123456") {
+      return { token: "offline-mock-student-token", user: MOCK_DEFAULT_USER };
+    }
+
+    throw new Error("Email hoặc mật khẩu không đúng.");
   }
 };
 
@@ -307,11 +282,7 @@ export const register = async (
     const res = await apiClient.post("/auth/register", body);
     return mapBackendAuth(res.data);
   } catch (err: any) {
-    if (
-      err?.code === "ERR_NETWORK" ||
-      !err?.response ||
-      (err?.response?.status && err.response.status >= 500)
-    ) {
+    if (USE_STANDALONE_MOCK) {
       const newUser: User = {
         _id: "user_" + Date.now(),
         studentId: payload.studentId,
@@ -332,11 +303,7 @@ export const getCurrentUser = async (): Promise<User> => {
     const res = await apiClient.get("/auth/me");
     return mapBackendUser(res.data);
   } catch (err: any) {
-    if (
-      err?.code === "ERR_NETWORK" ||
-      !err?.response ||
-      (err?.response?.status && err.response.status >= 500)
-    ) {
+    if (USE_STANDALONE_MOCK) {
       return MOCK_DEFAULT_USER;
     }
     throw err;
@@ -344,17 +311,21 @@ export const getCurrentUser = async (): Promise<User> => {
 };
 
 export const updateProfile = async (
-  data: Partial<Pick<User, "fullName" | "studentId" | "avatarUrl">>,
+  data: Partial<
+    Pick<User, "fullName" | "studentId" | "avatarUrl" | "phone" | "faculty">
+  >,
 ): Promise<User> => {
   const body: any = {};
   if (data.fullName !== undefined) body.name = data.fullName;
   if (data.studentId !== undefined) body.studentId = data.studentId;
   if (data.avatarUrl !== undefined) body.avatar = data.avatarUrl;
+  if (data.phone !== undefined) body.phone = data.phone;
+  if (data.faculty !== undefined) body.faculty = data.faculty;
   try {
     const res = await apiClient.put("/auth/me", body);
     return mapBackendUser(res.data);
   } catch (err: any) {
-    if (err?.code === "ERR_NETWORK" || !err?.response) {
+    if (USE_STANDALONE_MOCK) {
       return { ...MOCK_DEFAULT_USER, ...data };
     }
     throw err;
