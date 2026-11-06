@@ -1,4 +1,4 @@
-// Expo SDK 57: importing the package barrel also loads remote push-token
+// Expo SDK 58: importing the package barrel also loads remote push-token
 // registration, which throws in Android Expo Go. Keep local-only APIs isolated
 // here. These build subpaths match the installed expo-notifications version.
 export { setNotificationHandler } from 'expo-notifications/build/NotificationsHandler';

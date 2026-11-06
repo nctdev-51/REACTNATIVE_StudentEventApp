@@ -65,3 +65,13 @@ test('web avoids native notification APIs', async () => {
   assert.equal(scheduled.size, 0);
   assert.equal(calls.length, 0);
 });
+
+test('cancelling a reminder removes only the selected event for that user', async () => {
+  const { service, scheduled, event } = setup();
+  const laterEvent = { ...event, _id: 'event2', time: { start: new Date(Date.now() + 10800000).toISOString() } };
+  await service.scheduleEventReminder(event, 'student1');
+  await service.scheduleEventReminder(laterEvent, 'student1');
+  await service.cancelEventReminder('event1', 'student1');
+  assert.equal(scheduled.size, 1);
+  assert.equal((await service.getEventReminders('student1'))[0].content.data.eventId, 'event2');
+});

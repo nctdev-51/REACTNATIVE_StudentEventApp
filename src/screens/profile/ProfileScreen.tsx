@@ -25,6 +25,7 @@ import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme";
 import { getDefaultDbUser } from "../../data/dbService";
+import { Ionicons } from "@expo/vector-icons";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1079,11 +1080,9 @@ export default function ProfileScreen({
             style={editStyles.card}
           >
             <View style={editStyles.header}>
-              <Text style={editStyles.headerTitle}>
-                👤 Cập Nhật Thông Tin Cá Nhân
-              </Text>
+              <View style={editStyles.iconTitle}><Ionicons name="person-outline" size={22} color="#0F172A" /><Text style={editStyles.headerTitle}>Cập Nhật Thông Tin Cá Nhân</Text></View>
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Text style={editStyles.closeBtn}>✕</Text>
+                <Ionicons name="close" size={24} color="#475569" />
               </TouchableOpacity>
             </View>
 
@@ -1492,6 +1491,7 @@ const editStyles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: "#1E3A8A",
   },
+  iconTitle: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: {
     fontSize: 15,
     fontWeight: "800",

@@ -8,7 +8,7 @@
 
 Dự án gồm 2 phần được tích hợp gọn gàng trong cùng thư mục:
 
-- `src/`: Ứng dụng di động (React Native, Expo SDK 57, Tamagui, Redux Toolkit).
+- `src/`: Ứng dụng di động (React Native 0.88, Expo SDK 58, Tamagui, Redux Toolkit).
 - `server/`: Máy chủ Mock API (Node.js + JSON-Server + JWT) hoạt động độc lập, không yêu cầu cài đặt MongoDB, lưu dữ liệu trực tiếp vào `server/db.json`.
 
 ---
@@ -37,7 +37,7 @@ npm run server
 1. Mở một terminal mới, vào thư mục ứng dụng:
    ```bash
    cd StudentEventApp
-   npm install
+   npm ci
    ```
 2. Cấu hình kết nối Backend:
    - Chạy trên Web hoặc iOS Simulator: Giữ nguyên mặc định `http://localhost:5000/api`.
@@ -57,6 +57,15 @@ npm run server
    - Nhấn `a` để chạy trên Android Emulator.
    - Nhấn `w` để chạy trên Web.
    - Hoặc quét mã QR bằng Expo Go trên điện thoại.
+
+### Kiểm thử trước khi demo
+
+```bash
+npm test
+npx tsc --noEmit
+```
+
+Ma trận 10 ca kiểm thử (bao gồm thành công, thất bại, quyền thiết bị, offline và gesture) cùng checklist cho Android compact và iPhone có notch nằm tại [docs/TEST_MATRIX.md](docs/TEST_MATRIX.md).
 
 ---
 

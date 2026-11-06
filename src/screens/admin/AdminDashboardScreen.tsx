@@ -20,6 +20,7 @@ import { getEvents, getAllRegistrations } from '../../services/api';
 import { Event, Registration } from '../../types';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 import { useAppTheme } from '../../theme/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 type AdminDashboardNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminDashboard'>;
 
@@ -104,14 +105,14 @@ export default function AdminDashboardScreen() {
             onPress={handleLogout}
             activeOpacity={0.8}
           >
-            <Text style={styles.logoutIcon}>🚪</Text>
+            <Ionicons name="log-out-outline" size={21} color={theme.danger} />
             <Text style={[styles.logoutText, { color: theme.danger }]}>Thoát</Text>
           </TouchableOpacity>
         </View>
 
         {/* Title banner */}
         <View style={[styles.banner, { backgroundColor: isDark ? theme.surfaceSecondary : '#1E293B' }]}>
-          <Text style={styles.bannerTitle}>🛡️ Trung Tâm Quản Trị Sự Kiện</Text>
+          <View style={styles.iconTitle}><Ionicons name="shield-checkmark-outline" size={23} color="#FFFFFF" /><Text style={styles.bannerTitle}>Trung Tâm Quản Trị Sự Kiện</Text></View>
           <Text style={styles.bannerDesc}>
             Quản lý địa điểm tổ chức, phân quyền sinh viên và giám sát điểm danh tự động theo khuôn viên trường.
           </Text>
@@ -120,7 +121,7 @@ export default function AdminDashboardScreen() {
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#3B82F6', borderColor: theme.border, borderWidth: 1 }]}>
-            <Text style={styles.statIcon}>📅</Text>
+            <Ionicons style={styles.statIcon} name="calendar-outline" size={28} color="#3B82F6" />
             <View>
               <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : totalEvents}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tổng sự kiện</Text>
@@ -128,7 +129,7 @@ export default function AdminDashboardScreen() {
           </View>
 
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#10B981', borderColor: theme.border, borderWidth: 1 }]}>
-            <Text style={styles.statIcon}>📍</Text>
+            <Ionicons style={styles.statIcon} name="location-outline" size={28} color="#10B981" />
             <View>
               <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
                 {loading ? '...' : `${eventsWithGPS}/${totalEvents}`}
@@ -138,7 +139,7 @@ export default function AdminDashboardScreen() {
           </View>
 
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#8B5CF6', borderColor: theme.border, borderWidth: 1 }]}>
-            <Text style={styles.statIcon}>👥</Text>
+            <Ionicons style={styles.statIcon} name="people-outline" size={28} color="#8B5CF6" />
             <View>
               <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : totalRegistrations}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Lượt đăng ký</Text>
@@ -146,7 +147,7 @@ export default function AdminDashboardScreen() {
           </View>
 
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#F59E0B', borderColor: theme.border, borderWidth: 1 }]}>
-            <Text style={styles.statIcon}>🎯</Text>
+            <Ionicons style={styles.statIcon} name="checkmark-circle-outline" size={28} color="#F59E0B" />
             <View>
               <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : checkedInCount}</Text>
               <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Đã Check-in QR</Text>
@@ -165,7 +166,7 @@ export default function AdminDashboardScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#F0FDF4' }]}>
-              <Text style={styles.actionCardIcon}>👥</Text>
+              <Ionicons name="people-outline" size={27} color="#10B981" />
             </View>
             <View style={styles.actionContent}>
               <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Quản Lý Người Dùng & Điểm Rèn Luyện</Text>
@@ -183,7 +184,7 @@ export default function AdminDashboardScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#EFF6FF' }]}>
-              <Text style={styles.actionCardIcon}>📍</Text>
+              <Ionicons name="location-outline" size={27} color="#2563EB" />
             </View>
             <View style={styles.actionContent}>
               <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Cài Đặt Địa Điểm Tổ Chức Sự Kiện</Text>
@@ -201,7 +202,7 @@ export default function AdminDashboardScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(16,185,129,0.15)' : '#ECFDF5' }]}>
-              <Text style={styles.actionCardIcon}>➕</Text>
+              <Ionicons name="add-circle-outline" size={27} color="#10B981" />
             </View>
             <View style={styles.actionContent}>
               <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Tạo Sự Kiện Mới</Text>
@@ -219,7 +220,7 @@ export default function AdminDashboardScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(139,92,246,0.15)' : '#F5F3FF' }]}>
-              <Text style={styles.actionCardIcon}>📊</Text>
+              <Ionicons name="bar-chart-outline" size={27} color="#8B5CF6" />
             </View>
             <View style={styles.actionContent}>
               <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Báo Cáo Điểm Danh & Anti-Fake</Text>
@@ -237,7 +238,7 @@ export default function AdminDashboardScreen() {
             activeOpacity={0.85}
           >
             <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB' }]}>
-              <Text style={styles.actionCardIcon}>👨‍🎓</Text>
+              <Ionicons name="school-outline" size={27} color="#F59E0B" />
             </View>
             <View style={styles.actionContent}>
               <Text style={[styles.actionCardTitle, { color: theme.textPrimary }]}>Xem Giao Diện Sinh Viên</Text>
@@ -257,7 +258,7 @@ export default function AdminDashboardScreen() {
           {loading ? (
             <ActivityIndicator size="small" color={theme.textSecondary} />
           ) : (
-            <Text style={[styles.refreshBtnText, { color: theme.textPrimary }]}>🔄 Làm mới dữ liệu hệ thống</Text>
+            <View style={styles.iconTitle}><Ionicons name="refresh-outline" size={19} color={theme.textPrimary} /><Text style={[styles.refreshBtnText, { color: theme.textPrimary }]}>Làm mới dữ liệu hệ thống</Text></View>
           )}
         </TouchableOpacity>
       </ScrollView>
@@ -268,6 +269,7 @@ export default function AdminDashboardScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
   scroll: { padding: 16, paddingBottom: 40 },
+  iconTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   header: {
     flexDirection: 'row',
     justifyContent: 'space-between',

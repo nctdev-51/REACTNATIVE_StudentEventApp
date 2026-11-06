@@ -440,13 +440,17 @@ const styles = StyleSheet.create({
   justifyContent: "center",
   marginTop: 12,
   backgroundColor: "#FFFFFF",
-},
-
-filterButtonText: {
+  },
+  filterButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  filterButtonText: {
   color: Colors.primary,
   fontSize: 14,
   fontWeight: "600",
-},
+  },
   safeArea: {
     flex: 1,
   },

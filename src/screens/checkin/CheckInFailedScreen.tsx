@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckInFailedScreenProps } from '../../navigation/CheckInStack';
 import { useAppTheme } from '../../theme/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CheckInFailedScreen({ route, navigation }: CheckInFailedScreenProps) {
   const { theme, isDark } = useAppTheme();
@@ -43,7 +44,7 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
         <View style={styles.centerContent}>
           {/* Icon X màu đỏ thật to ở giữa màn hình */}
           <View style={styles.iconCircle}>
-            <Text style={styles.closeIcon}>✕</Text>
+            <Ionicons name="close" size={52} color="#FFFFFF" />
           </View>
 
           <Text style={[styles.title, { color: theme.textPrimary }]}>Không thể check-in</Text>
@@ -62,7 +63,7 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
                 },
               ]}
             >
-              <Text style={styles.antiFakeAlertIcon}>📍</Text>
+              <Ionicons name="location-outline" size={24} color={isDark ? '#FCA5A5' : '#991B1B'} />
               <View style={styles.antiFakeAlertContent}>
                 <Text
                   style={[

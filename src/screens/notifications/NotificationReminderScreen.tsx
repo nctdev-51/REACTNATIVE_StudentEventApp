@@ -16,6 +16,7 @@ import { useNavigation } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { Ionicons } from "@expo/vector-icons";
 
 // Configure notification behavior when app is in foreground
 Notifications.setNotificationHandler({
@@ -251,7 +252,7 @@ export default function NotificationReminderScreen({
 
       const notificationId = await Notifications.scheduleNotificationAsync({
         content: {
-          title: "🗓️ Nhắc nhở sự kiện: Workshop React Native",
+          title: "Nhắc nhở sự kiện: Workshop React Native",
           body: "Sự kiện sẽ bắt đầu sau 30 phút tại Hội trường A. Bạn nhớ tham gia đúng giờ nhé!",
           sound: true,
           data: { eventId: "1", screen: "schedule" },
@@ -404,9 +405,7 @@ export default function NotificationReminderScreen({
             accessibilityRole="button"
             accessibilityLabel="Gửi thông báo ngay lập tức"
           >
-            <Text style={styles.primaryButtonText}>
-              🔔 Gửi thông báo ngay tới điện thoại
-            </Text>
+            <View style={styles.buttonContent}><Ionicons name="notifications-outline" size={19} color="#FFFFFF" /><Text style={styles.primaryButtonText}>Gửi thông báo ngay tới điện thoại</Text></View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -419,11 +418,7 @@ export default function NotificationReminderScreen({
             accessibilityRole="button"
             accessibilityLabel="Hẹn giờ gửi thông báo sau 5 giây"
           >
-            <Text
-              style={[styles.secondaryButtonText, { color: theme.textPrimary }]}
-            >
-              ⏱️ Hẹn gửi sau 5s (Thử khóa màn hình)
-            </Text>
+            <View style={styles.buttonContent}><Ionicons name="timer-outline" size={19} color={theme.textPrimary} /><Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>Hẹn gửi sau 5s (Thử khóa màn hình)</Text></View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -439,11 +434,7 @@ export default function NotificationReminderScreen({
             accessibilityRole="button"
             accessibilityLabel="Lập lịch nhắc nhở theo ngày giờ sự kiện"
           >
-            <Text
-              style={[styles.dateScheduleButtonText, { color: theme.primary }]}
-            >
-              🗓️ Lập lịch thông báo sự kiện (10s)
-            </Text>
+            <View style={styles.buttonContent}><Ionicons name="calendar-outline" size={19} color={theme.primary} /><Text style={[styles.dateScheduleButtonText, { color: theme.primary }]}>Lập lịch thông báo sự kiện (10s)</Text></View>
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -459,9 +450,7 @@ export default function NotificationReminderScreen({
             accessibilityRole="button"
             accessibilityLabel="Hủy tất cả lịch thông báo"
           >
-            <Text style={[styles.cancelButtonText, { color: theme.danger }]}>
-              🗑️ Hủy toàn bộ lịch nhắc nhở
-            </Text>
+            <View style={styles.buttonContent}><Ionicons name="trash-outline" size={19} color={theme.danger} /><Text style={[styles.cancelButtonText, { color: theme.danger }]}>Hủy toàn bộ lịch nhắc nhở</Text></View>
           </TouchableOpacity>
         </View>
       </ScrollView>
@@ -614,6 +603,7 @@ const styles = StyleSheet.create({
     width: "100%",
     gap: 12,
   },
+  buttonContent: { flexDirection: "row", alignItems: "center", gap: 8 },
   primaryButton: {
     backgroundColor: "#2563EB",
     height: 52,

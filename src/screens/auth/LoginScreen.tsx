@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { loginUser, clearError } from '../../features/auth/authSlice';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '../../theme';
 import { useAppTheme } from '../../theme/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 type LoginNavProp = NativeStackNavigationProp<AuthStackParamList, 'Login'>;
 
@@ -72,7 +73,7 @@ export default function LoginScreen() {
           {/* Logo / Brand */}
           <View style={styles.brandSection}>
             <View style={[styles.logoCircle, { backgroundColor: isDark ? theme.surfaceSecondary : '#EEF2FF' }]}>
-              <Text style={styles.logoEmoji}>🎓</Text>
+              <Ionicons name="school" size={38} color={theme.primary} />
             </View>
             <Text style={[styles.appName, { color: theme.textPrimary }]}>StudentEvent IUH</Text>
             <Text style={[styles.tagline, { color: theme.textSecondary }]}>Hệ thống Quản lý Sự kiện – Đại học Công nghiệp TP.HCM</Text>
@@ -92,7 +93,7 @@ export default function LoginScreen() {
                   focusedField === 'email' && { borderColor: theme.primary, backgroundColor: theme.surface },
                 ]}
               >
-                <Text style={styles.inputIcon}>📧</Text>
+                <Ionicons name="mail-outline" size={20} color={theme.textTertiary} />
                 <TextInput
                   style={[styles.input, { color: theme.textPrimary }]}
                   placeholder="sv01@iuh.edu.vn hoặc admin.doan@iuh.edu.vn"
@@ -120,7 +121,7 @@ export default function LoginScreen() {
                   focusedField === 'password' && { borderColor: theme.primary, backgroundColor: theme.surface },
                 ]}
               >
-                <Text style={styles.inputIcon}>🔒</Text>
+                <Ionicons name="lock-closed-outline" size={20} color={theme.textTertiary} />
                 <TextInput
                   style={[styles.input, { color: theme.textPrimary }]}
                   placeholder="Nhập mật khẩu"
@@ -138,9 +139,7 @@ export default function LoginScreen() {
                   onPress={() => setShowPassword((v) => !v)}
                   hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                 >
-                  <Text style={styles.eyeIcon}>
-                    {showPassword ? '🙈' : '👁️'}
-                  </Text>
+                  <Ionicons name={showPassword ? 'eye-off-outline' : 'eye-outline'} size={21} color={theme.textTertiary} />
                 </TouchableOpacity>
               </View>
             </View>
@@ -148,7 +147,7 @@ export default function LoginScreen() {
             {/* Error */}
             {!!error && (
               <View style={styles.errorBox}>
-                <Text style={styles.errorText}>⚠️ {error}</Text>
+                <View style={styles.inlineIconText}><Ionicons name="warning-outline" size={17} color={theme.danger} /><Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text></View>
               </View>
             )}
 
@@ -182,7 +181,7 @@ export default function LoginScreen() {
                   onPress={fillStudent}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.demoEmoji}>👨‍🎓</Text>
+                  <Ionicons name="school-outline" size={24} color={theme.primary} />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.demoRole, { color: theme.textPrimary }]}>Sinh viên</Text>
                     <Text style={[styles.demoAccount, { color: theme.textTertiary }]}>sv01@iuh.edu.vn</Text>
@@ -199,7 +198,7 @@ export default function LoginScreen() {
                   onPress={fillAdmin}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.demoEmoji}>🛡️</Text>
+                  <Ionicons name="shield-checkmark-outline" size={24} color="#7E22CE" />
                   <View style={{ flex: 1 }}>
                     <Text style={[styles.demoRoleAdmin, { color: isDark ? '#C084FC' : '#7E22CE' }]}>Quản trị viên (Admin)</Text>
                     <Text style={[styles.demoAccount, { color: theme.textTertiary }]}>admin.doan@iuh.edu.vn</Text>
@@ -316,6 +315,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sm,
     fontWeight: '500',
   },
+  inlineIconText: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   loginBtn: {
     backgroundColor: Colors.primary,
     borderRadius: BorderRadius.md,

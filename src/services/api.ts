@@ -788,6 +788,52 @@ export const adminManualCheckIn = async (payload: {
     faculty: "Khoa Công nghệ thông tin",
   };
 
+  const existingRegistration = (await getRegistrationsByUser(targetUser._id)).find(
+    (registration) => {
+      const registrationEventId =
+        typeof registration.eventId === "object" && registration.eventId !== null
+          ? (registration.eventId as { _id?: string; id?: string })._id ??
+            (registration.eventId as { id?: string }).id
+          : registration.eventId;
+      return registrationEventId === payload.eventId && registration.status !== "cancelled";
+    },
+  );
+
+  if (existingRegistration?.status === "checked_in") {
+    return {
+      success: false,
+      message: `${targetUser.fullName} đã check-in sự kiện này trước đó.`,
+      registration: existingRegistration,
+    };
+  }
+
+  // A registered student is promoted to checked-in rather than receiving a
+  // second registration record.
+  if (existingRegistration) {
+    const checkedInAt = new Date().toISOString();
+    const updated = {
+      ...existingRegistration,
+      status: "checked_in" as const,
+      checkInTime: checkedInAt,
+      checkInMethod: "admin_manual" as const,
+      note: payload.note || "Admin xác nhận tham dự thủ công tại hội trường",
+    };
+    const registrationId = (existingRegistration as { id?: string }).id || existingRegistration._id;
+    try {
+      await apiClient.patch(`/registrations/${registrationId}`, updated);
+    } catch (error: any) {
+      if (error?.response) throw error;
+    }
+    inMemoryRegistrations = inMemoryRegistrations.map((registration) =>
+      registration._id === existingRegistration._id ? updated : registration,
+    );
+    return {
+      success: true,
+      message: `Đã xác nhận điểm danh bù cho ${targetUser.fullName} (${targetUser.studentId}).`,
+      registration: updated,
+    };
+  }
+
   const newReg: Registration = {
     _id: "reg_manual_" + Date.now(),
     eventId: payload.eventId,
@@ -800,13 +846,12 @@ export const adminManualCheckIn = async (payload: {
     createdAt: new Date().toISOString(),
   };
 
-  inMemoryRegistrations.unshift(newReg);
-
   try {
     await apiClient.post("/registrations", newReg);
-  } catch (e) {
-    // Offline pass
+  } catch (error: any) {
+    if (error?.response) throw error;
   }
+  inMemoryRegistrations.unshift(newReg);
 
   return {
     success: true,
@@ -1019,6 +1064,26 @@ export default {
 
 // AI Summary
 export const summarizeEvent = async (eventId: string): Promise<AISummary> => {
-  const res = await apiClient.post(`/events/${eventId}/summarize`);
-  return res.data.data;
+  try {
+    const res = await apiClient.post(`/events/${eventId}/summarize`);
+    return res.data.data;
+  } catch (error: any) {
+    // A deployed mock server may temporarily lag behind the mobile build. Use
+    // its already-public event data only for the missing route case; real API,
+    // authorization and network errors remain visible to the user.
+    if (error?.response?.status !== 404) throw error;
+    const event = await getEventById(eventId);
+    if (!event) throw error;
+    const start = new Date(event.time?.start);
+    return event.aiSummary ?? {
+      what: event.description || `Sự kiện ${event.title}.`,
+      when: Number.isNaN(start.getTime())
+        ? "Thời gian sẽ được ban tổ chức cập nhật."
+        : `Bắt đầu lúc ${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${start.toLocaleDateString("vi-VN")}.`,
+      where: event.location || "Địa điểm sẽ được ban tổ chức cập nhật.",
+      benefits: event.trainingPoints
+        ? `Người tham gia được cộng ${event.trainingPoints} điểm rèn luyện.`
+        : "Cơ hội cập nhật kiến thức và kết nối cùng cộng đồng sinh viên.",
+    };
+  }
 };

@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import {
   View,
   Text,
@@ -18,9 +18,9 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { submitFeedback } from "../../features/events/feedbacksSlice";
+import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import { useAppTheme } from "../../theme";
 import {
-  findDbEvent,
   findDbUser,
   getDefaultDbUser,
   getAttendedEventsFromDb,
@@ -131,15 +131,35 @@ export default function FeedbackScreen() {
 
   const authUser = useAppSelector((s) => s.auth.user);
   const { submitting } = useAppSelector((s) => s.feedbacks);
+  const myRegistrations = useAppSelector((s) => s.registrations.myRegistrations);
 
   // Người dùng từ db.json
   const defaultStudent = getDefaultDbUser();
   const currentUser = authUser?._id ? authUser : findDbUser(defaultStudent._id);
 
-  // Danh sách sự kiện lấy từ db.json
+  useEffect(() => {
+    if (authUser?._id) void dispatch(fetchMyRegistrations(authUser._id));
+  }, [authUser?._id, dispatch]);
+
+  // Only events actually attended are eligible for feedback. The previous
+  // db-only list included events that were merely registered or unrelated.
   const eventsList = useMemo(
-    () => getAttendedEventsFromDb(currentUser?._id),
-    [currentUser?._id],
+    () => {
+      const checkedInEventIds = new Set(
+        myRegistrations
+          .filter((registration) => registration.status === "checked_in")
+          .map((registration) =>
+            typeof registration.eventId === "object" && registration.eventId !== null
+              ? (registration.eventId as { _id?: string; id?: string })._id ??
+                (registration.eventId as { id?: string }).id
+              : registration.eventId,
+          ),
+      );
+      return getAttendedEventsFromDb(currentUser?._id).filter((event) =>
+        checkedInEventIds.has(event.id || event._id),
+      );
+    },
+    [currentUser?._id, myRegistrations],
   );
 
   // Sự kiện được chọn từ params hoặc mặc định từ db.json
@@ -150,8 +170,14 @@ export default function FeedbackScreen() {
 
   // Chi tiết sự kiện đang chọn từ db.json
   const currentEvent = useMemo(() => {
-    return findDbEvent(selectedEventId) || eventsList[0];
+    return eventsList.find((event) => (event.id || event._id) === selectedEventId) || null;
   }, [selectedEventId, eventsList]);
+
+  useEffect(() => {
+    if (!eventsList.some((event) => (event.id || event._id) === selectedEventId)) {
+      setSelectedEventId(eventsList[0]?.id || eventsList[0]?._id || "");
+    }
+  }, [eventsList, selectedEventId]);
 
   const [rating, setRating] = useState<number>(5);
   const [comment, setComment] = useState<string>("");
@@ -174,6 +200,23 @@ export default function FeedbackScreen() {
       Alert.alert("Lỗi", "Chưa chọn sự kiện để đánh giá.");
       return;
     }
+
+    const currentEventId = currentEvent.id || currentEvent._id;
+    const hasCheckedIn = myRegistrations.some((registration) => {
+      const registrationEventId =
+        typeof registration.eventId === "object" && registration.eventId !== null
+          ? (registration.eventId as { _id?: string; id?: string })._id ??
+            (registration.eventId as { id?: string }).id
+          : registration.eventId;
+      return registrationEventId === currentEventId && registration.status === "checked_in";
+    });
+    if (!hasCheckedIn) {
+      Alert.alert(
+        "Chưa thể đánh giá",
+        "Bạn chỉ có thể gửi phản hồi sau khi check-in thành công sự kiện này.",
+      );
+      return;
+    }
     if (rating === 0) {
       Alert.alert("Thiếu đánh giá", "Vui lòng chọn số sao từ 1 đến 5.");
       return;
@@ -194,16 +237,17 @@ export default function FeedbackScreen() {
       comment: comment.trim(),
     };
 
-    // 1. Thêm ngay vào dbState in-memory của db.json
+    const result = await dispatch(submitFeedback(payload));
+    if (submitFeedback.rejected.match(result)) {
+      Alert.alert(
+        "Không thể gửi đánh giá",
+        (result.payload as string) ?? "Kiểm tra kết nối mạng rồi thử lại.",
+      );
+      return;
+    }
+
     const newEnriched = addFeedbackToDb(payload);
     setFeedbacks((prev) => [newEnriched, ...prev]);
-
-    // 2. Thử đồng bộ với Redux / API
-    try {
-      await dispatch(submitFeedback(payload));
-    } catch (e) {
-      // Bỏ qua lỗi nếu backend offline, dữ liệu đã lưu vào db.json in-memory
-    }
 
     Alert.alert(
       "✅ Đánh giá thành công!",

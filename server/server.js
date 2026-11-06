@@ -395,6 +395,43 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
   });
 });
 
+// ─── AI Summary (demo-safe deterministic fallback) ──────────────────────────
+// This mock endpoint deliberately never calls an external AI provider. It lets
+// the mobile UI demonstrate the AI flow without exposing an API key or sending
+// student data to a third party. A production service can replace this route.
+server.post(["/api/events/:eventId/summarize", "/events/:eventId/summarize"], (req, res) => {
+  const event = router.db
+    .get("events")
+    .find((item) => item.id === req.params.eventId || item._id === req.params.eventId)
+    .value();
+
+  if (!event) {
+    return res.status(404).json({
+      success: false,
+      message: "Không tìm thấy sự kiện để tóm tắt.",
+    });
+  }
+
+  const start = new Date(event.time?.start);
+  const when = Number.isNaN(start.getTime())
+    ? "Thời gian sẽ được ban tổ chức cập nhật."
+    : `Bắt đầu lúc ${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${start.toLocaleDateString("vi-VN")}.`;
+  const summary = event.aiSummary || {
+    what: event.description || `Sự kiện ${event.title}.`,
+    when,
+    where: event.location || "Địa điểm sẽ được ban tổ chức cập nhật.",
+    benefits: event.trainingPoints
+      ? `Người tham gia được cộng ${event.trainingPoints} điểm rèn luyện.`
+      : "Cơ hội cập nhật kiến thức và kết nối cùng cộng đồng sinh viên.",
+  };
+
+  return res.status(200).json({
+    success: true,
+    mode: event.aiSummary ? "seeded-summary" : "deterministic-fallback",
+    data: summary,
+  });
+});
+
 // ─── ID auto-population middleware for POST ───────────────────────────────────
 // A registration represents one student's participation in one event. Enforce
 // that invariant on the server too; UI state alone cannot prevent concurrent
