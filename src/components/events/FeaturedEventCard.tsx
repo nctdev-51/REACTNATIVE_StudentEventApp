@@ -1,4 +1,5 @@
 import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import { Event } from "../../types/event";
 import { useAppTheme } from "../../theme/ThemeContext";
 
@@ -44,16 +45,15 @@ export default function FeaturedEventCard({
             {event.title}
           </Text>
 
-          <Text style={styles.info}>
-            📅 {formatDate(event.time.start)}
-          </Text>
+          <View style={styles.infoRow}>
+            <Ionicons name="calendar-outline" size={15} color="#FFFFFF" />
+            <Text style={styles.info}>{formatDate(event.time.start)}</Text>
+          </View>
 
-          <Text
-            style={styles.info}
-            numberOfLines={1}
-          >
-            📍 {event.location}
-          </Text>
+          <View style={styles.infoRow}>
+            <Ionicons name="location-outline" size={15} color="#FFFFFF" />
+            <Text style={styles.info} numberOfLines={1}>{event.location}</Text>
+          </View>
         </View>
       </ImageBackground>
     </View>
@@ -111,6 +111,12 @@ overlay: {
   info: {
     color: "#ffffff",
     fontSize: 14,
+    flex: 1,
+  },
+  infoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
     marginBottom: 4,
   },
 });

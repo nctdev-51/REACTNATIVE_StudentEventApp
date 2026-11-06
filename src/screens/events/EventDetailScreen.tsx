@@ -29,7 +29,10 @@ import {
   fetchEventById,
   clearSelectedEvent,
 } from "../../features/events/eventsSlice";
-import { registerForEvent } from "../../features/check-in/registrationsSlice";
+import {
+  fetchMyRegistrations,
+  registerForEvent,
+} from "../../features/check-in/registrationsSlice";
 import { Colors } from "../../theme";
 import { isEventPast, toggleHideEvent, deleteEvent } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
@@ -88,10 +91,14 @@ export default function EventDetailScreen() {
   );
 
   // Kiểm tra đã đăng ký chưa
-  const existingReg = myRegistrations.find(
-    (registration) =>
-      registration.eventId === eventId && registration.status !== "cancelled",
-  );
+  const existingReg = myRegistrations.find((registration) => {
+    const registrationEventId =
+      typeof registration.eventId === "object" && registration.eventId !== null
+        ? (registration.eventId as { _id?: string; id?: string })._id ??
+          (registration.eventId as { id?: string }).id
+        : registration.eventId;
+    return registrationEventId === eventId && registration.status !== "cancelled";
+  });
 
   const isRegistered = !!existingReg;
   const isPast = isEventPast(event);
@@ -119,10 +126,17 @@ export default function EventDetailScreen() {
       dispatch(fetchEventById(eventId));
     }
 
+    // A QR check-in can create/update a registration while this screen is not
+    // mounted. Refresh the source of truth before deciding whether to enable
+    // registration again.
+    if (user?._id) {
+      void dispatch(fetchMyRegistrations(user._id));
+    }
+
     return () => {
       dispatch(clearSelectedEvent());
     };
-  }, [eventId, dispatch]);
+  }, [eventId, dispatch, user?._id]);
 
   // Đăng ký sự kiện
   const handleRegister = async () => {
@@ -137,7 +151,12 @@ export default function EventDetailScreen() {
     }
 
     if (isRegistered) {
-      Alert.alert("Đã đăng ký", "Bạn đã đăng ký sự kiện này rồi.");
+      Alert.alert(
+        existingReg?.status === "checked_in" ? "Đã check-in" : "Đã đăng ký",
+        existingReg?.status === "checked_in"
+          ? "Bạn đã check-in sự kiện này, không thể đăng ký lại."
+          : "Bạn đã đăng ký sự kiện này rồi.",
+      );
       return;
     }
 
@@ -547,9 +566,11 @@ const handleShare = async () => {
               >
                 {isPast
                   ? "🛑 Đã hết hạn đăng ký"
-                  : isRegistered
-                    ? "✅ Đã đăng ký"
-                    : "📋 Đăng ký tham gia"}
+                  : existingReg?.status === "checked_in"
+                    ? "Đã check-in"
+                    : isRegistered
+                      ? "Đã đăng ký"
+                      : "Đăng ký tham gia"}
               </Text>
             )}
           </TouchableOpacity>

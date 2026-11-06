@@ -288,6 +288,15 @@
       "id": "6ae05611d477aabcc68b72a4",
       "_id": "6ae05611d477aabcc68b72a4",
       "createdAt": "2026-10-27T07:43:13.697Z"
+    },
+    {
+      "eventId": "66f1e2030000000000000003",
+      "userId": "66f1a1010000000000000001",
+      "participantRole": "attendee",
+      "status": "registered",
+      "id": "6aedfd0c99d8543ef737d00a",
+      "_id": "6aedfd0c99d8543ef737d00a",
+      "createdAt": "2026-11-06T16:15:08.336Z"
     }
   ],
   "feedbacks": [

@@ -603,12 +603,37 @@ export const getRegistrationsByEvent = async (
 export const registerEvent = async (
   data: CreateRegistrationPayload,
 ): Promise<Registration> => {
+  const isExistingRegistration = (registration: Registration) => {
+    const registrationEventId =
+      typeof registration.eventId === "object" && registration.eventId !== null
+        ? (registration.eventId as { _id?: string; id?: string })._id ??
+          (registration.eventId as { id?: string }).id
+        : registration.eventId;
+    return (
+      registrationEventId === data.eventId &&
+      registration.userId === data.userId &&
+      registration.status !== "cancelled"
+    );
+  };
+
   try {
+    const registrations = await getRegistrationsByUser(data.userId);
+    if (registrations.some(isExistingRegistration)) {
+      throw new Error("Bạn đã đăng ký hoặc check-in sự kiện này rồi.");
+    }
     const res = await apiClient.post("/registrations", data);
     const reg = unwrapOne<Registration>(res.data);
     inMemoryRegistrations.unshift(reg);
     return reg;
-  } catch (e) {
+  } catch (e: any) {
+    // Do not turn an intentional duplicate-registration error into an offline
+    // success. Only transport failures use the in-memory fallback.
+    if (e?.response || e?.message?.includes("đăng ký") || e?.message?.includes("check-in")) {
+      throw e;
+    }
+    if (inMemoryRegistrations.some(isExistingRegistration)) {
+      throw new Error("Bạn đã đăng ký hoặc check-in sự kiện này rồi.");
+    }
     const reg: Registration = {
       _id: "reg_" + Date.now(),
       eventId: data.eventId,
