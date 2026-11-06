@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckInSuccessScreenProps } from '../../navigation/CheckInStack';
 import { useAppTheme } from '../../theme/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 export default function CheckInSuccessScreen({ route, navigation }: CheckInSuccessScreenProps) {
   const { theme, isDark } = useAppTheme();
@@ -40,7 +41,7 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
         <View style={styles.centerContent}>
           {/* Icon Check xanh lá thật to ở giữa màn hình */}
           <View style={styles.iconCircle}>
-            <Text style={styles.checkmarkIcon}>✓</Text>
+            <Ionicons name="checkmark" size={54} color="#FFFFFF" />
           </View>
 
           <Text style={[styles.title, { color: theme.textPrimary }]}>Check-in thành công</Text>
@@ -58,7 +59,7 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
               },
             ]}
           >
-            <Text style={styles.antiFakeBadgeIcon}>🛡️</Text>
+            <Ionicons name="shield-checkmark-outline" size={24} color={isDark ? '#34D399' : '#065F46'} />
             <View style={styles.antiFakeBadgeTextContainer}>
               <Text
                 style={[
@@ -131,7 +132,7 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
             <View style={styles.infoRow}>
               <Text style={[styles.infoLabel, { color: theme.textSecondary }]}>Trạng thái:</Text>
               <Text style={[styles.infoValue, { color: '#16A34A', fontWeight: '700' }]}>
-                Đã điểm danh ✓
+                Đã điểm danh
               </Text>
             </View>
           </View>

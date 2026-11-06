@@ -31,6 +31,7 @@ import { StatusBar } from "expo-status-bar";
 import { Provider } from "react-redux";
 import { TamaguiProvider } from "tamagui";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   NavigationContainer,
   DefaultTheme,
@@ -86,24 +87,26 @@ function AppContent() {
       };
 
   return (
-    <TamaguiProvider
-      config={tamaguiConfig as any}
-      defaultTheme={isDark ? "dark" : "light"}
-    >
-      <SafeAreaProvider>
-        <DrawerProvider>
-          <NavigationContainer
-            ref={navigationRef}
-            linking={linking}
-            theme={navigationTheme}
-          >
-            <StatusBar style={isDark ? "light" : "dark"} />
-            <RootNavigator />
-            <LeftNavbarDrawer />
-          </NavigationContainer>
-        </DrawerProvider>
-      </SafeAreaProvider>
-    </TamaguiProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <TamaguiProvider
+        config={tamaguiConfig as any}
+        defaultTheme={isDark ? "dark" : "light"}
+      >
+        <SafeAreaProvider>
+          <DrawerProvider>
+            <NavigationContainer
+              ref={navigationRef}
+              linking={linking}
+              theme={navigationTheme}
+            >
+              <StatusBar style={isDark ? "light" : "dark"} />
+              <RootNavigator />
+              <LeftNavbarDrawer />
+            </NavigationContainer>
+          </DrawerProvider>
+        </SafeAreaProvider>
+      </TamaguiProvider>
+    </GestureHandlerRootView>
   );
 }
 >>>>>>> e79c48e (abc)

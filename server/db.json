@@ -8,8 +8,14 @@
       "role": "student",
       "studentId": "SV01",
       "faculty": "Khoa Công nghệ thông tin",
+<<<<<<< HEAD
       "point": 120,
       "phone": null,
+=======
+      "point": 130,
+      "role": "student",
+      "phone": "0901234567",
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
       "avatar": "https://i.pravatar.cc/300?img=12",
       "avatarUrl": "https://i.pravatar.cc/300?img=12",
       "status": "active",
@@ -228,14 +234,23 @@
       "eventId": "66f1e2010000000000000001",
       "userId": "66f1a1010000000000000001",
       "participantRole": "attendee",
-      "status": "registered",
+      "status": "checked_in",
       "qrCode": "EVENTMATE:66f1b3010000000000000001",
       "registeredAt": "2026-09-20T10:00:00.000Z",
+<<<<<<< HEAD
       "checkInTime": null,
       "checkOutTime": null,
       "createdAt": "2026-11-06T17:45:43.736Z",
       "updatedAt": "2026-11-06T17:45:43.736Z",
       "id": "66f1b3010000000000000001"
+=======
+      "checkInTime": "2026-11-06T16:18:59.074Z",
+      "checkOutTime": null,
+      "checkInLocation": {
+        "latitude": 10.8221,
+        "longitude": 106.6876
+      }
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
     },
     {
       "_id": "66f1b3020000000000000002",
@@ -306,7 +321,19 @@
       "id": "6aedfd0c99d8543ef737d00a",
       "_id": "6aedfd0c99d8543ef737d00a",
       "createdAt": "2026-11-06T16:15:08.336Z"
+<<<<<<< HEAD
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
+=======
+    },
+    {
+      "eventId": "66f1e2060000000000000006",
+      "userId": "66f1a1010000000000000001",
+      "participantRole": "attendee",
+      "status": "registered",
+      "id": "6aee03b35cfe34d0b0ce685d",
+      "_id": "6aee03b35cfe34d0b0ce685d",
+      "createdAt": "2026-11-06T16:43:31.375Z"
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
     }
   ],
   "feedbacks": [

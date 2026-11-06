@@ -1,8 +1,12 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React, { useState } from 'react';
 =======
 import React, { useState, useMemo, useEffect, useCallback } from "react";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+import React, { useEffect, useMemo, useState } from "react";
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
 import {
   ScrollView,
   Image,
@@ -45,10 +49,10 @@ import {
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { submitFeedback } from "../../features/events/feedbacksSlice";
+import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import { useAppTheme } from "../../theme";
 import api from "../../services/api";
 import {
-  findDbEvent,
   findDbUser,
   getDefaultDbUser,
   getOnlyAttendedEventsFromDb,
@@ -210,6 +214,7 @@ export default function FeedbackScreen() {
 
   const user = useAppSelector((s) => s.auth.user);
   const { submitting } = useAppSelector((s) => s.feedbacks);
+  const myRegistrations = useAppSelector((s) => s.registrations.myRegistrations);
 
   const eventId = route.params?.eventId;
   const eventTitle = route.params?.eventTitle ?? 'Sự kiện';
@@ -267,6 +272,7 @@ export default function FeedbackScreen() {
   const currentUser = authUser?._id ? authUser : findDbUser(defaultStudent._id);
   const currentUserId = currentUser?._id || (currentUser as any)?.id || defaultStudent._id;
 
+<<<<<<< HEAD
   // Danh sách sự kiện đã tham dự (khởi tạo từ dbService và cập nhật trực tiếp từ Backend_v2)
   const [attendedEvents, setAttendedEvents] = useState<any[]>(() => {
     return getOnlyAttendedEventsFromDb(currentUserId);
@@ -281,6 +287,31 @@ export default function FeedbackScreen() {
   // Sự kiện đang được mở rộng chi tiết để xem/đánh giá
   const [expandedEventId, setExpandedEventId] = useState<string | null>(
     route.params?.eventId || (attendedEvents[0]?.id || attendedEvents[0]?._id || null),
+=======
+  useEffect(() => {
+    if (authUser?._id) void dispatch(fetchMyRegistrations(authUser._id));
+  }, [authUser?._id, dispatch]);
+
+  // Only events actually attended are eligible for feedback. The previous
+  // db-only list included events that were merely registered or unrelated.
+  const eventsList = useMemo(
+    () => {
+      const checkedInEventIds = new Set(
+        myRegistrations
+          .filter((registration) => registration.status === "checked_in")
+          .map((registration) =>
+            typeof registration.eventId === "object" && registration.eventId !== null
+              ? (registration.eventId as { _id?: string; id?: string })._id ??
+                (registration.eventId as { id?: string }).id
+              : registration.eventId,
+          ),
+      );
+      return getAttendedEventsFromDb(currentUser?._id).filter((event) =>
+        checkedInEventIds.has(event.id || event._id),
+      );
+    },
+    [currentUser?._id, myRegistrations],
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
   );
 
   // Lưu trạng thái đánh giá nháp cho từng sự kiện riêng biệt
@@ -290,11 +321,32 @@ export default function FeedbackScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
+<<<<<<< HEAD
   // Danh sách toàn bộ đánh giá (được lưu bền vững trong AsyncStorage & backend API)
+=======
+  // Chi tiết sự kiện đang chọn từ db.json
+  const currentEvent = useMemo(() => {
+    return eventsList.find((event) => (event.id || event._id) === selectedEventId) || null;
+  }, [selectedEventId, eventsList]);
+
+  useEffect(() => {
+    if (!eventsList.some((event) => (event.id || event._id) === selectedEventId)) {
+      setSelectedEventId(eventsList[0]?.id || eventsList[0]?._id || "");
+    }
+  }, [eventsList, selectedEventId]);
+
+  const [rating, setRating] = useState<number>(5);
+  const [comment, setComment] = useState<string>("");
+  const [isFocused, setIsFocused] = useState<boolean>(false);
+  const [imageError, setImageError] = useState<boolean>(false);
+
+  // Danh sách đánh giá lấy trực tiếp từ db.json
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
   const [feedbacks, setFeedbacks] = useState<EnrichedFeedback[]>(() => {
     return getEnrichedFeedbacksFromDb();
   });
 
+<<<<<<< HEAD
   // Tải dữ liệu bền vững từ AsyncStorage và đồng bộ trực tiếp từ Backend_v2
   const loadPersistedData = useCallback(async () => {
     // 1. Đồng bộ đăng ký và sự kiện tham dự từ Backend_v2
@@ -384,6 +436,85 @@ export default function FeedbackScreen() {
     setRefreshing(true);
     await loadPersistedData();
     setRefreshing(false);
+=======
+  const handleSelectEvent = (evt: any) => {
+    const id = evt.id || evt._id;
+    setSelectedEventId(id);
+    setImageError(false);
+  };
+
+  const handleSubmit = async () => {
+    if (!currentEvent) {
+      Alert.alert("Lỗi", "Chưa chọn sự kiện để đánh giá.");
+      return;
+    }
+
+    const currentEventId = currentEvent.id || currentEvent._id;
+    const hasCheckedIn = myRegistrations.some((registration) => {
+      const registrationEventId =
+        typeof registration.eventId === "object" && registration.eventId !== null
+          ? (registration.eventId as { _id?: string; id?: string })._id ??
+            (registration.eventId as { id?: string }).id
+          : registration.eventId;
+      return registrationEventId === currentEventId && registration.status === "checked_in";
+    });
+    if (!hasCheckedIn) {
+      Alert.alert(
+        "Chưa thể đánh giá",
+        "Bạn chỉ có thể gửi phản hồi sau khi check-in thành công sự kiện này.",
+      );
+      return;
+    }
+    if (rating === 0) {
+      Alert.alert("Thiếu đánh giá", "Vui lòng chọn số sao từ 1 đến 5.");
+      return;
+    }
+    if (!comment.trim()) {
+      Alert.alert(
+        "Thiếu nhận xét",
+        "Vui lòng nhập vài dòng cảm nhận của bạn về sự kiện.",
+      );
+      return;
+    }
+
+    const payload = {
+      eventId: currentEvent.id || currentEvent._id,
+      userId:
+        currentUser?._id || (currentUser as any)?.id || defaultStudent._id,
+      rating,
+      comment: comment.trim(),
+    };
+
+    const result = await dispatch(submitFeedback(payload));
+    if (submitFeedback.rejected.match(result)) {
+      Alert.alert(
+        "Không thể gửi đánh giá",
+        (result.payload as string) ?? "Kiểm tra kết nối mạng rồi thử lại.",
+      );
+      return;
+    }
+
+    const newEnriched = addFeedbackToDb(payload);
+    setFeedbacks((prev) => [newEnriched, ...prev]);
+
+    Alert.alert(
+      "✅ Đánh giá thành công!",
+      `Cảm ơn bạn đã đóng góp ý kiến cho sự kiện "${currentEvent.title}" với ${rating} sao!`,
+      [
+        {
+          text: "Tiếp tục",
+          onPress: () => {
+            setComment("");
+            setRating(5);
+          },
+        },
+        {
+          text: "Về trang chủ",
+          onPress: () => navigation.navigate("Home"),
+        },
+      ],
+    );
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
   };
 
   // Helper tìm đánh giá của CHÍNH BẢN THÂN cho sự kiện

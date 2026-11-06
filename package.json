@@ -61,6 +61,7 @@
     "postinstall": "node scripts/patch-notifications.js",
     "server:tunnel": "npx localtunnel --port 5000",
     "server:ngrok": "npx ngrok http 5000"
+    ,"test": "node --test --test-force-exit tests/*.test.cjs"
   },
   "private": true
 }

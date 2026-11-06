@@ -13,18 +13,22 @@ import {
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
+import { Gesture, GestureDetector } from 'react-native-gesture-handler';
+import { Ionicons } from '@expo/vector-icons';
 import Animated, {
   useSharedValue,
   useAnimatedStyle,
   withRepeat,
   withSequence,
   withTiming,
+  withSpring,
   Easing,
 } from 'react-native-reanimated';
 
 import { QRScannerScreenProps } from '../../navigation/CheckInStack';
 import { qrCheckIn, getEventById, updateEventCoordinates } from '../../services/api';
-import { useAppSelector } from '../../hooks/redux';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
 import {
   requestLocationPermission,
   checkLocationPermission,
@@ -66,6 +70,7 @@ function parseEventId(rawData: string): string | null {
 
 export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
   const isFocused = useIsFocused();
+  const dispatch = useAppDispatch();
   // Lấy thông tin user đăng nhập từ Redux auth state
   const currentUser = useAppSelector((state) => state.auth.user);
 
@@ -83,10 +88,10 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     }
   };
 
-  // Hook quản lý quyền Camera (Expo Camera SDK 57)
+  // Hook quản lý quyền Camera (Expo SDK 58)
   const [cameraPermission, requestCameraPermission] = useCameraPermissions();
 
-  // Trạng thái quyền Location (Expo Location SDK 57)
+  // Trạng thái quyền Location (Expo SDK 58)
   const [locationPermissionGranted, setLocationPermissionGranted] = useState<boolean | null>(null);
 
   // Trạng thái GPS phần cứng trên máy
@@ -113,6 +118,9 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
 
   // ─── CLO4: Reanimated Animation cho tia laser quét ──────────────────────────
   const scanLineAnim = useSharedValue(0);
+  // Animation thứ hai: khung quét phản hồi trực tiếp với thao tác kéo.
+  const frameOffsetY = useSharedValue(0);
+  const frameScale = useSharedValue(1);
 
   useEffect(() => {
     scanLineAnim.value = withRepeat(
@@ -134,6 +142,30 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
   const animatedScanLineStyle = useAnimatedStyle(() => ({
     transform: [{ translateY: scanLineAnim.value }],
   }));
+
+  const animatedFrameStyle = useAnimatedStyle(() => ({
+    transform: [
+      { translateY: frameOffsetY.value },
+      { scale: frameScale.value },
+    ],
+  }));
+
+  const viewfinderGesture = useMemo(
+    () =>
+      Gesture.Pan()
+        .activeOffsetY([-8, 8])
+        .onBegin(() => {
+          frameScale.value = withTiming(0.96, { duration: 120 });
+        })
+        .onUpdate((event) => {
+          frameOffsetY.value = Math.max(-36, Math.min(36, event.translationY));
+        })
+        .onEnd(() => {
+          frameOffsetY.value = withSpring(0, { damping: 14, stiffness: 180 });
+          frameScale.value = withSpring(1, { damping: 14, stiffness: 180 });
+        }),
+    [frameOffsetY, frameScale],
+  );
 
   // ─── CLO6: Khởi tạo quyền vị trí & Lấy toạ độ GPS Google Maps thực tế ────────
   const refreshRealLocation = useCallback(async (requestPermission = false) => {
@@ -381,6 +413,12 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
       });
 
       if (response && response.success) {
+        // QR check-in is performed outside a Redux thunk. Refresh the global
+        // registration state before navigating so other screens immediately
+        // disable duplicate registration and show the correct schedule.
+        if (currentUser?._id) {
+          await dispatch(fetchMyRegistrations(currentUser._id));
+        }
         navigation.navigate('CheckInSuccess', {
           eventId,
           eventTitle: eventData?.title || response.data?.event?.title,
@@ -450,7 +488,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     return (
       <View style={styles.permissionContainer}>
         <View style={styles.permissionIconCircle}>
-          <Text style={styles.permissionIconText}>📷</Text>
+          <Ionicons name="camera-outline" size={42} color="#2563EB" />
         </View>
         <Text style={styles.permissionTitle}>Cần cấp quyền Camera</Text>
         <Text style={styles.permissionDescription}>
@@ -488,7 +526,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
     <View style={styles.container}>
       <StatusBar barStyle="light-content" />
 
-      {/* CameraView phiên bản mới nhất từ Expo Camera SDK 57 */}
+      {/* CameraView (Expo SDK 58) */}
       {isFocused && (
       <CameraView
         style={StyleSheet.absoluteFill}
@@ -512,7 +550,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               accessibilityRole="button"
               accessibilityLabel="Quay lại"
             >
-              <Text style={styles.headerButtonText}>✕</Text>
+              <Ionicons name="close" size={24} color="#FFFFFF" />
             </TouchableOpacity>
 
             <Text style={styles.headerTitle}>Quét mã Check-in</Text>
@@ -521,7 +559,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               style={[styles.headerButton, torchEnabled && styles.headerButtonActive]}
               onPress={() => setTorchEnabled((prev) => !prev)}
             >
-              <Text style={styles.headerButtonText}>{torchEnabled ? '⚡' : '💡'}</Text>
+              <Ionicons name={torchEnabled ? 'flash' : 'flash-outline'} size={22} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
 
@@ -543,7 +581,8 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
                 { backgroundColor: realCoords ? '#22C55E' : '#EF4444' },
               ]}
             />
-            <Text style={styles.gpsBadgeText}>📍 {gpsDisplayInfo}</Text>
+            <Ionicons name="location-outline" size={16} color="#FFFFFF" />
+            <Text style={styles.gpsBadgeText}>{gpsDisplayInfo}</Text>
             {realCoords && <Text style={styles.mapsLinkText}>[Xem Maps]</Text>}
           </TouchableOpacity>
 
@@ -551,7 +590,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
           {realAddress && (
             <View style={styles.realAddressContainer}>
               <Text style={styles.realAddressText} numberOfLines={1}>
-                🏠 {realAddress}
+                {realAddress}
               </Text>
             </View>
           )}
@@ -563,16 +602,18 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
           <View style={styles.overlaySide} />
 
           {/* Khung quét QR trong suốt ở giữa */}
-          <View style={styles.viewfinder}>
+          <GestureDetector gesture={viewfinderGesture}>
+          <Animated.View style={[styles.viewfinder, animatedFrameStyle]}>
             {/* 4 góc khung quét */}
             <View style={[styles.corner, styles.topLeft]} />
             <View style={[styles.corner, styles.topRight]} />
             <View style={[styles.corner, styles.bottomLeft]} />
             <View style={[styles.corner, styles.bottomRight]} />
 
-            {/* Tia quét laser chạy lên xuống (CLO4: Reanimated) */}
+            {/* Animation 1: tia laser; Animation 2: khung quét kéo được bằng gesture. */}
             <Animated.View style={[styles.scanLine, animatedScanLineStyle]} />
-          </View>
+          </Animated.View>
+          </GestureDetector>
 
           {/* Tối bên phải */}
           <View style={styles.overlaySide} />
@@ -592,9 +633,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               activeOpacity={0.8}
               onPress={handleSetEventToCurrentLocation}
             >
-              <Text style={styles.demoSuccessBtnText}>
-                🎯 Đặt gần tôi (≤500m)
-              </Text>
+              <View style={styles.demoButtonTitle}><Ionicons name="locate" size={15} color="#4ADE80" /><Text style={styles.demoSuccessBtnText}>Đặt gần tôi (≤500m)</Text></View>
               <Text style={styles.demoBtnSub}>Mô phỏng tại trường</Text>
             </TouchableOpacity>
 
@@ -603,9 +642,7 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               activeOpacity={0.8}
               onPress={handleSetEventFarAway}
             >
-              <Text style={styles.demoFailBtnText}>
-                🚨 Dời ra xa (&gt;500m)
-              </Text>
+              <View style={styles.demoButtonTitle}><Ionicons name="warning-outline" size={15} color="#F87171" /><Text style={styles.demoFailBtnText}>Dời ra xa (&gt;500m)</Text></View>
               <Text style={styles.demoBtnSubFail}>Mô phỏng ngoài trường</Text>
             </TouchableOpacity>
           </View>
@@ -897,6 +934,7 @@ const styles = StyleSheet.create({
     width: '100%',
     marginTop: 4,
   },
+  demoButtonTitle: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   demoSuccessBtn: {
     flex: 1,
     backgroundColor: 'rgba(34, 197, 94, 0.2)',

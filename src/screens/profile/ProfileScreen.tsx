@@ -50,6 +50,7 @@ import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTa
 import { useAppTheme } from "../../theme";
 <<<<<<< HEAD
 import { getDefaultDbUser } from "../../data/dbService";
+<<<<<<< HEAD
 >>>>>>> e79c48e (abc)
 =======
 import {
@@ -58,6 +59,9 @@ import {
   loadFeedbacksFromStorage,
 } from "../../data/dbService";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+import { Ionicons } from "@expo/vector-icons";
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -1337,9 +1341,13 @@ export default function ProfileScreen({
             style={editStyles.card}
           >
             <View style={editStyles.header}>
+<<<<<<< HEAD
               <Text style={editStyles.headerTitle}>👤 Cập Nhật Thông Tin Cá Nhân</Text>
+=======
+              <View style={editStyles.iconTitle}><Ionicons name="person-outline" size={22} color="#0F172A" /><Text style={editStyles.headerTitle}>Cập Nhật Thông Tin Cá Nhân</Text></View>
+>>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
               <TouchableOpacity onPress={() => setEditModalVisible(false)}>
-                <Text style={editStyles.closeBtn}>✕</Text>
+                <Ionicons name="close" size={24} color="#475569" />
               </TouchableOpacity>
             </View>
 
@@ -1964,6 +1972,7 @@ const editStyles = StyleSheet.create({
     paddingVertical: 14,
     backgroundColor: '#1E3A8A',
   },
+  iconTitle: { flexDirection: "row", alignItems: "center", gap: 8 },
   headerTitle: {
     fontSize: 15,
     fontWeight: '800',
