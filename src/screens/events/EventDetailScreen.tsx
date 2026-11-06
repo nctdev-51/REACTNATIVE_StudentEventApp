@@ -10,6 +10,7 @@ import {
   StatusBar,
 } from "react-native";
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 import {
   useNavigation,
@@ -18,6 +19,9 @@ import {
 } from "@react-navigation/native";
 
 =======
+=======
+import * as Linking from "expo-linking";
+>>>>>>> afdea7c (update event filter search and deep link)
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -370,6 +374,7 @@ export default function EventDetailScreen() {
       </View>
 =======
   // Chia sẻ Deep Link sự kiện
+<<<<<<< HEAD
   const handleShare = async () => {
     if (!event) return;
     const targetId = event._id || (event as any).id || eventId;
@@ -382,6 +387,21 @@ export default function EventDetailScreen() {
 
   // Trạng thái đang tải (chỉ khi không có cả dữ liệu cache)
   if (loadingDetail && !event) {
+=======
+const handleShare = async () => {
+  if (!event) return;
+
+  const link = Linking.createURL(
+    `/events/${event._id}`
+  );
+
+  await Share.share({
+    message: `${event.title}\n${link}`,
+  });
+};
+  // Loading
+  if (loadingDetail) {
+>>>>>>> afdea7c (update event filter search and deep link)
     return (
       <YStack
         flex={1}
