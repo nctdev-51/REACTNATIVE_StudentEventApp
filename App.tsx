@@ -18,8 +18,13 @@ import { navigationRef } from "./src/navigation/navigationRef";
 import { ThemeProvider, useAppTheme } from "./src/theme";
 
 /* Cấu hình Deep Link cho sự kiện (Thảo Nguyên) */
+import * as Linking from "expo-linking";
+
 const linking = {
-  prefixes: ["studentevent://"],
+  prefixes: [
+    Linking.createURL("/"),
+    "studentevent://",
+  ],
   config: {
     screens: {
       EventDetail: "events/:eventId",

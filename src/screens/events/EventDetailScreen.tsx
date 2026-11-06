@@ -11,7 +11,7 @@ import {
   Share,
   StatusBar,
 } from "react-native";
-
+import * as Linking from "expo-linking";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -183,16 +183,17 @@ export default function EventDetailScreen() {
   };
 
   // Chia sẻ Deep Link sự kiện
-  const handleShare = async () => {
-    if (!event) return;
+const handleShare = async () => {
+  if (!event) return;
 
-    const link = `studentevent://events/${event._id}`;
+  const link = Linking.createURL(
+    `/events/${event._id}`
+  );
 
-    await Share.share({
-      message: `${event.title}\n${link}`,
-    });
-  };
-
+  await Share.share({
+    message: `${event.title}\n${link}`,
+  });
+};
   // Loading
   if (loadingDetail) {
     return (

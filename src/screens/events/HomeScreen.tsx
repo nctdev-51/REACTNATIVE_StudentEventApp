@@ -26,6 +26,9 @@ import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import {
   fetchEvents,
   setFilterCategory,
+  setFilterFaculty,
+  setFilterDate,
+  setFilterStatus,
   selectFilteredEvents,
 } from "../../features/events/eventsSlice";
 import {
@@ -91,8 +94,18 @@ export default function HomeScreen() {
 
   // Chọn category
   const handleCategorySelect = (category: string) => {
-    dispatch(setFilterCategory(category === "Tất cả" ? null : category));
-  };
+  // Xóa các bộ lọc nâng cao cũ
+  dispatch(setFilterFaculty(null));
+  dispatch(setFilterDate(null));
+  dispatch(setFilterStatus(null));
+
+  // Chỉ giữ category vừa chọn
+  dispatch(
+    setFilterCategory(
+      category === "Tất cả" ? null : category
+    )
+  );
+};
 
   const selectedCategory = filter.category ?? "Tất cả";
 
@@ -243,7 +256,16 @@ export default function HomeScreen() {
 
       {/* Tìm kiếm */}
       <SearchBar />
-
+{/* Bộ lọc nâng cao */}
+<TouchableOpacity
+  style={styles.filterButton}
+  onPress={() => navigation.navigate("Filter")}
+  activeOpacity={0.8}
+>
+  <Text style={styles.filterButtonText}>
+    ⚙️ Bộ lọc nâng cao
+  </Text>
+</TouchableOpacity>
       {/* Danh mục */}
       <ScrollView
         horizontal
@@ -362,7 +384,7 @@ export default function HomeScreen() {
             <EventCard event={item} />
           </TouchableOpacity>
         )}
-        ListHeaderComponent={renderListHeader}
+        ListHeaderComponent={renderListHeader()}
         ListEmptyComponent={
           !loading && !error && !featuredEvent ? (
             <View
@@ -397,6 +419,22 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  filterButton: {
+  borderWidth: 1,
+  borderColor: "#E2E8F0",
+  borderRadius: 12,
+  paddingVertical: 11,
+  alignItems: "center",
+  justifyContent: "center",
+  marginTop: 12,
+  backgroundColor: "#FFFFFF",
+},
+
+filterButtonText: {
+  color: Colors.primary,
+  fontSize: 14,
+  fontWeight: "600",
+},
   safeArea: {
     flex: 1,
   },
