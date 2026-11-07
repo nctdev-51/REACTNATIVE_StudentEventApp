@@ -132,7 +132,11 @@ export default function HomeScreen() {
       const bPast = isEventPast(b);
       if (!aPast && bPast) return -1;
       if (aPast && !bPast) return 1;
-      return 0;
+      const aStart = Date.parse(a.time.start);
+      const bStart = Date.parse(b.time.start);
+      if (!Number.isFinite(aStart)) return Number.isFinite(bStart) ? 1 : 0;
+      if (!Number.isFinite(bStart)) return -1;
+      return aPast ? bStart - aStart : aStart - bStart;
     });
   }, [filteredEvents]);
 

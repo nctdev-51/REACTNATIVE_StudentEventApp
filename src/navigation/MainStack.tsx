@@ -15,7 +15,11 @@ import FeedbackScreen from '../screens/events/FeedbackScreen';
 import FilterScreen from '../screens/events/FilterScreen';
 import RegistrationSuccessScreen from '../screens/events/RegistrationSuccessScreen';
 import { useAppTheme } from '../theme/ThemeContext';
+<<<<<<< HEAD
 import AppBottomTab, { AppTabKey } from '../components/navigation/AppBottomTab';
+=======
+import { useEventReminders } from '../hooks/useEventReminders';
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -102,6 +106,7 @@ export function MainTabs() {
  * - Các màn hình con/chi tiết (EventDetail, Feedback, Filter...) được đẩy lên trên Stack và che thanh tab bar chuẩn mobile.
  */
 export default function MainStack() {
+  useEventReminders();
   const { theme } = useAppTheme();
 
   return (

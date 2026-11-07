@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
-  Alert,
   ActivityIndicator,
   RefreshControl,
 <<<<<<< HEAD
@@ -39,7 +38,11 @@ import { fetchEvents } from "../../features/events/eventsSlice";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme/ThemeContext";
+<<<<<<< HEAD
 >>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
+=======
+import { mergeRegistrations } from '../../utils/registrations';
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -52,6 +55,7 @@ export interface RegisteredEvent {
   title: string;
   date: string;
   time: string;
+  startAt?: string;
   location: string;
   imageUrl: string;
   daysLeft?: number;
@@ -457,6 +461,25 @@ interface EventCardProps {
 
 function EventCard({ event, onPress }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  useFocusEffect(useCallback(() => {
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []));
+  const start = Date.parse(event.startAt || `${event.date.split('/').reverse().join('-')}T${event.time}`);
+  const remaining = start - now;
+  const totalMinutes = Math.ceil(remaining / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const urgent = Number.isFinite(start) ? remaining <= 86400000 : (event.daysLeft ?? Infinity) <= 1;
+  const countdown = !Number.isFinite(start) ? (event.daysLeft !== undefined ? `Còn ${event.daysLeft} ngày` : '')
+    : remaining <= 0 ? 'Đã đến giờ bắt đầu'
+    : remaining < 60000 ? 'Sắp bắt đầu'
+    : days > 0 ? `Còn ${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`
+    : hours > 0 ? `Còn ${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ''}`
+    : `Còn ${minutes} phút`;
 
   return (
     <TouchableOpacity
@@ -503,9 +526,9 @@ function EventCard({ event, onPress }: EventCardProps) {
         </View>
 
         {/* Days Left Badge */}
-        {event.daysLeft !== undefined && (
-          <View style={cardStyles.badge}>
-            <Text style={cardStyles.badgeText}>Còn {event.daysLeft} ngày</Text>
+        {event.status === 'upcoming' && countdown !== '' && (
+          <View style={[cardStyles.badge, urgent && { backgroundColor: '#FEE2E2' }]}>
+            <Text style={[cardStyles.badgeText, urgent && { color: '#DC2626' }]}>{countdown}</Text>
           </View>
         )}
       </View>
@@ -609,6 +632,8 @@ export default function MyScheduleScreen({
   const [activeFilter, setActiveFilter] = useState<ScheduleTabFilter>(initialFilter);
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFilter, setDateFilter] = useState<'all' | 'today'>('all');
 
   const loadData = useCallback(async () => {
     if (currentUser?._id) {
@@ -640,7 +665,7 @@ export default function MyScheduleScreen({
         const matchedEvent = populatedEvent || eventsList.find((e) => e._id === rawEventId);
 =======
     return (
-      myRegistrations
+      mergeRegistrations(myRegistrations, eventsList)
         .filter((r) => r.status !== "cancelled")
         .map((r) => {
           const rawEventId =
@@ -686,6 +711,7 @@ export default function MyScheduleScreen({
         const fallbackImage =
           'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80';
 
+<<<<<<< HEAD
         return {
           id: matchedEvent?._id || rawEventId,
           title: matchedEvent?.title || 'Sự kiện đã đăng ký',
@@ -704,6 +730,42 @@ export default function MyScheduleScreen({
   // Use props if explicitly passed and not empty, otherwise use real backend events
   const allEvents = propEvents && propEvents.length > 0 ? propEvents : backendEvents;
   const filteredEvents = allEvents.filter((e) => e.status === activeFilter);
+=======
+          return {
+            id: matchedEvent?._id || rawEventId,
+            title: matchedEvent?.title || "Sự kiện đã đăng ký",
+            date: dateStr,
+            time: timeStr,
+            startAt: matchedEvent?.time?.start,
+            location: matchedEvent?.location || "Trường ĐH Công nghiệp TP.HCM",
+            imageUrl: matchedEvent?.images?.[0] || fallbackImage,
+            daysLeft: isPast ? undefined : daysLeft,
+            status: (isPast ? "past" : "upcoming") as ScheduleTabFilter,
+          };
+        })
+        // Khử trùng lặp theo eventId để tránh lặp card và trùng key
+        .filter(
+          (evt, idx, arr) => arr.findIndex((x) => x.id === evt.id) === idx,
+        )
+    );
+  }, [myRegistrations, eventsList]);
+
+  // Use props if explicitly passed and not empty, otherwise use real backend events
+  const allEvents =
+    propEvents && propEvents.length > 0 ? propEvents : backendEvents;
+  const today = new Date();
+  const todayLabel = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+  const filteredEvents = allEvents.filter((e) => e.status === activeFilter &&
+    (dateFilter === 'all' || e.date === todayLabel)).sort((a, b) => {
+      const timestamp = (event: RegisteredEvent) => Date.parse(event.startAt ||
+        `${event.date.split('/').reverse().join('-')}T${event.time}`);
+      const aStart = timestamp(a);
+      const bStart = timestamp(b);
+      if (!Number.isFinite(aStart)) return Number.isFinite(bStart) ? 1 : 0;
+      if (!Number.isFinite(bStart)) return -1;
+      return activeFilter === 'past' ? bStart - aStart : aStart - bStart;
+    });
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
 
   // Wire up bottom tab navigation
   const handleTabPress = (tab: AppTabKey) => {
@@ -737,7 +799,11 @@ export default function MyScheduleScreen({
     if (onFilterPress) {
       onFilterPress();
     } else {
+<<<<<<< HEAD
       Alert.alert('Bộ lọc', 'Lọc sự kiện theo thời gian hoặc khoa viện.');
+=======
+      setShowDateFilter(value => !value);
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
     }
   };
 
@@ -767,10 +833,26 @@ export default function MyScheduleScreen({
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Bộ lọc"
+          accessibilityState={{ expanded: showDateFilter }}
         >
-          <FilterIcon color={theme.textPrimary} />
+          <FilterIcon color={dateFilter === 'today' ? theme.primary : theme.textPrimary} />
         </TouchableOpacity>
       </View>
+
+      {showDateFilter && (
+        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingVertical: 12 }}>
+          {([{ value: 'all', label: 'Tất cả' }, { value: 'today', label: 'Hôm nay' }] as const).map(option => (
+            <TouchableOpacity key={option.value}
+              onPress={() => setDateFilter(option.value)}
+              accessibilityRole="button" accessibilityState={{ selected: dateFilter === option.value }}
+              style={{ borderWidth: 1, borderColor: dateFilter === option.value ? theme.primary : theme.border,
+                backgroundColor: dateFilter === option.value ? theme.primary : theme.surface,
+                paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20 }}>
+              <Text style={{ color: dateFilter === option.value ? '#FFFFFF' : theme.textPrimary, fontWeight: '600' }}>{option.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* ── Segmented Control / Filter Tabs ─────────────────────────────── */}
       <View style={[styles.tabsContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
@@ -835,9 +917,15 @@ export default function MyScheduleScreen({
         ) : (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+<<<<<<< HEAD
               {activeFilter === 'upcoming'
                 ? 'Bạn chưa có sự kiện nào sắp diễn ra'
                 : 'Bạn chưa tham gia sự kiện nào'}
+=======
+              {dateFilter === 'today' ? 'Bạn không có sự kiện nào hôm nay trong mục này' : activeFilter === "upcoming"
+                ? "Bạn chưa có sự kiện nào sắp diễn ra"
+                : "Bạn chưa tham gia sự kiện nào"}
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
             </Text>
           </View>
         )}

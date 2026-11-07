@@ -1,5 +1,9 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React, { useEffect, useState } from 'react';
+=======
+import React, { useCallback, useEffect, useState } from "react";
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
 import {
   View,
   Text,
@@ -8,6 +12,7 @@ import {
   StatusBar,
   Platform,
   Alert,
+<<<<<<< HEAD
   ScrollView,
 <<<<<<< HEAD
 } from 'react-native';
@@ -30,18 +35,25 @@ import type { MainStackParamList } from '../../navigation/types';
 <<<<<<< HEAD
 import { useAppTheme } from '../../theme/ThemeContext';
 =======
+=======
+  FlatList,
+  TextInput,
+  Image,
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as Notifications from "expo-notifications";
-import Constants from "expo-constants";
-import { useNavigation } from "@react-navigation/native";
-import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import type { MainStackParamList } from "../../navigation/types";
+import * as Notifications from "../../services/localNotifications";
+import { notificationChannelOptions, requestReminderPermission, syncEventReminders, cancelAllReminders } from '../../services/eventReminders';
+import { loadReminderSettings, saveReminderSettings, validReminderMinutes } from '../../services/reminderSettings';
+import { useAppDispatch, useAppSelector } from '../../hooks/redux';
+import { fetchEvents } from '../../features/events/eventsSlice';
+import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
 import { useAppTheme } from "../../theme/ThemeContext";
 <<<<<<< HEAD
 >>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
 =======
 import { Ionicons } from "@expo/vector-icons";
+<<<<<<< HEAD
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
 
 // Configure notification behavior when app is in foreground
@@ -75,10 +87,30 @@ async function safeRequestPermissions(): Promise<boolean> {
   } catch (err) {
     // Fallback for Expo Go environment
     return true;
+=======
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
+import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import type { MainStackParamList } from '../../navigation/types';
+import type { Event } from '../../types/event';
+
+function EventImage({ uri, title }: { uri?: string; title: string }) {
+  const [failed, setFailed] = useState(false);
+  const { theme } = useAppTheme();
+  if (!uri || failed) {
+    return (
+      <View style={[styles.eventImage, { backgroundColor: theme.surfaceSecondary, alignItems: 'center', justifyContent: 'center' }]}>
+        <Ionicons name="calendar-outline" size={36} color={theme.textSecondary} />
+        <Text style={{ color: theme.textSecondary, marginTop: 8 }}>Chưa có ảnh sự kiện</Text>
+      </View>
+    );
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
   }
+  return <Image source={{ uri }} style={styles.eventImage} resizeMode="cover"
+    accessibilityLabel={`Ảnh ${title}`} onError={() => setFailed(true)} />;
 }
 
 // ---------------------------------------------------------------------------
+<<<<<<< HEAD
 // Types
 // ---------------------------------------------------------------------------
 
@@ -173,18 +205,21 @@ const iconStyles = StyleSheet.create({
 });
 
 // ---------------------------------------------------------------------------
+=======
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
 // NotificationReminderScreen
 // ---------------------------------------------------------------------------
 
-export default function NotificationReminderScreen({
-  notification = DEFAULT_NOTIFICATION,
-  onNotificationPress,
-}: NotificationReminderScreenProps) {
+export default function NotificationReminderScreen() {
   const { theme, isDark } = useAppTheme();
+<<<<<<< HEAD
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+=======
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
   const [permissionGranted, setPermissionGranted] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>('Đang kiểm tra quyền thông báo...');
 
+<<<<<<< HEAD
   useEffect(() => {
     async function checkPermissions() {
       const isGranted = await safeRequestPermissions();
@@ -195,8 +230,70 @@ export default function NotificationReminderScreen({
           : 'Chưa cấp quyền thông báo trên thiết bị!'
       );
     }
+=======
+  const dispatch = useAppDispatch();
+  const userId = useAppSelector(s => s.auth.user?._id);
+  const [minutes, setMinutes] = useState('30');
+  const [busy, setBusy] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+  const events = useAppSelector(s => s.events.list);
+  const registrations = useAppSelector(s => s.registrations.myRegistrations);
+  const registeredIds = new Set(registrations.filter(r => r.userId === userId && r.status === 'registered')
+    .map(r => typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId as Event)._id : r.eventId));
+  const upcomingEvents = events.filter(event => !event.isHidden && event.status !== 'completed' &&
+    event.status !== 'past' && Date.parse(event.time.start) > now)
+    .sort((a, b) => Date.parse(a.time.start) - Date.parse(b.time.start));
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
 
-    checkPermissions();
+  useFocusEffect(useCallback(() => {
+    setNow(Date.now());
+    void Promise.all([
+      dispatch(fetchEvents()).unwrap(),
+      ...(userId ? [dispatch(fetchMyRegistrations(userId)).unwrap()] : []),
+    ]).catch(error => setStatusMessage('Không thể tải sự kiện: ' + String(error)));
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, [dispatch, userId]));
+
+  const renderEvent = ({ item: event }: { item: Event }) => {
+    const registered = registeredIds.has(event._id);
+    const remaining = Date.parse(event.time.start) - now;
+    const startsWithinOneDay = remaining <= 24 * 60 * 60 * 1000;
+    const totalMinutes = Math.ceil(remaining / 60000);
+    const days = Math.floor(totalMinutes / 1440);
+    const hours = Math.floor((totalMinutes % 1440) / 60);
+    const minutesLeft = totalMinutes % 60;
+    const timeLeft = remaining < 60000 ? 'Sắp bắt đầu' : days > 0
+      ? `Còn ${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`
+      : hours > 0 ? `Còn ${hours} giờ${minutesLeft > 0 ? ` ${minutesLeft} phút` : ''}`
+      : `Còn ${minutesLeft} phút`;
+    return (
+      <TouchableOpacity style={[styles.notificationCard, { backgroundColor: theme.surface, borderColor: theme.border, marginBottom: 12 }]}
+        onPress={() => navigation.navigate('EventDetail', { eventId: event._id, title: event.title })}
+        accessibilityRole="button" accessibilityLabel={`Chi tiết sự kiện ${event.title}`}>
+        <EventImage key={event.images?.[0] || event._id} uri={event.images?.[0]} title={event.title} />
+        <Text style={[styles.notificationTitle, { color: theme.textPrimary }]}>{event.title}</Text>
+        <Text style={[styles.notificationMessage, {
+          color: startsWithinOneDay ? '#DC2626' : '#D97706',
+          backgroundColor: startsWithinOneDay ? '#FEE2E2' : '#FEF3C7',
+          fontWeight: '600', alignSelf: 'flex-start', paddingHorizontal: 8,
+          paddingVertical: 4, borderRadius: 6, marginBottom: 6,
+        }]}>
+          {new Date(event.time.start).toLocaleString('vi-VN', { hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit', year: 'numeric' })}
+          {' · '}{timeLeft}
+        </Text>
+        <Text style={[styles.notificationMessage, { color: theme.textSecondary }]}>{event.location}</Text>
+        <Text style={[styles.notificationMessage, { color: registered ? theme.primary : theme.textSecondary, marginTop: 8 }]}>
+          {registered ? 'Đã đăng ký · Áp dụng thiết lập nhắc bên trên' : 'Chưa đăng ký · Mở sự kiện để đăng ký nhận nhắc nhở'}
+        </Text>
+      </TouchableOpacity>
+    );
+  };
+  useEffect(() => {
+    void loadReminderSettings().then(settings => { setMinutes(String(settings.minutes)); setSettingsLoaded(true); }).catch(error => setStatusMessage(String(error)));
+    void requestReminderPermission().then(granted => { setPermissionGranted(granted); setStatusMessage(granted ? 'Sẵn sàng gửi thông báo.' : 'Chưa có quyền thông báo. Hãy bật trong cài đặt thiết bị.'); }).catch(error => setStatusMessage(String(error)));
   }, []);
 
   /** Gửi thông báo đẩy về thiết bị ngay lập tức */
@@ -221,11 +318,42 @@ export default function NotificationReminderScreen() {
     setBusy(true);
 >>>>>>> b65f9f5 (feat: update event management app)
     try {
+<<<<<<< HEAD
       setMessage(await requestReminderPermission()
         ? 'Đã bật quyền. Sự kiện đăng ký thành công sẽ được nhắc trước 30 phút.'
         : 'Chưa có quyền thông báo. Hãy bật quyền trong cài đặt thiết bị.');
     } catch { setMessage('Không thể kiểm tra quyền thông báo.'); }
     finally { setBusy(false); }
+=======
+      const isGranted = await requestReminderPermission();
+      setPermissionGranted(isGranted);
+      if (!isGranted) {
+        Alert.alert(
+          "Chưa cấp quyền",
+          "Vui lòng cho phép ứng dụng gửi thông báo trong Cài đặt.",
+        );
+        return;
+      }
+      setPermissionGranted(true);
+
+      await Notifications.scheduleNotificationAsync({
+        content: {
+          title: "StudentEventApp",
+          body: "Thông báo thử nghiệm đã được gửi đến thiết bị của bạn.",
+          data: { screen: "schedule" },
+          sound: "default",
+        },
+        trigger: notificationChannelOptions().channelId ? { channelId: notificationChannelOptions().channelId! } : null,
+      });
+
+      setStatusMessage("Đã phát Local Notification thành công!");
+    } catch (error) {
+      Alert.alert(
+        "Lỗi",
+        "Không thể gửi thông báo: " + (error as Error).message,
+      );
+    }
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
   };
 <<<<<<< HEAD
 
@@ -237,6 +365,7 @@ export default function NotificationReminderScreen() {
     setBusy(true);
 >>>>>>> b65f9f5 (feat: update event management app)
     try {
+<<<<<<< HEAD
       await Notifications.cancelScheduledNotificationAsync(cancelId);
       setCancelId(null);
       await refresh();
@@ -249,10 +378,17 @@ export default function NotificationReminderScreen() {
     try {
       if (!await requestReminderPermission()) {
         setMessage('Chưa có quyền thông báo. Hãy bật quyền trong cài đặt thiết bị.');
+=======
+      const isGranted = await requestReminderPermission();
+      setPermissionGranted(isGranted);
+      if (!isGranted) {
+        Alert.alert("Chưa cấp quyền", "Vui lòng cấp quyền gửi thông báo.");
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
         return;
       }
       await Notifications.scheduleNotificationAsync({
         content: {
+<<<<<<< HEAD
           title: 'Thông báo thử nghiệm',
           body: 'Thông báo thử nghiệm sau 3 giây đã đến!',
           sound: 'default',
@@ -263,6 +399,17 @@ export default function NotificationReminderScreen() {
           seconds: 3,
           repeats: false,
           channelId: 'event-reminders',
+=======
+          title: "Thông báo thử nghiệm",
+          body: "Thông báo thử nghiệm sau 5 giây đã đến!",
+          sound: "default",
+          data: { type: "test" },
+        },
+        trigger: {
+          type: Notifications.SchedulableTriggerInputTypes.DATE,
+          date: new Date(Date.now() + 5 * 1000),
+          ...notificationChannelOptions(),
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
         },
       });
 <<<<<<< HEAD
@@ -279,7 +426,12 @@ export default function NotificationReminderScreen() {
 
   /** Lập lịch nhắc nhở trước khi diễn ra sự kiện */
   const handleScheduleForSpecificEventDate = async () => {
+    const value = Number(minutes);
+    if (!validReminderMinutes(value)) { Alert.alert('Thời gian không hợp lệ', 'Nhập số phút nguyên từ 1 đến 10080 (7 ngày).'); return; }
+    if (!userId) return;
+    setBusy(true);
     try {
+<<<<<<< HEAD
       const targetTime = new Date(Date.now() + 10 * 1000);
 
       const notificationId = await Notifications.scheduleNotificationAsync({
@@ -308,23 +460,52 @@ export default function NotificationReminderScreen() {
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể lập lịch: ' + (error as Error).message);
     }
+=======
+      const granted = await requestReminderPermission();
+      setPermissionGranted(granted);
+      if (!granted) { Alert.alert('Chưa cấp quyền', 'Hãy bật quyền thông báo trong cài đặt thiết bị.'); return; }
+      const [events, registrations] = await Promise.all([dispatch(fetchEvents()).unwrap(), dispatch(fetchMyRegistrations(userId)).unwrap()]);
+      await saveReminderSettings({ minutes: value, enabled: true });
+      const result = await syncEventReminders(events, registrations, userId);
+      const message = result.denied ? 'Chưa có quyền thông báo.' : `Đã lưu nhắc trước ${value} phút. Đã lập lịch ${result.scheduled} sự kiện; bỏ qua ${result.skipped} sự kiện đã qua mốc nhắc hoặc không còn phù hợp.`;
+      setStatusMessage(message);
+      Alert.alert('Lịch nhắc sự kiện', message);
+    } catch (error) { Alert.alert('Lỗi', String(error)); }
+    finally { setBusy(false); }
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
   };
 
   /** Hủy toàn bộ thông báo Local đã lên lịch */
   const handleCancelAllScheduledLocalNotifications = async () => {
+    setBusy(true);
     try {
+<<<<<<< HEAD
       await Notifications.cancelAllScheduledNotificationsAsync();
       Alert.alert('Đã hủy', 'Đã xóa tất cả các lịch nhắc nhở đã cài đặt.');
       setStatusMessage('Đã xóa tất cả lịch thông báo đã đặt.');
     } catch (error) {
       Alert.alert('Lỗi', 'Không thể hủy thông báo: ' + (error as Error).message);
     }
+=======
+      const settings = await loadReminderSettings();
+      await saveReminderSettings({ ...settings, enabled: false });
+      await cancelAllReminders();
+      Alert.alert("Đã hủy", "Đã xóa tất cả các lịch nhắc nhở đã cài đặt.");
+      setStatusMessage("Đã xóa tất cả lịch thông báo đã đặt.");
+    } catch (error) {
+      Alert.alert(
+        "Lỗi",
+        "Không thể hủy thông báo: " + (error as Error).message,
+      );
+    } finally { setBusy(false); }
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
   };
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={theme.statusBarStyle} />
 
+<<<<<<< HEAD
       <ScrollView contentContainerStyle={styles.container} showsVerticalScrollIndicator={false}>
         {/* Nút Back + Header */}
         <View style={styles.topBar}>
@@ -354,9 +535,24 @@ export default function NotificationReminderScreen() {
           <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>
             Kiểm tra và phát thông báo trực tiếp đến điện thoại
           </Text>
+=======
+      <FlatList
+        data={upcomingEvents}
+        keyExtractor={event => event._id}
+        renderItem={renderEvent}
+        contentContainerStyle={styles.container}
+        showsVerticalScrollIndicator={false}
+        ListEmptyComponent={<Text style={[styles.notificationMessage, { color: theme.textSecondary }]}>Hiện chưa có sự kiện nào sắp diễn ra.</Text>}
+        ListHeaderComponent={<>
+        <View style={styles.header}>
+          <View style={[styles.headerIconCircle, { backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF' }]}>
+            <Ionicons name="notifications-outline" size={26} color={theme.primary} />
+          </View>
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Nhắc nhở sự kiện</Text>
+          <Text style={[styles.headerSubtitle, { color: theme.textSecondary }]}>Kiểm tra và phát thông báo trực tiếp đến điện thoại</Text>
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
         </View>
 
-        {/* Trạng thái quyền thông báo */}
         <View
           style={[
             styles.statusCard,
@@ -372,6 +568,7 @@ export default function NotificationReminderScreen() {
           <Text style={[styles.statusText, { color: theme.textPrimary }]}>{statusMessage}</Text>
         </View>
 
+<<<<<<< HEAD
         {/* Thẻ xem trước Giao diện Thông báo */}
         <Text style={[styles.sectionLabel, { color: theme.textTertiary }]}>MẪU THÔNG BÁO</Text>
         <TouchableOpacity
@@ -409,19 +606,66 @@ export default function NotificationReminderScreen() {
         </TouchableOpacity>
 
         {/* Nút bấm Test thông báo về điện thoại */}
+=======
+        <View style={[styles.notificationCard, { backgroundColor: theme.surface, borderColor: theme.border }]}>
+          <Text style={[styles.notificationTitle, { color: theme.textPrimary }]}>Thời gian nhắc mặc định (phút)</Text>
+          <TextInput value={minutes} onChangeText={setMinutes} keyboardType="number-pad"
+            editable={settingsLoaded && !busy} accessibilityLabel="Số phút nhắc trước sự kiện"
+            style={{ borderWidth: 1, borderColor: theme.border, borderRadius: 10, padding: 12, marginVertical: 12, color: theme.textPrimary }} />
+        </View>
+
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
         <View style={styles.actionsContainer}>
           <TouchableOpacity
             style={[styles.primaryButton, { backgroundColor: theme.primary }]}
+            onPress={handleScheduleForSpecificEventDate}
+            disabled={busy || !settingsLoaded}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Lập lịch nhắc nhở theo ngày giờ sự kiện"
+          >
+            <View style={styles.buttonContent}><Ionicons name="calendar-outline" size={19} color="#FFFFFF" /><Text style={styles.primaryButtonText}>{busy ? 'Đang lập lịch…' : 'Lưu và lập lịch thông báo sự kiện'}</Text></View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.cancelButton,
+              {
+                backgroundColor: isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2",
+                borderColor: isDark ? "#F87171" : "#FCA5A5",
+              },
+            ]}
+            onPress={handleCancelAllScheduledLocalNotifications}
+            disabled={busy || !settingsLoaded}
+            activeOpacity={0.7}
+            accessibilityRole="button"
+            accessibilityLabel="Hủy tất cả lịch thông báo"
+          >
+            <View style={styles.buttonContent}><Ionicons name="trash-outline" size={19} color={theme.danger} /><Text style={[styles.cancelButtonText, { color: theme.danger }]}>Hủy toàn bộ lịch nhắc nhở</Text></View>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[
+              styles.dateScheduleButton,
+              {
+                backgroundColor: isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF",
+                borderColor: isDark ? theme.primary : "#BFDBFE",
+              },
+            ]}
             onPress={handleSendInstantNotification}
             activeOpacity={0.8}
             accessibilityRole="button"
             accessibilityLabel="Gửi thông báo ngay lập tức"
           >
 <<<<<<< HEAD
+<<<<<<< HEAD
             <Text style={styles.primaryButtonText}>🔔 Gửi thông báo ngay tới điện thoại</Text>
 =======
             <View style={styles.buttonContent}><Ionicons name="notifications-outline" size={19} color="#FFFFFF" /><Text style={styles.primaryButtonText}>Gửi thông báo ngay tới điện thoại</Text></View>
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
+=======
+            <View style={styles.buttonContent}><Ionicons name="notifications-outline" size={19} color={theme.primary} /><Text style={[styles.dateScheduleButtonText, { color: theme.primary }]}>Gửi thông báo ngay tới điện thoại</Text></View>
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
           </TouchableOpacity>
 
           <TouchableOpacity
@@ -442,6 +686,7 @@ export default function NotificationReminderScreen() {
             <View style={styles.buttonContent}><Ionicons name="timer-outline" size={19} color={theme.textPrimary} /><Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>Hẹn gửi sau 5s (Thử khóa màn hình)</Text></View>
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
           </TouchableOpacity>
+<<<<<<< HEAD
 
           <TouchableOpacity
             style={[
@@ -480,13 +725,25 @@ export default function NotificationReminderScreen() {
           >
             <View style={styles.buttonContent}><Ionicons name="trash-outline" size={19} color={theme.danger} /><Text style={[styles.cancelButtonText, { color: theme.danger }]}>Hủy toàn bộ lịch nhắc nhở</Text></View>
           </TouchableOpacity>
+=======
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
         </View>
-      </ScrollView>
+        <Text style={[styles.sectionLabel, { color: theme.textPrimary, marginTop: 24 }]}>
+          SỰ KIỆN SẮP DIỄN RA ({upcomingEvents.length})
+        </Text>
+        </>}
+      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  eventImage: {
+    width: '100%',
+    height: 160,
+    borderRadius: 12,
+    marginBottom: 12,
+  },
   safe: {
     flex: 1,
     backgroundColor: '#F8FAFC',
@@ -496,6 +753,7 @@ const styles = StyleSheet.create({
     paddingTop: 4,
     paddingBottom: 32,
   },
+<<<<<<< HEAD
   topBar: {
     paddingHorizontal: 4,
     paddingVertical: 8,
@@ -520,6 +778,8 @@ const styles = StyleSheet.create({
     color: '#2563EB',
     fontWeight: '500',
   },
+=======
+>>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
   header: {
     alignItems: 'center',
     marginBottom: 20,
