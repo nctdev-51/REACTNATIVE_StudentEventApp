@@ -1,20 +1,27 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Image,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
-  ActivityIndicator,
   Alert,
   Share,
   StatusBar,
 } from "react-native";
-
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
-
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  YStack,
+  XStack,
+  Card,
+  Button,
+  Heading,
+  Paragraph,
+  Text as TamaguiText,
+  Spinner,
+} from "tamagui";
 
 import { MainStackParamList } from "../../navigation/types";
 import AISummary from "../../components/ai/AISummary";
@@ -30,13 +37,13 @@ import {
   clearSelectedEvent,
 } from "../../features/events/eventsSlice";
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
-import { Colors } from "../../theme";
 import { isEventPast, toggleHideEvent, deleteEvent } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { summarizeEvent } from "../../services/api";
 import AILoading from "../../components/ai/AILoading";
 import AIError from "../../components/ai/AIError";
 import type { AISummary as AISummaryType } from "../../types/event";
+import { findDbEvent, getDefaultDbUser } from "../../data/dbService";
 
 type EventDetailNavProp = NativeStackNavigationProp<
   MainStackParamList,
@@ -45,27 +52,29 @@ type EventDetailNavProp = NativeStackNavigationProp<
 
 type EventDetailRouteProp = RouteProp<MainStackParamList, "EventDetail">;
 
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
+const DEFAULT_BANNER =
+  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800";
 
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-
-  const year = date.getFullYear();
-
-  const hours = String(date.getHours()).padStart(2, "0");
-
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-
-  return `${hours}:${minutes} - ${day}/${month}/${year}`;
+function formatDate(dateString?: string) {
+  if (!dateString) return "Sắp diễn ra";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Sắp diễn ra";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
+  } catch {
+    return "Sắp diễn ra";
+  }
 }
 
 export default function EventDetailScreen() {
   const navigation = useNavigation<EventDetailNavProp>();
   const { theme, isDark } = useAppTheme();
-
   const route = useRoute<EventDetailRouteProp>();
-
   const dispatch = useAppDispatch();
 
   // AI Summary states
@@ -76,44 +85,71 @@ export default function EventDetailScreen() {
   const eventId = route.params?.eventId;
 
   const {
-    selectedEvent: event,
+    selectedEvent,
+    list: eventsList,
     loadingDetail,
     error,
   } = useAppSelector((state) => state.events);
 
+  // 1. Tận dụng dữ liệu sự kiện có sẵn từ Redux list hoặc db.json (Instant Cache)
+  const cachedEvent = useMemo(() => {
+    if (!eventId) return null;
+    return (
+      eventsList.find(
+        (e) => e._id === eventId || (e as any).id === eventId,
+      ) || findDbEvent(eventId)
+    );
+  }, [eventId, eventsList]);
+
+  // Ưu tiên: Dữ liệu chi tiết từ backend > Dữ liệu cache
+  const event = selectedEvent || cachedEvent;
+
   const user = useAppSelector((state) => state.auth.user);
+  const defaultStudent = getDefaultDbUser();
+  const currentUser = user || defaultStudent;
+  const currentUserId = currentUser?._id || (currentUser as any)?.id;
 
   const { myRegistrations, actionLoading } = useAppSelector(
     (state) => state.registrations,
   );
 
-  // Kiểm tra đã đăng ký chưa
+  // 2. Kiểm tra trạng thái đã đăng ký (hỗ trợ cả id và _id)
   const existingReg = myRegistrations.find(
     (registration) =>
-      registration.eventId === eventId && registration.status !== "cancelled",
+      (registration.eventId === eventId ||
+        registration.eventId === event?._id ||
+        registration.eventId === (event as any)?.id) &&
+      registration.status !== "cancelled",
   );
 
   const isRegistered = !!existingReg;
   const isPast = isEventPast(event);
   const [adminModalVisible, setAdminModalVisible] = useState(false);
   const [userDistance, setUserDistance] = useState<number | null>(null);
+  const [bannerError, setBannerError] = useState(false);
 
+  // 3. Tính khoảng cách GPS với xử lý an toàn lỗi Promise
   useEffect(() => {
     if (event?.coordinates?.latitude && event?.coordinates?.longitude) {
-      getCurrentPosition(5000).then((loc) => {
-        if (loc) {
-          const d = getDistanceMeters(
-            loc.coords.latitude,
-            loc.coords.longitude,
-            event.coordinates!.latitude,
-            event.coordinates!.longitude,
-          );
-          setUserDistance(d);
-        }
-      });
+      getCurrentPosition(5000)
+        .then((loc) => {
+          if (loc && event?.coordinates) {
+            const d = getDistanceMeters(
+              loc.coords.latitude,
+              loc.coords.longitude,
+              event.coordinates.latitude,
+              event.coordinates.longitude,
+            );
+            setUserDistance(d);
+          }
+        })
+        .catch(() => {
+          setUserDistance(null);
+        });
     }
-  }, [event]);
+  }, [event?.coordinates?.latitude, event?.coordinates?.longitude]);
 
+  // 4. Đồng bộ dữ liệu mới nhất từ backend trong nền
   useEffect(() => {
     if (eventId) {
       dispatch(fetchEventById(eventId));
@@ -126,7 +162,7 @@ export default function EventDetailScreen() {
 
   // Đăng ký sự kiện
   const handleRegister = async () => {
-    if (!user || !eventId) return;
+    if (!currentUserId || !eventId) return;
 
     if (isPast) {
       Alert.alert(
@@ -144,7 +180,7 @@ export default function EventDetailScreen() {
     const result = await dispatch(
       registerForEvent({
         eventId,
-        userId: user._id,
+        userId: currentUserId,
         participantRole: "attendee",
         status: "registered",
       }),
@@ -156,7 +192,10 @@ export default function EventDetailScreen() {
         eventTitle: event?.title,
       });
     } else {
-      Alert.alert("Thất bại", (result.payload as string) ?? "Đăng ký thất bại");
+      Alert.alert(
+        "Thất bại",
+        (result.payload as string) ?? "Đăng ký thất bại",
+      );
     }
   };
 
@@ -168,12 +207,10 @@ export default function EventDetailScreen() {
       setAiError(null);
 
       const result = await summarizeEvent(eventId);
-
       setAiSummary(result);
-    } catch (error: any) {
-      console.error("AI Summary Error:", error);
+    } catch (err: any) {
       setAiSummary(null);
-      const message = error.response?.data?.message;
+      const message = err?.response?.data?.message;
       setAiError(
         message || "Không thể tạo tóm tắt sự kiện. Vui lòng thử lại sau.",
       );
@@ -185,52 +222,93 @@ export default function EventDetailScreen() {
   // Chia sẻ Deep Link sự kiện
   const handleShare = async () => {
     if (!event) return;
-
-    const link = `studentevent://events/${event._id}`;
+    const targetId = event._id || (event as any).id || eventId;
+    const link = `studentevent://events/${targetId}`;
 
     await Share.share({
       message: `${event.title}\n${link}`,
     });
   };
 
-  // Loading
-  if (loadingDetail) {
+  // Trạng thái đang tải (chỉ khi không có cả dữ liệu cache)
+  if (loadingDetail && !event) {
     return (
-      <View
-        style={[styles.loadingContainer, { backgroundColor: theme.background }]}
+      <YStack
+        flex={1}
+        justifyContent="center"
+        alignItems="center"
+        backgroundColor={theme.background}
+        gap={12}
       >
         <StatusBar barStyle={theme.statusBarStyle} />
-        <ActivityIndicator size="large" color={theme.primary} />
-        <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
-          Đang tải sự kiện...
-        </Text>
-      </View>
+        <Spinner size="large" color={theme.primary} />
+        <Paragraph size="$3" color={theme.textSecondary}>
+          Đang tải thông tin sự kiện...
+        </Paragraph>
+      </YStack>
     );
   }
 
-  // Error
-  if (error || !event) {
+  // Trạng thái lỗi không tìm thấy sự kiện
+  if (!event) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <YStack
+        flex={1}
+        backgroundColor={theme.background}
+        justifyContent="center"
+        alignItems="center"
+        paddingHorizontal={30}
+      >
         <StatusBar barStyle={theme.statusBarStyle} />
-        <View style={styles.emptyState}>
-          <Text style={styles.icon}>📅</Text>
-          <Text style={[styles.title, { color: theme.textPrimary }]}>
-            {error ?? "Chưa có thông tin sự kiện"}
-          </Text>
-          <Text style={[styles.description, { color: theme.textSecondary }]}>
-            Vui lòng thử lại sau.
-          </Text>
-          <TouchableOpacity
-            style={styles.backBtn}
-            onPress={() => navigation.goBack()}
-          >
-            <Text style={styles.backBtnText}>← Quay lại</Text>
-          </TouchableOpacity>
-        </View>
-      </View>
+        <YStack
+          width={70}
+          height={70}
+          borderRadius={35}
+          backgroundColor={theme.primaryLight}
+          alignItems="center"
+          justifyContent="center"
+          marginBottom={16}
+        >
+          <Ionicons name="calendar-outline" size={36} color={theme.primary} />
+        </YStack>
+        <Heading
+          size="$6"
+          fontWeight="700"
+          textAlign="center"
+          marginBottom={8}
+          color={theme.textPrimary}
+        >
+          {error ?? "Chưa có thông tin sự kiện"}
+        </Heading>
+        <Paragraph
+          size="$3"
+          textAlign="center"
+          color={theme.textSecondary}
+          marginBottom={20}
+        >
+          Không tìm thấy sự kiện tương ứng hoặc đã bị gỡ bỏ.
+        </Paragraph>
+        <Button
+          backgroundColor={theme.primary}
+          borderRadius={10}
+          height={44}
+          paddingHorizontal={24}
+          onPress={() => navigation.goBack()}
+          pressStyle={{ opacity: 0.8 }}
+        >
+          <XStack alignItems="center" gap={6}>
+            <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
+            <TamaguiText fontWeight="600" color="#FFFFFF">
+              Quay lại danh sách
+            </TamaguiText>
+          </XStack>
+        </Button>
+      </YStack>
     );
   }
+
+  const bannerUri =
+    !bannerError && event.images?.[0] ? event.images[0] : DEFAULT_BANNER;
 
   return (
     <ScrollView
@@ -238,112 +316,136 @@ export default function EventDetailScreen() {
       showsVerticalScrollIndicator={false}
     >
       <StatusBar barStyle={theme.statusBarStyle} />
+
       {/* Ảnh sự kiện */}
-      <Image source={{ uri: event.images[0] }} style={styles.bannerImage} />
+      <Image
+        source={{ uri: bannerUri }}
+        style={styles.bannerImage}
+        resizeMode="cover"
+        onError={() => setBannerError(true)}
+      />
 
-      <View style={styles.body}>
-        {/* Chủ đề + điểm */}
-        <View style={styles.topRow}>
-          <View
-            style={[
-              styles.categoryBadge,
-              { backgroundColor: isDark ? "rgba(37,99,235,0.2)" : "#DBEAFE" },
-            ]}
-          >
-            <Text style={[styles.categoryText, { color: theme.primary }]}>
-              {event.category}
-            </Text>
-          </View>
-
-          <View
-            style={[
-              styles.pointBadge,
-              { backgroundColor: isDark ? "rgba(16,185,129,0.2)" : "#DCFCE7" },
-            ]}
-          >
-            <Text
-              style={[
-                styles.pointText,
-                { color: isDark ? "#34D399" : "#16A34A" },
-              ]}
-            >
-              +{event.trainingPoints} điểm rèn luyện
-            </Text>
-          </View>
-        </View>
-
-        {/* Tiêu đề */}
-        <Text style={[styles.eventTitle, { color: theme.textPrimary }]}>
-          {event.title}
-        </Text>
-        <Text style={[styles.facultyText, { color: theme.textSecondary }]}>
-          Đơn vị: {event.faculty}
-        </Text>
-
-        {/* Thông tin */}
-        <View
-          style={[
-            styles.infoCard,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
+      <YStack padding={16} paddingBottom={40}>
+        {/* Chủ đề + Điểm rèn luyện */}
+        <XStack
+          justifyContent="space-between"
+          alignItems="center"
+          marginBottom={12}
         >
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>🗓️</Text>
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoLabel, { color: theme.textTertiary }]}>
+          <XStack
+            backgroundColor={isDark ? "rgba(37,99,235,0.2)" : "#DBEAFE"}
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+          >
+            <TamaguiText
+              fontSize={13}
+              fontWeight="600"
+              color={theme.primary}
+            >
+              {event.category || "Học thuật"}
+            </TamaguiText>
+          </XStack>
+
+          <XStack
+            backgroundColor={isDark ? "rgba(16,185,129,0.2)" : "#DCFCE7"}
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+          >
+            <TamaguiText
+              fontSize={13}
+              fontWeight="700"
+              color={isDark ? "#34D399" : "#16A34A"}
+            >
+              +{event.trainingPoints ?? 5} điểm rèn luyện
+            </TamaguiText>
+          </XStack>
+        </XStack>
+
+        {/* Tiêu đề & Đơn vị tổ chức */}
+        <Heading
+          size="$7"
+          fontWeight="800"
+          lineHeight={28}
+          marginBottom={6}
+          color={theme.textPrimary}
+        >
+          {event.title}
+        </Heading>
+        <Paragraph
+          size="$3"
+          color={theme.textSecondary}
+          marginBottom={16}
+        >
+          Đơn vị: {event.faculty || "Toàn trường"}
+        </Paragraph>
+
+        {/* Thẻ thông tin chi tiết (Tamagui Card) */}
+        <Card
+          backgroundColor={theme.surface}
+          borderColor={theme.border}
+          borderWidth={1}
+          borderRadius={14}
+          padding={16}
+          marginBottom={16}
+          elevation={1}
+        >
+          {/* Thời gian */}
+          <XStack alignItems="flex-start">
+            <XStack width={28} alignItems="center" justifyContent="center" marginRight={10} marginTop={2}>
+              <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+            </XStack>
+            <YStack flex={1}>
+              <Paragraph size="$2" color={theme.textTertiary} marginBottom={2}>
                 Thời gian bắt đầu
-              </Text>
-              <Text style={[styles.infoValue, { color: theme.textPrimary }]}>
-                {formatDate(event.time.start)}
-              </Text>
-            </View>
-          </View>
+              </Paragraph>
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                {formatDate(event.time?.start)}
+              </TamaguiText>
+            </YStack>
+          </XStack>
 
-          <View
-            style={[styles.divider, { backgroundColor: theme.borderSubtle }]}
-          />
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>📍</Text>
-            <View style={styles.infoContent}>
-              <View style={styles.locationHeaderRow}>
-                <Text style={[styles.infoLabel, { color: theme.textTertiary }]}>
+          {/* Địa điểm */}
+          <XStack alignItems="flex-start">
+            <XStack width={28} alignItems="center" justifyContent="center" marginRight={10} marginTop={2}>
+              <Ionicons name="location-outline" size={20} color={theme.primary} />
+            </XStack>
+            <YStack flex={1}>
+              <XStack justifyContent="space-between" alignItems="center" marginBottom={4}>
+                <Paragraph size="$2" color={theme.textTertiary}>
                   Địa điểm tổ chức
-                </Text>
-                {user?.role === "admin" ? (
-                  <TouchableOpacity
-                    style={[
-                      styles.adminEditBtn,
-                      {
-                        backgroundColor: isDark
-                          ? "rgba(99,102,241,0.2)"
-                          : "#EEF2FF",
-                        borderColor: isDark ? "#818CF8" : "#C7D2FE",
-                      },
-                    ]}
+                </Paragraph>
+                {currentUser?.role === "admin" ? (
+                  <Button
+                    size="$2"
+                    borderRadius={6}
+                    borderWidth={1}
+                    height={28}
+                    paddingHorizontal={8}
+                    backgroundColor={isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF"}
+                    borderColor={isDark ? "#818CF8" : "#C7D2FE"}
                     onPress={() => setAdminModalVisible(true)}
-                    activeOpacity={0.7}
+                    pressStyle={{ opacity: 0.7 }}
                   >
-                    <Text
-                      style={[
-                        styles.adminEditBtnText,
-                        { color: isDark ? "#A5B4FC" : "#4338CA" },
-                      ]}
-                    >
-                      📍 Đổi địa điểm (Admin)
-                    </Text>
-                  </TouchableOpacity>
+                    <XStack alignItems="center" gap={4}>
+                      <Ionicons name="create-outline" size={13} color={isDark ? "#A5B4FC" : "#4338CA"} />
+                      <TamaguiText fontSize={11} fontWeight="700" color={isDark ? "#A5B4FC" : "#4338CA"}>
+                        Đổi vị trí (Admin)
+                      </TamaguiText>
+                    </XStack>
+                  </Button>
                 ) : (
-                  <TouchableOpacity
-                    style={[
-                      styles.mapLinkBtn,
-                      {
-                        backgroundColor: isDark
-                          ? "rgba(99,102,241,0.2)"
-                          : "#EEF2FF",
-                        borderColor: isDark ? "#818CF8" : "#C7D2FE",
-                      },
-                    ]}
+                  <Button
+                    size="$2"
+                    borderRadius={6}
+                    borderWidth={1}
+                    height={28}
+                    paddingHorizontal={8}
+                    backgroundColor={isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF"}
+                    borderColor={isDark ? "#818CF8" : "#C7D2FE"}
                     onPress={() => {
                       if (event.coordinates) {
                         openInGoogleMaps(
@@ -353,213 +455,239 @@ export default function EventDetailScreen() {
                         );
                       }
                     }}
-                    activeOpacity={0.7}
+                    pressStyle={{ opacity: 0.7 }}
                   >
-                    <Text
-                      style={[
-                        styles.mapLinkBtnText,
-                        { color: isDark ? "#A5B4FC" : "#4338CA" },
-                      ]}
-                    >
-                      🗺️ Chỉ đường Map
-                    </Text>
-                  </TouchableOpacity>
+                    <XStack alignItems="center" gap={4}>
+                      <Ionicons name="navigate-outline" size={13} color={isDark ? "#A5B4FC" : "#4338CA"} />
+                      <TamaguiText fontSize={11} fontWeight="700" color={isDark ? "#A5B4FC" : "#4338CA"}>
+                        Chỉ đường Map
+                      </TamaguiText>
+                    </XStack>
+                  </Button>
                 )}
-              </View>
-              <Text style={[styles.infoValue, { color: theme.textPrimary }]}>
+              </XStack>
+
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
                 {event.location}
-              </Text>
+              </TamaguiText>
+
               {event.coordinates ? (
-                <View style={styles.distanceBadgeRow}>
-                  <Text
-                    style={[
-                      styles.coordsValue,
-                      { color: isDark ? "#34D399" : "#059669" },
-                    ]}
+                <YStack marginTop={4} gap={2}>
+                  <TamaguiText
+                    fontSize={12}
+                    fontWeight="500"
+                    color={isDark ? "#34D399" : "#059669"}
                   >
-                    🔒 Phạm vi: Bán kính {event.coordinates.radiusMeters || 300}
-                    m quanh địa điểm
-                  </Text>
+                    Bán kính hợp lệ: {event.coordinates.radiusMeters || 300}m quanh địa điểm
+                  </TamaguiText>
                   {userDistance !== null && (
-                    <Text
-                      style={[
-                        styles.distanceStatusText,
+                    <TamaguiText
+                      fontSize={12}
+                      fontWeight="600"
+                      color={
                         userDistance <= (event.coordinates.radiusMeters || 500)
-                          ? styles.textSuccess
-                          : styles.textWarning,
-                      ]}
+                          ? "#059669"
+                          : "#D97706"
+                      }
                     >
                       {userDistance <= (event.coordinates.radiusMeters || 500)
-                        ? `🟢 Cách bạn ${formatDistance(userDistance)} (Đủ điều kiện Check-in)`
-                        : `📍 Cách bạn ${formatDistance(userDistance)} (Chưa vào khu vực tổ chức)`}
-                    </Text>
+                        ? `Cách bạn ${formatDistance(userDistance)} (Đủ điều kiện Check-in)`
+                        : `Cách bạn ${formatDistance(userDistance)} (Chưa vào khu vực tổ chức)`}
+                    </TamaguiText>
                   )}
-                </View>
+                </YStack>
               ) : (
-                <Text
-                  style={[
-                    styles.coordsWarning,
-                    { color: isDark ? "#FCD34D" : "#D97706" },
-                  ]}
+                <TamaguiText
+                  fontSize={12}
+                  fontStyle="italic"
+                  marginTop={4}
+                  color={isDark ? "#FCD34D" : "#D97706"}
                 >
-                  ℹ️ Điểm danh tự do (Không giới hạn vị trí)
-                </Text>
+                  Điểm danh tự do (Không giới hạn vị trí)
+                </TamaguiText>
               )}
-            </View>
-          </View>
+            </YStack>
+          </XStack>
 
-          <View
-            style={[styles.divider, { backgroundColor: theme.borderSubtle }]}
-          />
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
 
-          <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>🏢</Text>
-            <View style={styles.infoContent}>
-              <Text style={[styles.infoLabel, { color: theme.textTertiary }]}>
+          {/* Ban tổ chức */}
+          <XStack alignItems="flex-start">
+            <XStack width={28} alignItems="center" justifyContent="center" marginRight={10} marginTop={2}>
+              <Ionicons name="business-outline" size={20} color={theme.primary} />
+            </XStack>
+            <YStack flex={1}>
+              <Paragraph size="$2" color={theme.textTertiary} marginBottom={2}>
                 Ban tổ chức
-              </Text>
-              <Text style={[styles.infoValue, { color: theme.textPrimary }]}>
-                {event.organizer}
-              </Text>
-            </View>
-          </View>
-        </View>
+              </Paragraph>
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                {event.organizer || "Đoàn Thanh niên IUH"}
+              </TamaguiText>
+            </YStack>
+          </XStack>
+        </Card>
 
-        {/* AI */}
-        <View style={styles.aiSection}>
-          {/* Nút gọi AI */}
-          <TouchableOpacity
-            style={[styles.aiButton, aiLoading && styles.disabledButton]}
-            onPress={handleSummarize}
+        {/* Khối AI Tóm Tắt */}
+        <YStack marginBottom={16}>
+          <Button
+            height={48}
+            borderRadius={12}
+            backgroundColor="#7C3AED"
+            alignItems="center"
+            justifyContent="center"
+            marginBottom={12}
             disabled={aiLoading}
-            activeOpacity={0.85}
+            onPress={handleSummarize}
+            pressStyle={{ opacity: 0.85 }}
           >
             {aiLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <Spinner color="#FFFFFF" />
             ) : (
-              <Text style={styles.aiButtonText}>
-                ✨ {aiSummary ? "Tóm tắt lại bằng AI" : "Tóm tắt bằng AI"}
-              </Text>
+              <XStack alignItems="center" gap={8}>
+                <Ionicons name="sparkles" size={17} color="#FFFFFF" />
+                <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
+                  {aiSummary ? "Tóm tắt lại bằng AI" : "Tóm tắt sự kiện bằng AI"}
+                </TamaguiText>
+              </XStack>
             )}
-          </TouchableOpacity>
+          </Button>
 
-          {/* Đang xử lý */}
           {aiLoading && <AILoading />}
-
-          {/* Có lỗi */}
           {!aiLoading && aiError && (
             <AIError message={aiError} onRetry={handleSummarize} />
           )}
-
-          {/* Thành công */}
           {!aiLoading && aiSummary && <AISummary summary={aiSummary} />}
-        </View>
+        </YStack>
 
-        {/* Mô tả */}
-        <View
-          style={[
-            styles.section,
-            { backgroundColor: theme.surface, borderColor: theme.border },
-          ]}
+        {/* Khối Mô Tả */}
+        <Card
+          backgroundColor={theme.surface}
+          borderColor={theme.border}
+          borderWidth={1}
+          borderRadius={14}
+          padding={16}
+          marginBottom={20}
+          elevation={1}
         >
-          <Text style={[styles.sectionHeader, { color: theme.textPrimary }]}>
+          <Heading
+            size="$5"
+            fontWeight="700"
+            color={theme.textPrimary}
+            marginBottom={8}
+          >
             Mô tả sự kiện
-          </Text>
-          <Text
-            style={[styles.descriptionText, { color: theme.textSecondary }]}
+          </Heading>
+          <Paragraph
+            size="$3"
+            lineHeight={22}
+            color={theme.textSecondary}
           >
-            {event.description}
-          </Text>
-        </View>
+            {event.description || "Không có mô tả chi tiết cho sự kiện này."}
+          </Paragraph>
+        </Card>
 
-        {/* Banner thông báo khi sự kiện đã qua */}
+        {/* Banner thông báo sự kiện đã kết thúc */}
         {isPast && (
-          <View
-            style={[
-              styles.pastBannerBox,
-              {
-                backgroundColor: isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2",
-                borderColor: isDark ? "#F87171" : "#FECACA",
-              },
-            ]}
+          <XStack
+            alignItems="center"
+            backgroundColor={isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2"}
+            borderColor={isDark ? "#F87171" : "#FECACA"}
+            borderWidth={1}
+            borderRadius={14}
+            padding={14}
+            marginBottom={16}
+            gap={12}
           >
-            <Text style={styles.pastBannerIcon}>⏰</Text>
-            <View style={{ flex: 1 }}>
-              <Text
-                style={[
-                  styles.pastBannerTitle,
-                  { color: isDark ? "#FCA5A5" : "#991B1B" },
-                ]}
+            <Ionicons name="time-outline" size={26} color="#DC2626" />
+            <YStack flex={1}>
+              <TamaguiText
+                fontSize={14}
+                fontWeight="700"
+                marginBottom={2}
+                color={isDark ? "#FCA5A5" : "#991B1B"}
               >
                 Sự kiện đã kết thúc
-              </Text>
-              <Text
-                style={[
-                  styles.pastBannerDesc,
-                  { color: isDark ? "#FCD5D5" : "#7F1D1D" },
-                ]}
+              </TamaguiText>
+              <Paragraph
+                size="$2"
+                lineHeight={18}
+                color={isDark ? "#FCD5D5" : "#7F1D1D"}
               >
-                Sự kiện này đã kết thúc thời gian tổ chức. Bạn chỉ có thể xem
-                lại thông tin lưu trữ và không thể đăng ký hoặc điểm danh được
-                nữa.
-              </Text>
-            </View>
-          </View>
+                Sự kiện này đã kết thúc thời gian tổ chức. Bạn chỉ có thể xem lại thông tin lưu trữ và không thể đăng ký hoặc điểm danh được nữa.
+              </Paragraph>
+            </YStack>
+          </XStack>
         )}
 
-        {/* Các nút */}
-        <View style={styles.actionButtons}>
-          {/* Chia sẻ sự kiện */}
-          <TouchableOpacity
-            style={[
-              styles.shareButton,
-              { backgroundColor: isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF" },
-            ]}
+        {/* Các nút hành động chính */}
+        <YStack gap={12}>
+          {/* Nút Chia Sẻ */}
+          <Button
+            height={46}
+            borderRadius={12}
+            backgroundColor={isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF"}
             onPress={handleShare}
-            activeOpacity={0.85}
+            pressStyle={{ opacity: 0.85 }}
           >
-            <Text style={[styles.shareButtonText, { color: theme.primary }]}>
-              🔗 Chia sẻ sự kiện
-            </Text>
-          </TouchableOpacity>
+            <XStack alignItems="center" gap={8}>
+              <Ionicons name="share-social-outline" size={18} color={theme.primary} />
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.primary}>
+                Chia sẻ sự kiện
+              </TamaguiText>
+            </XStack>
+          </Button>
 
-          {/* Đăng ký */}
-          <TouchableOpacity
-            style={[
-              styles.primaryButton,
-              isPast && styles.disabledPastBtn,
-              !isPast && isRegistered && styles.registeredButton,
-              (actionLoading || isPast) && styles.disabledButton,
-            ]}
-            onPress={handleRegister}
+          {/* Nút Đăng Ký Tham Gia */}
+          <Button
+            height={50}
+            borderRadius={12}
+            backgroundColor={
+              isPast
+                ? "#94A3B8"
+                : isRegistered
+                ? "#10B981"
+                : theme.primary
+            }
+            opacity={actionLoading || isPast ? 0.75 : 1}
             disabled={actionLoading || isRegistered || isPast}
-            activeOpacity={0.85}
+            onPress={handleRegister}
+            pressStyle={{ opacity: 0.85 }}
           >
             {actionLoading ? (
-              <ActivityIndicator color="#fff" />
+              <Spinner color="#FFFFFF" />
             ) : (
-              <Text
-                style={[
-                  styles.primaryButtonText,
-                  isPast && styles.disabledPastBtnText,
-                ]}
-              >
-                {isPast
-                  ? "🛑 Đã hết hạn đăng ký"
-                  : isRegistered
-                    ? "✅ Đã đăng ký"
-                    : "📋 Đăng ký tham gia"}
-              </Text>
+              <XStack alignItems="center" gap={8}>
+                <Ionicons
+                  name={
+                    isPast
+                      ? "close-circle-outline"
+                      : isRegistered
+                      ? "checkmark-circle"
+                      : "clipboard-outline"
+                  }
+                  size={19}
+                  color="#FFFFFF"
+                />
+                <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
+                  {isPast
+                    ? "Đã hết hạn đăng ký"
+                    : isRegistered
+                    ? "Đã đăng ký tham gia"
+                    : "Đăng ký tham gia"}
+                </TamaguiText>
+              </XStack>
             )}
-          </TouchableOpacity>
+          </Button>
 
-          {/* Check-in */}
-          <TouchableOpacity
-            style={[
-              styles.secondaryButton,
-              { backgroundColor: theme.surface, borderColor: theme.border },
-              isPast && styles.disabledPastSecondaryBtn,
-            ]}
+          {/* Nút Quét QR Điểm Danh */}
+          <Button
+            height={48}
+            borderRadius={12}
+            borderWidth={1}
+            backgroundColor={theme.surface}
+            borderColor={theme.border}
+            opacity={isPast ? 0.6 : 1}
+            disabled={isPast}
             onPress={() => {
               if (isPast) {
                 Alert.alert(
@@ -570,78 +698,81 @@ export default function EventDetailScreen() {
               }
               navigation.navigate("CheckIn");
             }}
-            disabled={isPast}
-            activeOpacity={0.85}
+            pressStyle={{ opacity: 0.85 }}
           >
-            <Text
-              style={[
-                styles.secondaryButtonText,
-                { color: theme.textSecondary },
-                isPast && styles.disabledPastSecondaryBtnText,
-              ]}
-            >
-              {isPast
-                ? "🔒 Cổng điểm danh đã đóng"
-                : "📷 Quét QR Điểm Danh Ngay"}
-            </Text>
-          </TouchableOpacity>
+            <XStack alignItems="center" gap={8}>
+              <Ionicons
+                name={isPast ? "lock-closed-outline" : "qr-code-outline"}
+                size={18}
+                color={isPast ? "#94A3B8" : theme.textPrimary}
+              />
+              <TamaguiText
+                fontSize={14}
+                fontWeight="600"
+                color={isPast ? "#94A3B8" : theme.textPrimary}
+              >
+                {isPast ? "Cổng điểm danh đã đóng" : "Quét QR Điểm Danh Ngay"}
+              </TamaguiText>
+            </XStack>
+          </Button>
 
-          {/* Feedback */}
+          {/* Nút Gửi Phản Hồi (Sau khi đã điểm danh) */}
           {existingReg?.status === "checked_in" && (
-            <TouchableOpacity
-              style={[
-                styles.feedbackButton,
-                {
-                  backgroundColor: theme.surfaceSecondary,
-                  borderColor: theme.border,
-                },
-              ]}
+            <Button
+              height={46}
+              borderRadius={12}
+              borderWidth={1}
+              backgroundColor={theme.surfaceSecondary}
+              borderColor={theme.border}
               onPress={() =>
                 navigation.navigate("Feedback", {
-                  eventId: event._id,
+                  eventId: event._id || (event as any).id || eventId,
                   eventTitle: event.title,
                 })
               }
-              activeOpacity={0.85}
+              pressStyle={{ opacity: 0.85 }}
             >
-              <Text
-                style={[
-                  styles.feedbackButtonText,
-                  { color: theme.textSecondary },
-                ]}
-              >
-                ✍️ Gửi phản hồi sự kiện
-              </Text>
-            </TouchableOpacity>
+              <XStack alignItems="center" gap={8}>
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={18}
+                  color={theme.primary}
+                />
+                <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                  Gửi phản hồi sự kiện
+                </TamaguiText>
+              </XStack>
+            </Button>
           )}
 
-          {/* Panel Quản trị Admin: Ẩn/Hiện và Xóa sự kiện */}
-          {user?.role === "admin" && (
-            <View
-              style={[
-                styles.adminPanel,
-                {
-                  backgroundColor: isDark ? theme.surfaceSecondary : "#F8FAFC",
-                  borderColor: theme.border,
-                },
-              ]}
+          {/* Bảng điều khiển quản trị Admin */}
+          {currentUser?.role === "admin" && (
+            <Card
+              marginTop={12}
+              backgroundColor={isDark ? theme.surfaceSecondary : "#F8FAFC"}
+              borderColor={theme.border}
+              borderWidth={1}
+              borderRadius={14}
+              padding={14}
             >
-              <Text
-                style={[styles.adminPanelTitle, { color: theme.textSecondary }]}
-              >
-                ⚙️ Quản trị sự kiện (Dành cho Admin)
-              </Text>
-              <View style={styles.adminPanelRow}>
-                <TouchableOpacity
-                  style={[
-                    styles.adminToggleBtn,
-                    event.isHidden
-                      ? styles.adminUnhideBtn
-                      : styles.adminHideBtn,
-                  ]}
+              <XStack alignItems="center" justifyContent="center" gap={6} marginBottom={10}>
+                <Ionicons name="settings-outline" size={16} color={theme.textSecondary} />
+                <TamaguiText fontSize={13} fontWeight="700" color={theme.textSecondary}>
+                  Quản trị sự kiện (Dành cho Admin)
+                </TamaguiText>
+              </XStack>
+
+              <XStack gap={10}>
+                <Button
+                  flex={1}
+                  height={40}
+                  borderRadius={10}
+                  backgroundColor={event.isHidden ? "#10B981" : "#F59E0B"}
                   onPress={async () => {
+                    const targetId = event._id || (event as any).id || eventId;
+                    if (!targetId) return;
                     const newHidden = await toggleHideEvent(
-                      event._id,
+                      targetId,
                       !!event.isHidden,
                     );
                     if (eventId) dispatch(fetchEventById(eventId));
@@ -652,18 +783,28 @@ export default function EventDetailScreen() {
                         : "Đã mở lại sự kiện hiển thị cho sinh viên.",
                     );
                   }}
-                  activeOpacity={0.8}
+                  pressStyle={{ opacity: 0.8 }}
                 >
-                  <Text style={styles.adminToggleBtnText}>
-                    {event.isHidden
-                      ? "👁️ Hiển thị lại cho sinh viên"
-                      : "👁️ Ẩn khỏi sinh viên"}
-                  </Text>
-                </TouchableOpacity>
+                  <XStack alignItems="center" gap={6}>
+                    <Ionicons
+                      name={event.isHidden ? "eye-outline" : "eye-off-outline"}
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                    <TamaguiText fontSize={12.5} fontWeight="700" color="#FFFFFF">
+                      {event.isHidden ? "Hiển thị lại" : "Ẩn sự kiện"}
+                    </TamaguiText>
+                  </XStack>
+                </Button>
 
-                <TouchableOpacity
-                  style={styles.adminDeleteBtn}
+                <Button
+                  height={40}
+                  paddingHorizontal={16}
+                  borderRadius={10}
+                  backgroundColor="#EF4444"
                   onPress={() => {
+                    const targetId = event._id || (event as any).id || eventId;
+                    if (!targetId) return;
                     Alert.alert(
                       "Xóa sự kiện",
                       `Bạn có chắc chắn muốn xóa vĩnh viễn sự kiện "${event.title}"?`,
@@ -673,26 +814,29 @@ export default function EventDetailScreen() {
                           text: "Xóa vĩnh viễn",
                           style: "destructive",
                           onPress: async () => {
-                            await deleteEvent(event._id);
-                            Alert.alert(
-                              "Đã xóa",
-                              "Sự kiện đã được xóa thành công.",
-                            );
+                            await deleteEvent(targetId);
+                            Alert.alert("Đã xóa", "Sự kiện đã được xóa thành công.");
                             navigation.goBack();
                           },
                         },
                       ],
                     );
                   }}
-                  activeOpacity={0.8}
+                  pressStyle={{ opacity: 0.8 }}
                 >
-                  <Text style={styles.adminDeleteBtnText}>🗑️ Xóa</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                  <XStack alignItems="center" gap={6}>
+                    <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+                    <TamaguiText fontSize={12.5} fontWeight="700" color="#FFFFFF">
+                      Xóa
+                    </TamaguiText>
+                  </XStack>
+                </Button>
+              </XStack>
+            </Card>
           )}
-        </View>
-      </View>
+        </YStack>
+      </YStack>
+
       <AdminLocationModal
         visible={adminModalVisible}
         onClose={() => setAdminModalVisible(false)}
@@ -710,419 +854,14 @@ export default function EventDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    gap: 12,
-  },
-
-  loadingText: {
-    color: Colors.gray500,
-    fontSize: 14,
-  },
-
   bannerImage: {
     width: "100%",
     height: 220,
     backgroundColor: "#E2E8F0",
   },
-
-  body: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  categoryBadge: {
-    backgroundColor: "#DBEAFE",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-
-  categoryText: {
-    color: Colors.primary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  pointBadge: {
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-
-  pointText: {
-    color: "#16A34A",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-
-  eventTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#0F172A",
-    lineHeight: 28,
-    marginBottom: 6,
-  },
-
-  facultyText: {
-    fontSize: 14,
-    color: "#64748B",
-    marginBottom: 16,
-  },
-
-  infoCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-
-  infoIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    marginTop: 2,
-  },
-
-  infoContent: {
-    flex: 1,
-  },
-
-  infoLabel: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginBottom: 2,
-  },
-
-  infoValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1E293B",
-  },
-
   divider: {
     height: 1,
-    backgroundColor: "#F1F5F9",
     marginVertical: 12,
-  },
-
-  aiSection: {
-    marginBottom: 16,
-  },
-
-  section: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 20,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-
-  sectionHeader: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F172A",
-    marginBottom: 8,
-  },
-
-  descriptionText: {
-    fontSize: 14,
-    color: "#475569",
-    lineHeight: 22,
-  },
-
-  actionButtons: {
-    gap: 12,
-  },
-
-  // Nút chia sẻ Deep Link
-  shareButton: {
-    backgroundColor: "#EFF6FF",
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: "center",
-  },
-
-  shareButtonText: {
-    color: Colors.primary,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  primaryButton: {
-    backgroundColor: Colors.primary,
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-
-  registeredButton: {
-    backgroundColor: Colors.success,
-  },
-
-  disabledButton: {
-    opacity: 0.7,
-  },
-
-  primaryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
-  },
-
-  secondaryButton: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: "#CBD5E1",
-  },
-
-  secondaryButtonText: {
-    color: "#475569",
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  feedbackButton: {
-    backgroundColor: "#F8FAFC",
-    borderRadius: 12,
-    paddingVertical: 13,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: Colors.border,
-  },
-
-  feedbackButtonText: {
-    color: Colors.gray600,
-    fontSize: 14,
-    fontWeight: "600",
-  },
-
-  emptyState: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingHorizontal: 30,
-  },
-
-  icon: {
-    fontSize: 50,
-    marginBottom: 16,
-  },
-
-  title: {
-    fontSize: 21,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 8,
-    textAlign: "center",
-  },
-
-  description: {
-    fontSize: 14,
-    color: "#6b7280",
-    textAlign: "center",
-    marginBottom: 20,
-  },
-
-  backBtn: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 24,
-    paddingVertical: 10,
-    borderRadius: 10,
-  },
-  backBtnText: { color: "#fff", fontWeight: "600" },
-  locationHeaderRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 4,
-  },
-  adminEditBtn: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#C7D2FE",
-  },
-  adminEditBtnText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#4338CA",
-  },
-  coordsValue: {
-    fontSize: 12,
-    color: "#059669",
-    marginTop: 4,
-    fontWeight: "500",
-  },
-  coordsWarning: {
-    fontSize: 12,
-    color: "#D97706",
-    marginTop: 4,
-    fontStyle: "italic",
-  },
-  mapLinkBtn: {
-    backgroundColor: "#EEF2FF",
-    paddingHorizontal: 8,
-    paddingVertical: 3,
-    borderRadius: 6,
-    borderWidth: 1,
-    borderColor: "#C7D2FE",
-  },
-  mapLinkBtnText: {
-    fontSize: 11,
-    fontWeight: "700",
-    color: "#4338CA",
-  },
-  distanceBadgeRow: {
-    marginTop: 4,
-    gap: 2,
-  },
-  distanceStatusText: {
-    fontSize: 12,
-    fontWeight: "600",
-  },
-  textSuccess: {
-    color: "#059669",
-  },
-  textWarning: {
-    color: "#D97706",
-  },
-
-  // Past Event Banner & Disabled State
-  pastBannerBox: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FEF2F2",
-    borderColor: "#FECACA",
-    borderWidth: 1,
-    borderRadius: 14,
-    padding: 14,
-    marginBottom: 16,
-    gap: 12,
-  },
-  pastBannerIcon: {
-    fontSize: 26,
-  },
-  pastBannerTitle: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#991B1B",
-    marginBottom: 2,
-  },
-  pastBannerDesc: {
-    fontSize: 12,
-    color: "#7F1D1D",
-    lineHeight: 18,
-  },
-  disabledPastBtn: {
-    backgroundColor: "#94A3B8",
-    opacity: 0.85,
-  },
-  disabledPastBtnText: {
-    color: "#FFFFFF",
-    fontWeight: "700",
-  },
-  disabledPastSecondaryBtn: {
-    backgroundColor: "#F1F5F9",
-    borderColor: "#CBD5E1",
-    opacity: 0.6,
-  },
-  disabledPastSecondaryBtnText: {
-    color: "#94A3B8",
-    fontStyle: "italic",
-  },
-
-  // Admin Control Panel
-  adminPanel: {
-    marginTop: 20,
-    backgroundColor: "#F8FAFC",
-    borderRadius: 14,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-    padding: 14,
-  },
-  adminPanelTitle: {
-    fontSize: 13,
-    fontWeight: "700",
-    color: "#334155",
-    marginBottom: 10,
-    textAlign: "center",
-  },
-  adminPanelRow: {
-    flexDirection: "row",
-    gap: 10,
-  },
-  adminToggleBtn: {
-    flex: 1,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  adminHideBtn: {
-    backgroundColor: "#F59E0B",
-  },
-  adminUnhideBtn: {
-    backgroundColor: "#10B981",
-  },
-  adminToggleBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12.5,
-    fontWeight: "700",
-  },
-  adminDeleteBtn: {
-    backgroundColor: "#EF4444",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  adminDeleteBtnText: {
-    color: "#FFFFFF",
-    fontSize: 12.5,
-    fontWeight: "700",
-  },
-  aiButton: {
-    backgroundColor: "#7C3AED",
-    borderRadius: 12,
-    paddingVertical: 14,
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 12,
-  },
-
-  aiButtonText: {
-    color: "#FFFFFF",
-    fontSize: 15,
-    fontWeight: "700",
   },
 });

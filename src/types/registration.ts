@@ -3,8 +3,10 @@ export interface Registration {
   eventId: string;
   userId: string;
   participantRole: 'attendee' | 'volunteer';
-  status: 'registered' | 'checked_in' | 'cancelled';
-  checkInTime: string | null;
+  status: 'registered' | 'checked_in' | 'completed' | 'cancelled';
+  qrCode?: string;
+  checkInTime?: string | null;
+  checkOutTime?: string | null;
   checkInLocation?: {
     latitude: number;
     longitude: number;

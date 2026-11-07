@@ -1,6 +1,22 @@
-import React, { createContext, useContext, useState, useMemo } from 'react';
+import React, { createContext, useContext, useState, useMemo, useEffect } from 'react';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type ThemeMode = 'Sáng' | 'Tối';
+
+export const THEME_STORAGE_KEY = '@student_event_app_theme_mode';
+
+// Helper lấy theme ban đầu đồng bộ trên Web để không bị giật màu khi load trang
+const getInitialTheme = (): ThemeMode => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    try {
+      const saved = window.localStorage.getItem(THEME_STORAGE_KEY);
+      if (saved === 'Tối' || saved === 'Sáng') return saved;
+    } catch {
+      // Bỏ qua lỗi truy cập storage
+    }
+  }
+  return 'Sáng';
+};
 
 export interface ThemePalette {
   mode: ThemeMode;
@@ -99,10 +115,38 @@ const defaultContextValue: ThemeContextType = {
 const ThemeContext = createContext<ThemeContextType>(defaultContextValue);
 
 export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [mode, setMode] = useState<ThemeMode>('Sáng');
+  const [mode, setMode] = useState<ThemeMode>(getInitialTheme);
+
+  // Đọc từ AsyncStorage trên Native/Web khi khởi động
+  useEffect(() => {
+    let isMounted = true;
+    AsyncStorage.getItem(THEME_STORAGE_KEY)
+      .then((saved) => {
+        if (isMounted && (saved === 'Tối' || saved === 'Sáng')) {
+          setMode(saved as ThemeMode);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const updateMode = (newMode: ThemeMode) => {
+    setMode(newMode);
+    try {
+      AsyncStorage.setItem(THEME_STORAGE_KEY, newMode).catch(() => {});
+      if (typeof window !== 'undefined' && window.localStorage) {
+        window.localStorage.setItem(THEME_STORAGE_KEY, newMode);
+      }
+    } catch {
+      // Bỏ qua lỗi
+    }
+  };
 
   const toggleTheme = () => {
-    setMode((prev) => (prev === 'Sáng' ? 'Tối' : 'Sáng'));
+    updateMode(mode === 'Sáng' ? 'Tối' : 'Sáng');
   };
 
   const isDark = mode === 'Tối';
@@ -115,7 +159,7 @@ export const ThemeProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         isDark,
         theme,
         toggleTheme,
-        setTheme: setMode,
+        setTheme: updateMode,
       }}
     >
       {children}

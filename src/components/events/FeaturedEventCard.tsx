@@ -1,13 +1,19 @@
+import React from "react";
 import { ImageBackground, StyleSheet, Text, View } from "react-native";
 import { Event } from "../../types/event";
 import { useAppTheme } from "../../theme/ThemeContext";
+
+const DEFAULT_EVENT_IMAGE =
+  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80";
 
 interface FeaturedEventCardProps {
   event: Event;
 }
 
-function formatDate(dateString: string) {
+function formatDate(dateString?: string) {
+  if (!dateString) return "--/--/----";
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "--/--/----";
 
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -21,10 +27,15 @@ export default function FeaturedEventCard({
 }: FeaturedEventCardProps) {
   const { theme } = useAppTheme();
 
+  const imageUri =
+    event.images && event.images.length > 0 && event.images[0]
+      ? event.images[0]
+      : DEFAULT_EVENT_IMAGE;
+
   return (
     <View style={styles.card}>
       <ImageBackground
-        source={{ uri: event.images[0] }}
+        source={{ uri: imageUri }}
         style={styles.image}
         imageStyle={styles.imageStyle}
       >
@@ -33,7 +44,7 @@ export default function FeaturedEventCard({
         <View style={styles.content}>
           <View style={[styles.badge, { backgroundColor: theme.primary }]}>
             <Text style={styles.badgeText}>
-              {event.category}
+              {event.category || "Chung"}
             </Text>
           </View>
 
@@ -45,14 +56,14 @@ export default function FeaturedEventCard({
           </Text>
 
           <Text style={styles.info}>
-            📅 {formatDate(event.time.start)}
+            📅 {formatDate(event.time?.start)}
           </Text>
 
           <Text
             style={styles.info}
             numberOfLines={1}
           >
-            📍 {event.location}
+            📍 {event.location || "Đang cập nhật địa điểm"}
           </Text>
         </View>
       </ImageBackground>
@@ -77,10 +88,10 @@ const styles = StyleSheet.create({
     borderRadius: 18,
   },
 
-overlay: {
-  ...StyleSheet.absoluteFill,
-  backgroundColor: "rgba(0,0,0,0.38)",
-},
+  overlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.38)",
+  },
 
   content: {
     padding: 16,

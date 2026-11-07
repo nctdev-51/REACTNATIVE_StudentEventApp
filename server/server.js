@@ -423,8 +423,29 @@ server.use(jsonServer.rewriter({
 
 // ─── Custom Response Envelope Formatter (Hybrid Support) ──────────────────────
 // Supports both raw json-server format [ ... ] AND wrapped format { success: true, data: [ ... ] }
+
+const syncSrcDbFeedbacks = () => {
+  try {
+    const srcDbPath = path.join(__dirname, "..", "src", "data", "db.json");
+    if (fs.existsSync(srcDbPath)) {
+      const srcDb = JSON.parse(fs.readFileSync(srcDbPath, "utf8"));
+      srcDb.feedbacks = router.db.get("feedbacks").value();
+      fs.writeFileSync(srcDbPath, JSON.stringify(srcDb, null, 2), "utf8");
+    }
+  } catch (err) {
+    // Ignore sync error silently
+  }
+};
+
 router.render = (req, res) => {
   const data = res.locals.data;
+
+  // Auto-sync feedbacks to src/data/db.json on mutations so app bundle stays up to date
+  if (req.method === "POST" || req.method === "PUT" || req.method === "PATCH" || req.method === "DELETE") {
+    if (req.url && req.url.includes("feedbacks")) {
+      syncSrcDbFeedbacks();
+    }
+  }
 
   // If query specifies envelope=true or if requested with header x-envelope: true
   if (req.query.envelope === "true" || req.headers["x-envelope"] === "true") {

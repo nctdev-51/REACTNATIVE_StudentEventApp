@@ -399,7 +399,6 @@ export default function HomeScreen() {
           ) : undefined
         }
       />
-      <AppBottomTab activeTab="home" onTabPress={handleTabPress} />
     </SafeAreaView>
   );
 }

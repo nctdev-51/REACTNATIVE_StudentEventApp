@@ -4,12 +4,17 @@ import { Event } from "../../types/event";
 import { isEventPast } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
 
+const DEFAULT_EVENT_IMAGE =
+  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80";
+
 interface EventCardProps {
   event: Event;
 }
 
-function formatDate(dateString: string) {
+function formatDate(dateString?: string) {
+  if (!dateString) return "--/--/----";
   const date = new Date(dateString);
+  if (isNaN(date.getTime())) return "--/--/----";
 
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -21,6 +26,11 @@ function formatDate(dateString: string) {
 export default function EventCard({ event }: EventCardProps) {
   const { theme, isDark } = useAppTheme();
   const isPast = isEventPast(event);
+
+  const imageUri =
+    event.images && event.images.length > 0 && event.images[0]
+      ? event.images[0]
+      : DEFAULT_EVENT_IMAGE;
 
   return (
     <View
@@ -43,7 +53,7 @@ export default function EventCard({ event }: EventCardProps) {
       ]}
     >
       <Image
-        source={{ uri: event.images[0] }}
+        source={{ uri: imageUri }}
         style={[styles.image, isPast && styles.pastImage]}
       />
 
@@ -65,14 +75,14 @@ export default function EventCard({ event }: EventCardProps) {
         </Text>
 
         <Text style={[styles.info, { color: theme.textSecondary }]}>
-          📅 {formatDate(event.time.start)}
+          📅 {formatDate(event.time?.start)}
         </Text>
 
         <Text
           style={[styles.info, { color: theme.textSecondary }]}
           numberOfLines={1}
         >
-          📍 {event.location}
+          📍 {event.location || "Đang cập nhật địa điểm"}
         </Text>
 
         <View style={styles.bottomRow}>
@@ -92,7 +102,7 @@ export default function EventCard({ event }: EventCardProps) {
                 { color: isDark ? "#93C5FD" : "#2563eb" },
               ]}
             >
-              {event.category}
+              {event.category || "Chung"}
             </Text>
           </View>
 
@@ -136,7 +146,7 @@ export default function EventCard({ event }: EventCardProps) {
               { color: isDark ? "#4ADE80" : "#16a34a" },
             ]}
           >
-            +{event.trainingPoints} điểm
+            +{event.trainingPoints ?? 0} điểm
           </Text>
         </View>
       </View>

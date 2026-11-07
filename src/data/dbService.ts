@@ -1,4 +1,7 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import dbRaw from './db.json';
+
+export const FEEDBACKS_STORAGE_KEY = '@student_app_persisted_feedbacks';
 
 // In-memory working copy initialized from db.json
 const dbState = {
@@ -123,9 +126,9 @@ export const getUserStatsFromDb = (userId?: string): UserStats => {
   const points = typeof targetUser?.point === 'number' ? targetUser.point : 120;
 
   return {
-    eventsAttended: attendedCount > 0 ? attendedCount : 2, // fallback theo db.json SV01 có 2 lần tham gia
+    eventsAttended: attendedCount,
     pointsAccumulated: points,
-    reviews: reviewsCount > 0 ? reviewsCount : 1, // fallback theo db.json SV01 có 1 feedback
+    reviews: reviewsCount,
   };
 };
 
@@ -138,10 +141,12 @@ export const getAttendedEventsFromDb = (userId?: string) => {
   const uId = targetUser?._id || targetUser?.id;
 
   const userRegs = dbState.registrations.filter(
-    (r) => r.userId === uId && (r.status === 'checked_in' || (r.status as string) === 'completed' || r.status === 'registered')
+    (r) => r.userId === uId && (r.status === 'checked_in' || (r.status as string) === 'completed')
   );
 
-  const registeredEventIds = new Set(userRegs.map((r) => r.eventId));
+  const registeredEventIds = new Set(
+    userRegs.map((r) => (typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId._id || r.eventId.id) : r.eventId))
+  );
 
   // Sự kiện đã đăng ký/tham gia lên trước, các sự kiện khác lên sau
   const sorted = [...dbState.events].sort((a, b) => {
@@ -156,6 +161,128 @@ export const getAttendedEventsFromDb = (userId?: string) => {
 };
 
 /**
+ * Lấy danh sách các sự kiện sinh viên đã tham dự,
+ * sắp xếp sự kiện gần nhất lên đầu.
+ */
+export const getOnlyAttendedEventsFromDb = (userId?: string): any[] => {
+  const targetUser = findDbUser(userId);
+  const uId = targetUser?._id || targetUser?.id;
+
+  const userRegs = dbState.registrations.filter(
+    (r) => r.userId === uId && (r.status === 'checked_in' || (r.status as string) === 'completed')
+  );
+
+  const registeredEventIds = new Set(
+    userRegs.map((r) => (typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId._id || r.eventId.id) : r.eventId))
+  );
+  const attendedList = dbState.events.filter((e) => registeredEventIds.has(e.id || e._id));
+
+  const list = attendedList.length > 0 ? attendedList : dbState.events;
+
+  // Sắp xếp sự kiện gần nhất lên đầu (thời gian mới nhất trước)
+  return [...list].sort((a, b) => {
+    const timeA = new Date(a.time?.start || a.createdAt || 0).getTime();
+    const timeB = new Date(b.time?.start || b.createdAt || 0).getTime();
+    return timeB - timeA;
+  });
+};
+
+/**
+ * Helper làm giàu dữ liệu đánh giá: gắn thông tin sinh viên và sự kiện tương ứng
+ */
+export const enrichFeedback = (f: any): EnrichedFeedback => {
+  const userIdStr = typeof f.userId === 'object' && f.userId !== null ? (f.userId._id || f.userId.id) : f.userId;
+  const eventIdStr = typeof f.eventId === 'object' && f.eventId !== null ? (f.eventId._id || f.eventId.id) : f.eventId;
+
+  const author =
+    dbState.users.find((u) => u.id === userIdStr || u._id === userIdStr) ||
+    (typeof f.userId === 'object' ? f.userId : null);
+  const event =
+    dbState.events.find((e) => e.id === eventIdStr || e._id === eventIdStr) ||
+    (typeof f.eventId === 'object' ? f.eventId : null);
+
+  return {
+    id: f.id || f._id || `fb_${Date.now()}_${Math.random()}`,
+    _id: f._id || f.id || `fb_${Date.now()}_${Math.random()}`,
+    eventId: eventIdStr,
+    userId: userIdStr,
+    rating: typeof f.rating === 'number' ? f.rating : 5,
+    comment: f.comment || '',
+    createdAt: f.createdAt || new Date().toISOString(),
+    userName: f.userName || (author ? (author.name || (author as any).fullName) : 'Nguyễn Văn A'),
+    userAvatar: f.userAvatar || author?.avatarUrl || (author as any)?.avatar || 'https://i.pravatar.cc/300?img=12',
+    userFaculty: f.userFaculty || author?.faculty || 'Khoa Công nghệ thông tin',
+    eventTitle: f.eventTitle || event?.title || 'Sự kiện IUH',
+    eventCategory: f.eventCategory || event?.category || 'Sự kiện',
+    eventImage: f.eventImage || event?.images?.[0] || 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&w=800&q=80',
+  };
+};
+
+/**
+ * Lưu danh sách feedbacks vào AsyncStorage để bảo đảm không bị mất khi load lại trang
+ */
+export const saveFeedbacksToStorage = async (list?: any[]): Promise<void> => {
+  try {
+    const toSave = list || dbState.feedbacks;
+    await AsyncStorage.setItem(FEEDBACKS_STORAGE_KEY, JSON.stringify(toSave));
+  } catch (err) {
+    console.warn('[dbService] Error saving feedbacks to AsyncStorage:', err);
+  }
+};
+
+/**
+ * Đọc feedbacks đã lưu từ AsyncStorage và hợp nhất vào dbState
+ */
+export const loadFeedbacksFromStorage = async (): Promise<EnrichedFeedback[]> => {
+  try {
+    const raw = await AsyncStorage.getItem(FEEDBACKS_STORAGE_KEY);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        const existingKeys = new Set(dbState.feedbacks.map((f) => f.id || f._id));
+        for (const item of parsed) {
+          const key = item.id || item._id;
+          if (key && !existingKeys.has(key)) {
+            dbState.feedbacks.push(item);
+            existingKeys.add(key);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.warn('[dbService] Error loading feedbacks from AsyncStorage:', err);
+  }
+  return getEnrichedFeedbacksFromDb();
+};
+
+/**
+ * Hợp nhất danh sách feedbacks (từ API hoặc storage) vào dbState và lưu xuống AsyncStorage
+ */
+export const mergeFeedbacksIntoDb = (incoming: any[]): EnrichedFeedback[] => {
+  if (!Array.isArray(incoming) || incoming.length === 0) {
+    return getEnrichedFeedbacksFromDb();
+  }
+
+  const existingKeys = new Set(dbState.feedbacks.map((f) => f.id || f._id));
+  const newItems: any[] = [];
+
+  for (const item of incoming) {
+    const key = item.id || item._id;
+    if (key && !existingKeys.has(key)) {
+      newItems.push(item);
+      existingKeys.add(key);
+    }
+  }
+
+  if (newItems.length > 0) {
+    dbState.feedbacks = [...newItems, ...dbState.feedbacks];
+    saveFeedbacksToStorage(dbState.feedbacks).catch(() => {});
+  }
+
+  return getEnrichedFeedbacksFromDb();
+};
+
+/**
  * Lấy danh sách feedbacks được gắn kèm thông tin sự kiện & người dùng từ db.json
  */
 export const getEnrichedFeedbacksFromDb = (eventId?: string): EnrichedFeedback[] => {
@@ -164,30 +291,11 @@ export const getEnrichedFeedbacksFromDb = (eventId?: string): EnrichedFeedback[]
     list = list.filter((f) => f.eventId === eventId);
   }
 
-  return list.map((f) => {
-    const author = dbState.users.find((u) => u.id === f.userId || u._id === f.userId);
-    const event = dbState.events.find((e) => e.id === f.eventId || e._id === f.eventId);
-
-    return {
-      id: f.id || f._id,
-      _id: f._id || f.id,
-      eventId: f.eventId,
-      userId: f.userId,
-      rating: f.rating || 5,
-      comment: f.comment || '',
-      createdAt: f.createdAt || new Date().toISOString(),
-      userName: author ? (author.name || (author as any).fullName) : 'Sinh viên IUH',
-      userAvatar: author?.avatarUrl || (author as any)?.avatar,
-      userFaculty: author?.faculty || 'Trường ĐH Công nghiệp TP.HCM',
-      eventTitle: event?.title || 'Sự kiện IUH',
-      eventCategory: event?.category || 'Sự kiện',
-      eventImage: event?.images?.[0] || 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&w=800&q=80',
-    };
-  });
+  return list.map(enrichFeedback);
 };
 
 /**
- * Thêm một đánh giá mới vào bộ dữ liệu dbState trong memory
+ * Thêm một đánh giá mới vào bộ dữ liệu dbState và lưu bền vững vào AsyncStorage
  */
 export const addFeedbackToDb = (data: {
   eventId: string;
@@ -209,19 +317,10 @@ export const addFeedbackToDb = (data: {
   };
 
   dbState.feedbacks.unshift(newFeedback);
+  // Tự động lưu bền vững vào local storage
+  saveFeedbacksToStorage(dbState.feedbacks).catch(() => {});
 
-  const author = dbState.users.find((u) => u.id === data.userId || u._id === data.userId);
-  const event = dbState.events.find((e) => e.id === data.eventId || e._id === data.eventId);
-
-  return {
-    ...newFeedback,
-    userName: author ? (author.name || (author as any).fullName) : 'Nguyễn Văn A',
-    userAvatar: author?.avatarUrl || (author as any)?.avatar || 'https://i.pravatar.cc/300?img=12',
-    userFaculty: author?.faculty || 'Khoa Công nghệ thông tin',
-    eventTitle: event?.title || 'Sự kiện đã đánh giá',
-    eventCategory: event?.category || 'Học thuật',
-    eventImage: event?.images?.[0] || 'https://images.unsplash.com/photo-1515187029135-18ee286d815b?auto=format&fit=crop&w=800&q=80',
-  };
+  return enrichFeedback(newFeedback);
 };
 
 export default {
@@ -234,6 +333,11 @@ export default {
   findDbEvent,
   getUserStatsFromDb,
   getAttendedEventsFromDb,
+  getOnlyAttendedEventsFromDb,
+  enrichFeedback,
   getEnrichedFeedbacksFromDb,
+  saveFeedbacksToStorage,
+  loadFeedbacksFromStorage,
+  mergeFeedbacksIntoDb,
   addFeedbackToDb,
 };

@@ -1,5 +1,6 @@
 export interface Feedback {
   _id: string;
+  id?: string;
   eventId: string;
   userId: string;
   rating: number; // 1 – 5

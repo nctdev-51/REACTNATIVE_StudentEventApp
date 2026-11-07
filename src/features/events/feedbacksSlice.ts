@@ -21,6 +21,20 @@ const initialState: FeedbacksState = {
 
 // ─── Async Thunks ─────────────────────────────────────────────────────────────
 
+/** Lấy toàn bộ feedbacks: GET /feedbacks */
+export const fetchAllFeedbacks = createAsyncThunk(
+  'feedbacks/fetchAll',
+  async (_, { rejectWithValue }) => {
+    try {
+      return await api.getAllFeedbacks();
+    } catch (err: any) {
+      return rejectWithValue(
+        err?.response?.data?.message ?? err?.message ?? 'Không thể tải đánh giá'
+      );
+    }
+  }
+);
+
 /** Lấy feedbacks của sự kiện: GET /feedbacks?eventId=... */
 export const fetchFeedbacksByEvent = createAsyncThunk(
   'feedbacks/fetchByEvent',
@@ -63,6 +77,21 @@ const feedbacksSlice = createSlice({
     },
   },
   extraReducers: (builder) => {
+    // Fetch All
+    builder
+      .addCase(fetchAllFeedbacks.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchAllFeedbacks.fulfilled, (state, action) => {
+        state.loading = false;
+        state.eventFeedbacks = action.payload;
+      })
+      .addCase(fetchAllFeedbacks.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      });
+
     // Fetch
     builder
       .addCase(fetchFeedbacksByEvent.pending, (state) => {
