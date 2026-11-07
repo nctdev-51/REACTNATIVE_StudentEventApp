@@ -33,12 +33,14 @@ import {
   XStack,
   Card,
   Button,
-  Heading,
-  Paragraph,
-  Text as TamaguiText,
   Input as TamaguiInput,
   Spinner,
 } from "tamagui";
+import {
+  AppText as TamaguiText,
+  AppHeading as Heading,
+  AppParagraph as Paragraph,
+} from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
@@ -57,6 +59,7 @@ import {
   getDefaultDbUser,
   getUserStatsFromDb,
   loadFeedbacksFromStorage,
+  findDbEvent,
 } from "../../data/dbService";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
@@ -694,7 +697,14 @@ export default function ProfileScreen({
   const dispatch = useAppDispatch();
 
   const currentUser = useAppSelector((state) => state.auth.user);
+<<<<<<< HEAD
   const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
+=======
+  const myRegistrations = useAppSelector(
+    (state) => state.registrations.myRegistrations,
+  );
+  const eventsList = useAppSelector((state) => state.events.list);
+>>>>>>> e99db1b (feat: cap nhat font trang ca nhan & feedback, sua hien thi QR admin va tinh dong diem ren luyen tich luy)
 
   const defaultStudent = getDefaultDbUser();
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
@@ -730,25 +740,33 @@ export default function ProfileScreen({
 
   const loadPersonalReviews = useCallback(async () => {
     try {
-      // 1. Đồng bộ trực tiếp từ API Backend_v2 MongoDB
-      const apiFeedbacks = targetUserId
-        ? await api.getFeedbacksByUser(targetUserId)
+      // 1. Lấy trực tiếp từ Backend MongoDB qua API
+      const queryId = targetUserId || currentUser?.studentId || defaultStudent?._id;
+      const apiFeedbacks = queryId
+        ? await api.getFeedbacksByUser(queryId)
         : await api.getAllFeedbacks();
 
       if (Array.isArray(apiFeedbacks)) {
+        const targetStudentId = currentUser?.studentId || defaultStudent?.studentId;
         const userFeedbacks = apiFeedbacks.filter((f: any) => {
           const uId =
             typeof f.userId === "object" && f.userId !== null
               ? f.userId._id || f.userId.id
               : f.userId;
+          const uStudentId =
+            typeof f.userId === "object" && f.userId !== null
+              ? f.userId.studentId
+              : null;
           return (
-            !targetUserId ||
-            uId === targetUserId ||
+            !queryId ||
+            uId === queryId ||
+            (targetUserId && uId === targetUserId) ||
+            (targetStudentId && uStudentId === targetStudentId) ||
             (defaultStudent?._id && uId === defaultStudent._id)
           );
         });
 
-        // Đếm số sự kiện phân biệt (distinct eventId) mà sinh viên đã gửi đánh giá
+        // Đếm số sự kiện phân biệt (distinct eventId) sinh viên đã gửi đánh giá
         const reviewedEventIds = new Set(
           userFeedbacks
             .map((f: any) =>
@@ -758,11 +776,13 @@ export default function ProfileScreen({
             )
             .filter(Boolean),
         );
-        setPersonalReviewsCount(reviewedEventIds.size);
+
+        const count = reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length;
+        setPersonalReviewsCount(count);
         return;
       }
 
-      // 2. Fallback sang local storage & dbService nếu offline
+      // 2. Fallback sang local storage nếu offline
       const allFeedbacks = await loadFeedbacksFromStorage();
       const userFeedbacks = allFeedbacks.filter((f) => {
         const fUser: any = f.userId;
@@ -778,16 +798,20 @@ export default function ProfileScreen({
       const reviewedEventIds = new Set(
         userFeedbacks.map((f) => f.eventId).filter(Boolean),
       );
-      setPersonalReviewsCount(reviewedEventIds.size);
+      setPersonalReviewsCount(reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length);
     } catch {
       const stats = getUserStatsFromDb(targetUserId);
       setPersonalReviewsCount(stats.reviews);
     }
 <<<<<<< HEAD
+<<<<<<< HEAD
   }, [dispatch, currentUser?._id, defaultStudent?._id]);
 >>>>>>> e79c48e (abc)
 =======
   }, [targetUserId, defaultStudent?._id]);
+=======
+  }, [targetUserId, currentUser?.studentId, defaultStudent?._id, defaultStudent?.studentId]);
+>>>>>>> e99db1b (feat: cap nhat font trang ca nhan & feedback, sua hien thi QR admin va tinh dong diem ren luyen tich luy)
 
   useEffect(() => {
     if (targetUserId) {
@@ -832,6 +856,7 @@ export default function ProfileScreen({
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   const eventsAttendedCount = myRegistrations.filter((r) => r.status === 'checked_in').length;
   const pointsAccumulated = currentUser?.point ?? 0;
   const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
@@ -848,14 +873,38 @@ export default function ProfileScreen({
     (r) => r.status === "checked_in" || (r.status as string) === "completed",
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   ).length;
+=======
+  const attendedRegistrations = myRegistrations.filter(
+    (r) => r.status === "checked_in" || (r.status as string) === "completed",
+  );
+  const registeredAttended = attendedRegistrations.length;
+>>>>>>> e99db1b (feat: cap nhat font trang ca nhan & feedback, sua hien thi QR admin va tinh dong diem ren luyen tich luy)
   const eventsAttendedCount =
     myRegistrations.length > 0
       ? registeredAttended
       : getUserStatsFromDb(targetUserId).eventsAttended;
+
+  // Điểm tích luỹ bằng tổng điểm rèn luyện các sự kiện đã tham gia
+  const calculatedPointsFromEvents = attendedRegistrations.reduce((sum, r) => {
+    const eventObj: any = r.eventId;
+    let pts = 0;
+    if (typeof eventObj === "object" && eventObj !== null) {
+      pts = Number(eventObj.trainingPoints) || 0;
+    } else if (typeof eventObj === "string") {
+      const found =
+        eventsList.find((e: any) => (e._id || e.id) === eventObj) ||
+        findDbEvent(eventObj);
+      pts = Number(found?.trainingPoints) || 0;
+    }
+    return sum + pts;
+  }, 0);
+
   const pointsAccumulated =
-    currentUser?.point ??
-    defaultStudent?.point ??
-    getUserStatsFromDb(targetUserId).pointsAccumulated;
+    calculatedPointsFromEvents > 0
+      ? calculatedPointsFromEvents
+      : (currentUser?.point ??
+        defaultStudent?.point ??
+        getUserStatsFromDb(targetUserId).pointsAccumulated);
   const reviewsCount = personalReviewsCount;
 
   const handleOpenEditProfile = () => {
