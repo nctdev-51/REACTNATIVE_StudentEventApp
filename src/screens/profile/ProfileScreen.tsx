@@ -33,12 +33,10 @@ import { logout, updateUser } from "../../features/auth/authSlice";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
-import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme";
 import {
   getDefaultDbUser,
   getUserStatsFromDb,
-  loadFeedbacksFromStorage,
   findDbEvent,
 } from "../../data/dbService";
 
@@ -62,11 +60,8 @@ export interface UserProfile {
   stats?: ActivityStats;
 }
 
-export type TabKey = "home" | "schedule" | "checkin" | "profile";
-
 export interface ProfileScreenProps {
   profile?: UserProfile;
-  initialTab?: TabKey;
 }
 
 // ---------------------------------------------------------------------------
@@ -173,7 +168,6 @@ function ActivityStatItem({
 
 export default function ProfileScreen({
   profile,
-  initialTab = "profile",
 }: ProfileScreenProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<MainStackParamList>>();
@@ -187,7 +181,6 @@ export default function ProfileScreen({
   const eventsList = useAppSelector((state) => state.events.list);
 
   const defaultStudent = getDefaultDbUser();
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [imageError, setImageError] = useState<boolean>(false);
 
   // Edit Profile Modal State
@@ -246,26 +239,7 @@ export default function ProfileScreen({
 
         const count = reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length;
         setPersonalReviewsCount(count);
-        return;
       }
-
-      // 2. Fallback sang local storage nếu offline
-      const allFeedbacks = await loadFeedbacksFromStorage();
-      const userFeedbacks = allFeedbacks.filter((f) => {
-        const fUser: any = f.userId;
-        const uId =
-          typeof fUser === "object" && fUser !== null
-            ? fUser._id || fUser.id
-            : fUser;
-        return (
-          uId === targetUserId ||
-          (defaultStudent?._id && uId === defaultStudent._id)
-        );
-      });
-      const reviewedEventIds = new Set(
-        userFeedbacks.map((f) => f.eventId).filter(Boolean),
-      );
-      setPersonalReviewsCount(reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length);
     } catch {
       const stats = getUserStatsFromDb(targetUserId);
       setPersonalReviewsCount(stats.reviews);
@@ -281,7 +255,6 @@ export default function ProfileScreen({
 
   useFocusEffect(
     useCallback(() => {
-      setActiveTab("profile");
       loadPersonalReviews();
     }, [loadPersonalReviews]),
   );
@@ -342,7 +315,6 @@ export default function ProfileScreen({
       : (currentUser?.point ??
         defaultStudent?.point ??
         getUserStatsFromDb(targetUserId).pointsAccumulated);
-  const reviewsCount = personalReviewsCount;
 
   const handleOpenEditProfile = () => {
     setEditFullName(currentUser?.fullName || displayName);
@@ -381,24 +353,6 @@ export default function ProfileScreen({
       );
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  // Xử lý chuyển tab dưới cùng
-  const handleTabPress = (tab: AppTabKey) => {
-    setActiveTab(tab);
-    switch (tab) {
-      case "home":
-        navigation.navigate("Home");
-        break;
-      case "schedule":
-        navigation.navigate("MySchedule");
-        break;
-      case "checkin":
-        navigation.navigate("CheckIn");
-        break;
-      case "profile":
-        break;
     }
   };
 
@@ -565,7 +519,7 @@ export default function ProfileScreen({
               labelColor={theme.textSecondary}
             />
             <ActivityStatItem
-              value={reviewsCount}
+              value={personalReviewsCount}
               label="Đã đánh giá"
               accentColor={theme.primary}
               labelColor={theme.textSecondary}
@@ -802,7 +756,7 @@ export default function ProfileScreen({
                   marginBottom={10}
                 >
                   <TamaguiText fontSize={13} color="#64748B" fontWeight="600">
-                    {currentUser?.email || "sv@iuh.edu.vn"}
+                    {email}
                   </TamaguiText>
                   <XStack
                     backgroundColor="#E2E8F0"

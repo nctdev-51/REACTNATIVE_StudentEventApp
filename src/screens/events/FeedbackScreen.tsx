@@ -31,8 +31,7 @@ import {
 } from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
-import { useAppDispatch, useAppSelector } from "../../hooks/redux";
-import { submitFeedback } from "../../features/events/feedbacksSlice";
+import { useAppSelector } from "../../hooks/redux";
 import { useAppTheme } from "../../theme";
 import api from "../../services/api";
 import {
@@ -42,10 +41,8 @@ import {
   getOnlyAttendedEventsFromDb,
   getEnrichedFeedbacksFromDb,
   loadFeedbacksFromStorage,
-  saveFeedbacksToStorage,
   mergeFeedbacksIntoDb,
   enrichFeedback,
-  addFeedbackToDb,
   EnrichedFeedback,
 } from "../../data/dbService";
 
@@ -64,7 +61,6 @@ interface StarRatingProps {
   size?: number;
   starActive: string;
   starInactive: string;
-  readonly?: boolean;
 }
 
 function StarRating({
@@ -73,7 +69,6 @@ function StarRating({
   size = 36,
   starActive,
   starInactive,
-  readonly = false,
 }: StarRatingProps) {
   const ratingLabels: Record<number, string> = {
     1: "1/5 - Cần cải thiện",
@@ -97,9 +92,9 @@ function StarRating({
           return (
             <TouchableOpacity
               key={star}
-              onPress={() => !readonly && onChange(star)}
-              activeOpacity={readonly ? 1 : 0.7}
-              disabled={readonly}
+              onPress={() => onChange(star)}
+              activeOpacity={0.7}
+              
               accessibilityRole="button"
               accessibilityLabel={`${star} sao`}
               style={starStyles.touchable}
@@ -131,7 +126,6 @@ const starStyles = StyleSheet.create({
 export default function FeedbackScreen() {
   const navigation = useNavigation<FeedbackNavProp>();
   const route = useRoute<FeedbackRouteProp>();
-  const dispatch = useAppDispatch();
   const { theme, isDark } = useAppTheme();
 
   const authUser = useAppSelector((s) => s.auth.user);
@@ -433,13 +427,6 @@ export default function FeedbackScreen() {
           return [enrichedServer, ...filtered];
         });
         mergeFeedbacksIntoDb([serverRes]);
-      } else {
-        const newEnriched = addFeedbackToDb(payload);
-        setFeedbacks((prev) => {
-          const key = newEnriched.id || newEnriched._id;
-          const filtered = prev.filter((f) => (f.id || f._id) !== key);
-          return [newEnriched, ...filtered];
-        });
       }
 
       // Xoá draft comment
