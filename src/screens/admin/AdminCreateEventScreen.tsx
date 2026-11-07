@@ -18,6 +18,8 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
 import { createEvent } from '../../services/api';
 import { EventCoordinates } from '../../types';
+import SemesterPicker from '../../components/events/SemesterPicker';
+import { getCurrentSemesterId } from '../../utils/semester';
 import {
   geocodeAddress,
   getCurrentPosition,
@@ -40,6 +42,7 @@ export default function AdminCreateEventScreen() {
   const [category, setCategory] = useState('Học thuật');
   const [location, setLocation] = useState('Hội trường E4, Trường Đại học Công nghiệp TP.HCM');
   const [trainingPoints, setTrainingPoints] = useState('5');
+  const [semesterId, setSemesterId] = useState<string | null>(getCurrentSemesterId());
   const [description, setDescription] = useState('');
 
   // GPS Geocoding State
@@ -116,6 +119,7 @@ export default function AdminCreateEventScreen() {
         category,
         location: location.trim(),
         coordinates: coords || undefined,
+        semesterId: semesterId || undefined,
         trainingPoints: parseInt(trainingPoints, 10) || 5,
         description: description.trim() || 'Sự kiện do Ban Chấp hành Đoàn trường tổ chức.',
         time: {
@@ -220,6 +224,16 @@ export default function AdminCreateEventScreen() {
                   );
                 })}
               </View>
+            </View>
+
+            {/* Học kỳ */}
+            <View style={styles.fieldGroup}>
+              <Text style={[styles.label, { color: theme.textSecondary }]}>Học kỳ tổ chức</Text>
+              <SemesterPicker
+                value={semesterId}
+                onChange={setSemesterId}
+                allowAll={false}
+              />
             </View>
 
             {/* Điểm rèn luyện */}

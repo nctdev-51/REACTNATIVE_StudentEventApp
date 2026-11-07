@@ -475,6 +475,7 @@ export const createEvent = async (
         "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
     ],
     trainingPoints: eventData.trainingPoints ?? 5,
+    semesterId: eventData.semesterId,
     status: (eventData.status as any) || "upcoming",
     aiSummary: {
       what: eventData.title || "Sự kiện trường",
