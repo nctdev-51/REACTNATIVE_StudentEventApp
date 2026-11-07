@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { useNavigation } from '@react-navigation/native';
 import {
   Modal,
   StyleSheet,
@@ -39,6 +40,7 @@ export default function AdminLocationModal({
   onSuccess,
 }: AdminLocationModalProps) {
   const { theme, isDark } = useAppTheme();
+  const navigation = useNavigation<any>();
   const [searchQuery, setSearchQuery] = useState<string>(event.location || '');
   const [searching, setSearching] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
@@ -359,6 +361,29 @@ export default function AdminLocationModal({
               >
                 <Text style={[styles.mapsBtnText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>🗺️ Xem trên Google Maps</Text>
               </TouchableOpacity>
+
+              {/* Phím tắt mở mã QR điểm danh trực tiếp từ modal */}
+              <TouchableOpacity
+                style={[
+                  styles.qrShortcutBtn,
+                  {
+                    backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF',
+                    borderColor: isDark ? '#3B82F6' : '#93C5FD',
+                  },
+                ]}
+                onPress={() => {
+                  onClose();
+                  navigation.navigate('AdminQRDisplay', {
+                    eventId: event._id || (event as any).id,
+                    eventTitle: event.title,
+                  });
+                }}
+                activeOpacity={0.8}
+              >
+                <Text style={[styles.qrShortcutBtnText, { color: theme.primary }]}>
+                  📷 Mở mã QR điểm danh của sự kiện này
+                </Text>
+              </TouchableOpacity>
             </View>
           </ScrollView>
 
@@ -615,6 +640,15 @@ const styles = StyleSheet.create({
     color: '#FFFFFF',
     fontWeight: '700',
   },
+  qrShortcutBtn: {
+    width: '100%',
+    paddingVertical: 12,
+    borderRadius: 12,
+    alignItems: 'center',
+    borderWidth: 1.5,
+    marginTop: 8,
+  },
+  qrShortcutBtnText: { fontSize: 13, fontWeight: '700' },
   mapsBtn: {
     alignItems: 'center',
     paddingVertical: 8,

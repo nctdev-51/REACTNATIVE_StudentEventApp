@@ -18,12 +18,14 @@ import {
   XStack,
   Card,
   Button,
-  Heading,
-  Paragraph,
-  Text as TamaguiText,
   Input as TamaguiInput,
   Spinner,
 } from "tamagui";
+import {
+  AppText as TamaguiText,
+  AppHeading as Heading,
+  AppParagraph as Paragraph,
+} from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
@@ -37,6 +39,7 @@ import {
   getDefaultDbUser,
   getUserStatsFromDb,
   loadFeedbacksFromStorage,
+  findDbEvent,
 } from "../../data/dbService";
 
 // ---------------------------------------------------------------------------
@@ -181,6 +184,7 @@ export default function ProfileScreen({
   const myRegistrations = useAppSelector(
     (state) => state.registrations.myRegistrations,
   );
+  const eventsList = useAppSelector((state) => state.events.list);
 
   const defaultStudent = getDefaultDbUser();
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
@@ -203,25 +207,33 @@ export default function ProfileScreen({
 
   const loadPersonalReviews = useCallback(async () => {
     try {
-      // 1. Đồng bộ trực tiếp từ API Backend_v2 MongoDB
-      const apiFeedbacks = targetUserId
-        ? await api.getFeedbacksByUser(targetUserId)
+      // 1. Lấy trực tiếp từ Backend MongoDB qua API
+      const queryId = targetUserId || currentUser?.studentId || defaultStudent?._id;
+      const apiFeedbacks = queryId
+        ? await api.getFeedbacksByUser(queryId)
         : await api.getAllFeedbacks();
 
       if (Array.isArray(apiFeedbacks)) {
+        const targetStudentId = currentUser?.studentId || defaultStudent?.studentId;
         const userFeedbacks = apiFeedbacks.filter((f: any) => {
           const uId =
             typeof f.userId === "object" && f.userId !== null
               ? f.userId._id || f.userId.id
               : f.userId;
+          const uStudentId =
+            typeof f.userId === "object" && f.userId !== null
+              ? f.userId.studentId
+              : null;
           return (
-            !targetUserId ||
-            uId === targetUserId ||
+            !queryId ||
+            uId === queryId ||
+            (targetUserId && uId === targetUserId) ||
+            (targetStudentId && uStudentId === targetStudentId) ||
             (defaultStudent?._id && uId === defaultStudent._id)
           );
         });
 
-        // Đếm số sự kiện phân biệt (distinct eventId) mà sinh viên đã gửi đánh giá
+        // Đếm số sự kiện phân biệt (distinct eventId) sinh viên đã gửi đánh giá
         const reviewedEventIds = new Set(
           userFeedbacks
             .map((f: any) =>
@@ -231,11 +243,13 @@ export default function ProfileScreen({
             )
             .filter(Boolean),
         );
-        setPersonalReviewsCount(reviewedEventIds.size);
+
+        const count = reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length;
+        setPersonalReviewsCount(count);
         return;
       }
 
-      // 2. Fallback sang local storage & dbService nếu offline
+      // 2. Fallback sang local storage nếu offline
       const allFeedbacks = await loadFeedbacksFromStorage();
       const userFeedbacks = allFeedbacks.filter((f) => {
         const fUser: any = f.userId;
@@ -251,12 +265,12 @@ export default function ProfileScreen({
       const reviewedEventIds = new Set(
         userFeedbacks.map((f) => f.eventId).filter(Boolean),
       );
-      setPersonalReviewsCount(reviewedEventIds.size);
+      setPersonalReviewsCount(reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length);
     } catch {
       const stats = getUserStatsFromDb(targetUserId);
       setPersonalReviewsCount(stats.reviews);
     }
-  }, [targetUserId, defaultStudent?._id]);
+  }, [targetUserId, currentUser?.studentId, defaultStudent?._id, defaultStudent?.studentId]);
 
   useEffect(() => {
     if (targetUserId) {
@@ -298,17 +312,36 @@ export default function ProfileScreen({
   const phone =
     currentUser?.phone || profile?.phone || defaultStudent?.phone || "";
 
-  const registeredAttended = myRegistrations.filter(
+  const attendedRegistrations = myRegistrations.filter(
     (r) => r.status === "checked_in" || (r.status as string) === "completed",
-  ).length;
+  );
+  const registeredAttended = attendedRegistrations.length;
   const eventsAttendedCount =
     myRegistrations.length > 0
       ? registeredAttended
       : getUserStatsFromDb(targetUserId).eventsAttended;
+
+  // Điểm tích luỹ bằng tổng điểm rèn luyện các sự kiện đã tham gia
+  const calculatedPointsFromEvents = attendedRegistrations.reduce((sum, r) => {
+    const eventObj: any = r.eventId;
+    let pts = 0;
+    if (typeof eventObj === "object" && eventObj !== null) {
+      pts = Number(eventObj.trainingPoints) || 0;
+    } else if (typeof eventObj === "string") {
+      const found =
+        eventsList.find((e: any) => (e._id || e.id) === eventObj) ||
+        findDbEvent(eventObj);
+      pts = Number(found?.trainingPoints) || 0;
+    }
+    return sum + pts;
+  }, 0);
+
   const pointsAccumulated =
-    currentUser?.point ??
-    defaultStudent?.point ??
-    getUserStatsFromDb(targetUserId).pointsAccumulated;
+    calculatedPointsFromEvents > 0
+      ? calculatedPointsFromEvents
+      : (currentUser?.point ??
+        defaultStudent?.point ??
+        getUserStatsFromDb(targetUserId).pointsAccumulated);
   const reviewsCount = personalReviewsCount;
 
   const handleOpenEditProfile = () => {
