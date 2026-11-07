@@ -20,6 +20,7 @@ import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { registerUser, clearError } from '../../features/auth/authSlice';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '../../theme';
 import { useAppTheme } from '../../theme/ThemeContext';
+import { Ionicons } from '@expo/vector-icons';
 
 type RegisterNavProp = NativeStackNavigationProp<AuthStackParamList, 'Register'>;
 
@@ -27,7 +28,7 @@ interface Field {
   key: string;
   label: string;
   placeholder: string;
-  icon: string;
+  icon: React.ComponentProps<typeof Ionicons>['name'];
   keyboardType?: any;
   autoCapitalize?: any;
   secure?: boolean;
@@ -38,21 +39,21 @@ const FIELDS: Field[] = [
     key: 'studentId',
     label: 'Mã sinh viên',
     placeholder: 'VD: 20123456',
-    icon: '🪪',
+    icon: 'card-outline',
     autoCapitalize: 'characters',
   },
   {
     key: 'fullName',
     label: 'Họ và tên',
     placeholder: 'Nguyễn Văn A',
-    icon: '👤',
+    icon: 'person-outline',
     autoCapitalize: 'words',
   },
   {
     key: 'email',
     label: 'Email',
     placeholder: 'sv@iuh.edu.vn',
-    icon: '📧',
+    icon: 'mail-outline',
     keyboardType: 'email-address',
     autoCapitalize: 'none',
   },
@@ -60,21 +61,21 @@ const FIELDS: Field[] = [
     key: 'faculty',
     label: 'Khoa / Ngành',
     placeholder: 'VD: Công nghệ thông tin',
-    icon: '🏫',
+    icon: 'school-outline',
     autoCapitalize: 'words',
   },
   {
     key: 'password',
     label: 'Mật khẩu',
     placeholder: 'Tối thiểu 6 ký tự',
-    icon: '🔒',
+    icon: 'lock-closed-outline',
     secure: true,
   },
   {
     key: 'confirmPassword',
     label: 'Xác nhận mật khẩu',
     placeholder: 'Nhập lại mật khẩu',
-    icon: '🔐',
+    icon: 'shield-checkmark-outline',
     secure: true,
   },
 ];
@@ -190,7 +191,7 @@ export default function RegisterScreen() {
                     },
                   ]}
                 >
-                  <Text style={styles.inputIcon}>{field.icon}</Text>
+                  <Ionicons name={field.icon} size={20} color={theme.textTertiary} />
                   <TextInput
                     style={[styles.input, { color: theme.textPrimary }]}
                     placeholder={field.placeholder}
@@ -213,9 +214,7 @@ export default function RegisterScreen() {
                       onPress={() => toggleSecure(field.key)}
                       hitSlop={{ top: 8, bottom: 8, left: 8, right: 8 }}
                     >
-                      <Text style={styles.eyeIcon}>
-                        {showSecure[field.key] ? '🙈' : '👁️'}
-                      </Text>
+                      <Ionicons name={showSecure[field.key] ? 'eye-off-outline' : 'eye-outline'} size={21} color={theme.textTertiary} />
                     </TouchableOpacity>
                   )}
                 </View>
@@ -234,7 +233,7 @@ export default function RegisterScreen() {
                   },
                 ]}
               >
-                <Text style={[styles.errorText, { color: theme.danger }]}>⚠️ {error}</Text>
+                <View style={styles.inlineIconText}><Ionicons name="warning-outline" size={17} color={theme.danger} /><Text style={[styles.errorText, { color: theme.danger }]}>{error}</Text></View>
               </View>
             )}
 
@@ -364,6 +363,7 @@ const styles = StyleSheet.create({
     fontSize: Typography.sm,
     fontWeight: '500',
   },
+  inlineIconText: { flexDirection: 'row', alignItems: 'center', gap: 6 },
 
   // Submit
   submitBtn: {

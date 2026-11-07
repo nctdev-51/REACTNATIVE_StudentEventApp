@@ -11,6 +11,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation } from "@react-navigation/native";
 
 import CategoryChip from "../../components/events/CategoryChip";
+import SemesterPicker from "../../components/events/SemesterPicker";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { useAppTheme } from "../../theme/ThemeContext";
 
@@ -18,6 +19,7 @@ import {
   setFilterCategory,
   setFilterFaculty,
   setFilterDate,
+  setFilterSemester,
   resetFilter,
 } from "../../features/events/eventsSlice";
 
@@ -64,6 +66,10 @@ export default function FilterScreen() {
     filter.date
   );
 
+  const [semesterId, setSemesterId] = useState(
+    filter.semesterId
+  );
+
   const handleApply = () => {
     dispatch(
       setFilterCategory(
@@ -78,6 +84,7 @@ export default function FilterScreen() {
     );
 
     dispatch(setFilterDate(date));
+    dispatch(setFilterSemester(semesterId));
 
     navigation.goBack();
   };
@@ -86,6 +93,7 @@ export default function FilterScreen() {
     setCategory("Tất cả");
     setFaculty("Tất cả");
     setDate(null);
+    setSemesterId(null);
 
     dispatch(resetFilter());
   };
@@ -110,6 +118,17 @@ export default function FilterScreen() {
             <Text style={[styles.close, { color: theme.textSecondary }]}>✕</Text>
           </TouchableOpacity>
         </View>
+
+        {/* Học kỳ */}
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          Học kỳ
+        </Text>
+
+        <SemesterPicker
+          value={semesterId}
+          onChange={setSemesterId}
+          style={styles.semesterPicker}
+        />
 
         {/* Chủ đề */}
         <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
@@ -255,6 +274,10 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     gap: 10,
+    marginBottom: 22,
+  },
+
+  semesterPicker: {
     marginBottom: 22,
   },
 

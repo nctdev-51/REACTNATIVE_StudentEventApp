@@ -73,3 +73,8 @@ export async function getEventReminders(userId: string) {
   return (await Notifications.getAllScheduledNotificationsAsync())
     .filter(item => item.identifier.startsWith('event-reminder:') && item.content.data?.userId === userId);
 }
+
+export async function cancelEventReminder(eventId: string, userId: string) {
+  if (Platform.OS === 'web') return;
+  await Notifications.cancelScheduledNotificationAsync(reminderIdentifier(userId, eventId));
+}

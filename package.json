@@ -16,6 +16,7 @@
     "expo": "~58.0.19",
     "expo-camera": "~58.0.12",
     "expo-constants": "~58.0.13",
+    "expo-linking": "~58.0.16",
     "expo-location": "~58.0.19",
     "expo-notifications": "~58.1.6",
     "expo-status-bar": "~58.0.4",
@@ -50,6 +51,7 @@
     "postinstall": "node scripts/patch-notifications.js",
     "server:tunnel": "npx localtunnel --port 5000",
     "server:ngrok": "npx ngrok http 5000"
+    ,"test": "node --test --test-force-exit tests/*.test.cjs"
   },
   "private": true
 }

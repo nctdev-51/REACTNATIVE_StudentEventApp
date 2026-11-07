@@ -15,6 +15,7 @@ import {
   RefreshControl,
   ActivityIndicator,
 } from "react-native";
+import { Ionicons } from "@expo/vector-icons";
 import {
   SafeAreaView,
   useSafeAreaInsets,
@@ -26,6 +27,10 @@ import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import {
   fetchEvents,
   setFilterCategory,
+  setFilterFaculty,
+  setFilterDate,
+  setFilterStatus,
+  setFilterSemester,
   selectFilteredEvents,
 } from "../../features/events/eventsSlice";
 import {
@@ -33,6 +38,7 @@ import {
   selectUnreadCount,
 } from "../../features/notifications/notificationsSlice";
 import SearchBar from "../../components/events/SearchBar";
+import SemesterPicker from "../../components/events/SemesterPicker";
 import { isEventPast } from "../../services/api";
 import CategoryChip from "../../components/events/CategoryChip";
 import FeaturedEventCard from "../../components/events/FeaturedEventCard";
@@ -61,7 +67,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useAppTheme();
 
-  const { loading, error, filter } = useAppSelector((state) => state.events);
+  const { loading, error, filter, list: allEvents } = useAppSelector((state) => state.events);
   const filteredEvents = useAppSelector(selectFilteredEvents);
   const user = useAppSelector((state) => state.auth.user);
   const unreadCount = useAppSelector(selectUnreadCount);
@@ -92,8 +98,18 @@ export default function HomeScreen() {
 
   // Chọn category
   const handleCategorySelect = (category: string) => {
-    dispatch(setFilterCategory(category === "Tất cả" ? null : category));
-  };
+  // Xóa các bộ lọc nâng cao cũ
+  dispatch(setFilterFaculty(null));
+  dispatch(setFilterDate(null));
+  dispatch(setFilterStatus(null));
+
+  // Chỉ giữ category vừa chọn
+  dispatch(
+    setFilterCategory(
+      category === "Tất cả" ? null : category
+    )
+  );
+};
 
   const selectedCategory = filter.category ?? "Tất cả";
 
@@ -135,6 +151,7 @@ export default function HomeScreen() {
     filter.date,
     filter.status,
     filter.searchQuery,
+    filter.semesterId,
   ]);
 
   const userName = user?.fullName ?? "Sinh viên";
@@ -172,9 +189,11 @@ export default function HomeScreen() {
           activeOpacity={0.8}
           accessibilityLabel="Mở hồ sơ cá nhân"
         >
-          <Text style={styles.avatarText}>
-            {userName ? userName.charAt(0).toUpperCase() : "👤"}
-          </Text>
+          {userName ? (
+            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
+          ) : (
+            <Ionicons name="person-outline" size={22} color={theme.primary} />
+          )}
         </TouchableOpacity>
       </View>
 
@@ -191,7 +210,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("CheckIn")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>📷</Text>
+          <Ionicons name="qr-code-outline" size={21} color={theme.primary} />
           <Text style={styles.quickNavTextHighlight}>Quét QR Check-in</Text>
         </TouchableOpacity>
 
@@ -206,7 +225,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("MySchedule")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>📅</Text>
+          <Ionicons name="calendar-outline" size={21} color={theme.textSecondary} />
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Lịch của tôi</Text>
         </TouchableOpacity>
 
@@ -226,7 +245,7 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("Notification")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>🔔</Text>
+          <Ionicons name="notifications-outline" size={21} color={unreadCount > 0 ? "#D97706" : theme.textSecondary} />
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>
             Thông báo{unreadCount > 0 ? ` (${unreadCount})` : ""}
           </Text>
@@ -243,14 +262,32 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("Profile")}
           activeOpacity={0.8}
         >
-          <Text style={styles.quickNavIcon}>👤</Text>
+          <Ionicons name="person-outline" size={21} color={theme.textSecondary} />
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Hồ sơ</Text>
         </TouchableOpacity>
       </View>
 
+      {/* Chọn học kỳ — hoạt động hiển thị theo học kỳ đã chọn */}
+      <SemesterPicker
+        value={filter.semesterId}
+        onChange={(semesterId) => dispatch(setFilterSemester(semesterId))}
+        events={allEvents}
+        style={styles.semesterPicker}
+      />
+
       {/* Tìm kiếm */}
       <SearchBar />
-
+{/* Bộ lọc nâng cao */}
+<TouchableOpacity
+  style={styles.filterButton}
+  onPress={() => navigation.navigate("Filter")}
+  activeOpacity={0.8}
+>
+  <View style={styles.filterButtonContent}>
+    <Ionicons name="options-outline" size={17} color={theme.primary} />
+    <Text style={styles.filterButtonText}>Bộ lọc nâng cao</Text>
+  </View>
+</TouchableOpacity>
       {/* Danh mục */}
       <ScrollView
         horizontal
@@ -282,7 +319,7 @@ export default function HomeScreen() {
       {/* Error */}
       {!!error && !loading && (
         <View style={styles.errorBox}>
-          <Text style={styles.errorIcon}>⚠️</Text>
+          <Ionicons name="warning-outline" size={32} color={Colors.error} style={styles.errorIcon} />
           <Text style={styles.errorTitle}>Không thể tải sự kiện</Text>
           <Text style={styles.errorDesc}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={loadData}>
@@ -369,7 +406,7 @@ export default function HomeScreen() {
             <EventCard event={item} />
           </TouchableOpacity>
         )}
-        ListHeaderComponent={renderListHeader}
+        ListHeaderComponent={renderListHeader()}
         ListEmptyComponent={
           !loading && !error && !featuredEvent ? (
             <View
@@ -381,12 +418,12 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              <Text style={styles.emptyIcon}>🗓️</Text>
+              <Ionicons name="calendar-clear-outline" size={32} color={theme.textTertiary} style={styles.emptyIcon} />
               <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
                 Không tìm thấy sự kiện
               </Text>
               <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
-                Hãy thử tìm kiếm hoặc chọn bộ lọc khác.
+                Học kỳ này chưa có hoạt động phù hợp. Hãy thử chọn học kỳ khác hoặc đổi bộ lọc.
               </Text>
             </View>
           ) : undefined
@@ -404,6 +441,29 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  semesterPicker: {
+    marginBottom: 16,
+  },
+  filterButton: {
+  borderWidth: 1,
+  borderColor: "#E2E8F0",
+  borderRadius: 12,
+  paddingVertical: 11,
+  alignItems: "center",
+  justifyContent: "center",
+  marginTop: 12,
+  backgroundColor: "#FFFFFF",
+  },
+  filterButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+  },
+  filterButtonText: {
+  color: Colors.primary,
+  fontSize: 14,
+  fontWeight: "600",
+  },
   safeArea: {
     flex: 1,
   },

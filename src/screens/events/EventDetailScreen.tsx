@@ -9,6 +9,7 @@ import {
   Share,
   StatusBar,
 } from "react-native";
+import * as Linking from "expo-linking";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import { Ionicons } from "@expo/vector-icons";
@@ -36,7 +37,11 @@ import {
   fetchEventById,
   clearSelectedEvent,
 } from "../../features/events/eventsSlice";
-import { registerForEvent } from "../../features/check-in/registrationsSlice";
+import {
+  fetchMyRegistrations,
+  registerForEvent,
+} from "../../features/check-in/registrationsSlice";
+import { Colors } from "../../theme";
 import { isEventPast, toggleHideEvent, deleteEvent } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
 import { summarizeEvent } from "../../services/api";
@@ -113,14 +118,22 @@ export default function EventDetailScreen() {
     (state) => state.registrations,
   );
 
-  // 2. Kiểm tra trạng thái đã đăng ký (hỗ trợ cả id và _id)
-  const existingReg = myRegistrations.find(
-    (registration) =>
-      (registration.eventId === eventId ||
-        registration.eventId === event?._id ||
-        registration.eventId === (event as any)?.id) &&
-      registration.status !== "cancelled",
-  );
+  // 2. Kiểm tra trạng thái đã đăng ký (hỗ trợ cả id, _id và object eventId)
+  const existingReg = myRegistrations.find((registration) => {
+    const regEventId =
+      typeof registration.eventId === "object" && registration.eventId !== null
+        ? (registration.eventId as { _id?: string; id?: string })._id ??
+          (registration.eventId as { id?: string }).id
+        : registration.eventId;
+    const currentId = eventId || event?._id || (event as any)?.id;
+    return (
+      (regEventId === currentId ||
+        regEventId === eventId ||
+        regEventId === event?._id ||
+        regEventId === (event as any)?.id) &&
+      registration.status !== "cancelled"
+    );
+  });
 
   const isRegistered = !!existingReg;
   const isPast = isEventPast(event);
@@ -155,10 +168,17 @@ export default function EventDetailScreen() {
       dispatch(fetchEventById(eventId));
     }
 
+    // A QR check-in can create/update a registration while this screen is not
+    // mounted. Refresh the source of truth before deciding whether to enable
+    // registration again.
+    if (user?._id) {
+      void dispatch(fetchMyRegistrations(user._id));
+    }
+
     return () => {
       dispatch(clearSelectedEvent());
     };
-  }, [eventId, dispatch]);
+  }, [eventId, dispatch, user?._id]);
 
   // Đăng ký sự kiện
   const handleRegister = async () => {
@@ -173,7 +193,12 @@ export default function EventDetailScreen() {
     }
 
     if (isRegistered) {
-      Alert.alert("Đã đăng ký", "Bạn đã đăng ký sự kiện này rồi.");
+      Alert.alert(
+        existingReg?.status === "checked_in" ? "Đã check-in" : "Đã đăng ký",
+        existingReg?.status === "checked_in"
+          ? "Bạn đã check-in sự kiện này, không thể đăng ký lại."
+          : "Bạn đã đăng ký sự kiện này rồi.",
+      );
       return;
     }
 
@@ -223,7 +248,7 @@ export default function EventDetailScreen() {
   const handleShare = async () => {
     if (!event) return;
     const targetId = event._id || (event as any).id || eventId;
-    const link = `studentevent://events/${targetId}`;
+    const link = Linking.createURL(`/events/${targetId}`);
 
     await Share.share({
       message: `${event.title}\n${link}`,
@@ -661,6 +686,8 @@ export default function EventDetailScreen() {
                   name={
                     isPast
                       ? "close-circle-outline"
+                      : existingReg?.status === "checked_in"
+                      ? "checkmark-done-circle"
                       : isRegistered
                       ? "checkmark-circle"
                       : "clipboard-outline"
@@ -671,8 +698,10 @@ export default function EventDetailScreen() {
                 <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
                   {isPast
                     ? "Đã hết hạn đăng ký"
+                    : existingReg?.status === "checked_in"
+                    ? "Đã check-in"
                     : isRegistered
-                    ? "Đã đăng ký tham gia"
+                    ? "Đã đăng ký"
                     : "Đăng ký tham gia"}
                 </TamaguiText>
               </XStack>

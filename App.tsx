@@ -3,6 +3,7 @@ import { StatusBar } from "expo-status-bar";
 import { Provider } from "react-redux";
 import { TamaguiProvider } from "tamagui";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import { GestureHandlerRootView } from "react-native-gesture-handler";
 import {
   NavigationContainer,
   DefaultTheme,
@@ -18,8 +19,13 @@ import { navigationRef } from "./src/navigation/navigationRef";
 import { ThemeProvider, useAppTheme } from "./src/theme";
 
 /* Cấu hình Deep Link cho sự kiện (Thảo Nguyên) */
+import * as Linking from "expo-linking";
+
 const linking = {
-  prefixes: ["studentevent://"],
+  prefixes: [
+    Linking.createURL("/"),
+    "studentevent://",
+  ],
   config: {
     screens: {
       EventDetail: "events/:eventId",
@@ -53,24 +59,26 @@ function AppContent() {
       };
 
   return (
-    <TamaguiProvider
-      config={tamaguiConfig as any}
-      defaultTheme={isDark ? "dark" : "light"}
-    >
-      <SafeAreaProvider>
-        <DrawerProvider>
-          <NavigationContainer
-            ref={navigationRef}
-            linking={linking}
-            theme={navigationTheme}
-          >
-            <StatusBar style={isDark ? "light" : "dark"} />
-            <RootNavigator />
-            <LeftNavbarDrawer />
-          </NavigationContainer>
-        </DrawerProvider>
-      </SafeAreaProvider>
-    </TamaguiProvider>
+    <GestureHandlerRootView style={{ flex: 1 }}>
+      <TamaguiProvider
+        config={tamaguiConfig as any}
+        defaultTheme={isDark ? "dark" : "light"}
+      >
+        <SafeAreaProvider>
+          <DrawerProvider>
+            <NavigationContainer
+              ref={navigationRef}
+              linking={linking}
+              theme={navigationTheme}
+            >
+              <StatusBar style={isDark ? "light" : "dark"} />
+              <RootNavigator />
+              <LeftNavbarDrawer />
+            </NavigationContainer>
+          </DrawerProvider>
+        </SafeAreaProvider>
+      </TamaguiProvider>
+    </GestureHandlerRootView>
   );
 }
 

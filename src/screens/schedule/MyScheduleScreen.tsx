@@ -667,7 +667,10 @@ export default function MyScheduleScreen({
               ? (r.eventId as any)
               : null;
           const matchedEvent =
-            populatedEvent || eventsList.find((e) => e._id === rawEventId);
+            populatedEvent ||
+            eventsList.find(
+              (e) => e._id === rawEventId || (e as { id?: string }).id === rawEventId,
+            );
 
           let dateStr = "Sắp diễn ra";
           let timeStr = "08:00";
