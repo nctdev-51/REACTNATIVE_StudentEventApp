@@ -1,67 +1,72 @@
 {
   "users": [
     {
-      "id": "66f1a1010000000000000001",
       "_id": "66f1a1010000000000000001",
-      "studentId": "SV01",
       "name": "Nguyễn Văn A",
       "email": "sv01@iuh.edu.vn",
-      "password": "123456",
+      "password": "$2a$12$E4bslbFMrY9HrlhZgRpFC.6fbC0t7naJs6by/0729GEQK988apiPG",
+      "role": "student",
+      "studentId": "SV01",
       "faculty": "Khoa Công nghệ thông tin",
       "point": 120,
-      "role": "student",
-      "phone": "0901234567",
+      "phone": null,
       "avatar": "https://i.pravatar.cc/300?img=12",
       "avatarUrl": "https://i.pravatar.cc/300?img=12",
       "status": "active",
       "isActive": true,
-      "createdAt": "2026-09-01T08:00:00.000Z"
+      "refreshToken": null,
+      "createdAt": "2026-11-06T17:45:42.805Z",
+      "updatedAt": "2026-11-06T17:45:42.805Z",
+      "id": "66f1a1010000000000000001"
     },
     {
-      "id": "66f1a1020000000000000002",
       "_id": "66f1a1020000000000000002",
-      "studentId": "SV02",
       "name": "Trần Thị Bích",
       "email": "sv02@iuh.edu.vn",
-      "password": "123456",
+      "password": "$2a$12$s2IJvil4jTvLdIYJnV07L.Ob6890m6Go.tscqyuW1dSEwa3Z8he2W",
+      "role": "student",
+      "studentId": "SV02",
       "faculty": "Khoa Kinh tế",
       "point": 85,
-      "role": "student",
-      "phone": "0912345678",
+      "phone": null,
       "avatar": "https://i.pravatar.cc/300?img=47",
       "avatarUrl": "https://i.pravatar.cc/300?img=47",
       "status": "active",
       "isActive": true,
-      "createdAt": "2026-09-02T09:00:00.000Z"
+      "refreshToken": null,
+      "createdAt": "2026-11-06T17:45:43.130Z",
+      "updatedAt": "2026-11-06T17:45:43.130Z",
+      "id": "66f1a1020000000000000002"
     },
     {
-      "id": "66f1a1030000000000000003",
       "_id": "66f1a1030000000000000003",
-      "studentId": "AD01",
       "name": "Ban Quản Trị Đoàn Hội",
       "email": "admin.doan@iuh.edu.vn",
-      "password": "admin123",
+      "password": "$2a$12$qZ.at0lUg5a3pysZk43mP.B2LIK9GXiMNlnHKjQo.DCrrUAisJR/i",
+      "role": "admin",
+      "studentId": "AD01",
       "faculty": "Phòng Công tác sinh viên",
       "point": 500,
-      "role": "admin",
-      "phone": "0987654321",
+      "phone": null,
       "avatar": "https://i.pravatar.cc/300?img=5",
       "avatarUrl": "https://i.pravatar.cc/300?img=5",
       "status": "active",
       "isActive": true,
-      "createdAt": "2026-08-15T07:30:00.000Z"
+      "refreshToken": null,
+      "createdAt": "2026-11-06T17:45:43.418Z",
+      "updatedAt": "2026-11-06T17:45:43.418Z",
+      "id": "66f1a1030000000000000003"
     }
   ],
   "events": [
     {
-      "id": "66f1e2010000000000000001",
       "_id": "66f1e2010000000000000001",
       "title": "Hội thảo Trí tuệ Nhân tạo và Ứng dụng trong Kỹ thuật 2026",
       "faculty": "Khoa Công nghệ thông tin",
       "category": "Học thuật",
       "time": {
-        "start": "2026-11-20T08:00:00.000Z",
-        "end": "2026-11-20T11:30:00.000Z"
+        "start": "2026-10-15T08:00:00.000Z",
+        "end": "2026-10-15T11:30:00.000Z"
       },
       "location": "Hội trường E4, Trường Đại học Công nghiệp TP.HCM",
       "organizer": "Khoa Công nghệ thông tin và Đoàn Thanh niên IUH",
@@ -72,22 +77,23 @@
       "trainingPoints": 10,
       "aiSummary": {
         "what": "Hội thảo chuyên đề công nghệ AI và ứng dụng thực tiễn trong kỹ thuật.",
-        "when": "08:00 - 11:30 ngày 20/11/2026.",
+        "when": "08:00 - 11:30 ngày 15/10/2026.",
         "where": "Hội trường E4, cơ sở chính IUH.",
         "benefits": "Cộng 10 điểm rèn luyện, cấp giấy chứng nhận tham gia, cơ hội nhận học bổng và kết nối doanh nghiệp."
       },
       "status": "upcoming",
-      "createdAt": "2026-09-10T08:00:00.000Z"
+      "createdAt": "2026-11-06T17:45:43.729Z",
+      "updatedAt": "2026-11-06T17:45:43.729Z",
+      "id": "66f1e2010000000000000001"
     },
     {
-      "id": "66f1e2020000000000000002",
       "_id": "66f1e2020000000000000002",
       "title": "Workshop Kỹ năng Thuyết trình & Đàm phán chuyên nghiệp",
       "faculty": "Khoa Quản trị kinh doanh",
       "category": "Kỹ năng",
       "time": {
-        "start": "2026-11-25T13:30:00.000Z",
-        "end": "2026-11-25T16:30:00.000Z"
+        "start": "2026-09-25T13:30:00.000Z",
+        "end": "2026-09-25T16:30:00.000Z"
       },
       "location": "Phòng Hội thảo B3.02, Tòa nhà B",
       "organizer": "Trung tâm Hỗ trợ sinh viên IUH",
@@ -98,22 +104,23 @@
       "trainingPoints": 8,
       "aiSummary": {
         "what": "Buổi đào tạo thực hành kỹ năng thuyết trình, phản biện và giao tiếp chuyên nghiệp.",
-        "when": "13:30 - 16:30 ngày 25/11/2026.",
+        "when": "13:30 - 16:30 ngày 25/09/2026.",
         "where": "Phòng B3.02, Đại học Công nghiệp TP.HCM.",
         "benefits": "Cộng 8 điểm rèn luyện, tài liệu độc quyền và thực hành trực tiếp với chuyên gia."
       },
-      "status": "upcoming",
-      "createdAt": "2026-09-05T09:00:00.000Z"
+      "status": "ongoing",
+      "createdAt": "2026-11-06T17:45:43.729Z",
+      "updatedAt": "2026-11-06T17:45:43.729Z",
+      "id": "66f1e2020000000000000002"
     },
     {
-      "id": "66f1e2030000000000000003",
       "_id": "66f1e2030000000000000003",
       "title": "Giải Bóng đá Nam Sinh viên IUH Champions League 2026",
       "faculty": "Toàn trường",
       "category": "Thể thao",
       "time": {
-        "start": "2026-11-28T07:00:00.000Z",
-        "end": "2026-12-05T17:00:00.000Z"
+        "start": "2026-11-01T07:00:00.000Z",
+        "end": "2026-11-15T17:00:00.000Z"
       },
       "location": "Sân vận động Quân khu 7 / Sân bóng đá IUH",
       "organizer": "Đoàn Thanh niên - Hội Sinh viên IUH",
@@ -124,22 +131,23 @@
       "trainingPoints": 15,
       "aiSummary": {
         "what": "Giải bóng đá thường niên quy mô toàn trường dành cho sinh viên nam.",
-        "when": "Từ ngày 28/11/2026 đến 05/12/2026.",
+        "when": "Từ ngày 01/11/2026 đến 15/11/2026.",
         "where": "Sân bóng đá trường ĐH Công nghiệp TP.HCM.",
         "benefits": "Cộng 15 điểm rèn luyện cho VĐV/Cổ động viên tích cực, huy chương và cúp vô địch."
       },
       "status": "upcoming",
-      "createdAt": "2026-09-01T10:00:00.000Z"
+      "createdAt": "2026-11-06T17:45:43.729Z",
+      "updatedAt": "2026-11-06T17:45:43.729Z",
+      "id": "66f1e2030000000000000003"
     },
     {
-      "id": "66f1e2040000000000000004",
       "_id": "66f1e2040000000000000004",
       "title": "Cuộc thi Ý tưởng Sáng tạo Sinh viên IUH Innovation 2026",
       "faculty": "Toàn trường",
       "category": "Học thuật",
       "time": {
-        "start": "2026-10-10T08:00:00.000Z",
-        "end": "2026-10-20T17:00:00.000Z"
+        "start": "2026-08-10T08:00:00.000Z",
+        "end": "2026-08-20T17:00:00.000Z"
       },
       "location": "Nhà thi đấu Đa năng IUH",
       "organizer": "Phòng Quản lý Khoa học và Hợp tác Quốc tế IUH",
@@ -155,17 +163,18 @@
         "benefits": "Cộng 20 điểm rèn luyện, giải thưởng tiền mặt và hỗ trợ ươm mầm dự án."
       },
       "status": "completed",
-      "createdAt": "2026-07-20T08:00:00.000Z"
+      "createdAt": "2026-11-06T17:45:43.729Z",
+      "updatedAt": "2026-11-06T17:45:43.729Z",
+      "id": "66f1e2040000000000000004"
     },
     {
-      "id": "66f1e2050000000000000005",
       "_id": "66f1e2050000000000000005",
       "title": "Ngày hội Hiến máu Tình nguyện - Giọt Hồng IUH",
       "faculty": "Toàn trường",
       "category": "Tình nguyện",
       "time": {
-        "start": "2026-10-05T07:00:00.000Z",
-        "end": "2026-10-05T12:00:00.000Z"
+        "start": "2026-07-05T07:00:00.000Z",
+        "end": "2026-07-05T12:00:00.000Z"
       },
       "location": "Sảnh nhà H, Trường Đại học Công nghiệp TP.HCM",
       "organizer": "Đoàn Thanh niên - Hội Sinh viên IUH",
@@ -181,17 +190,18 @@
         "benefits": "Cộng 15 điểm rèn luyện, quà tặng bồi dưỡng sức khỏe và giấy chứng nhận hiến máu nhân đạo."
       },
       "status": "completed",
-      "createdAt": "2026-06-20T08:00:00.000Z"
+      "createdAt": "2026-11-06T17:45:43.729Z",
+      "updatedAt": "2026-11-06T17:45:43.729Z",
+      "id": "66f1e2050000000000000005"
     },
     {
-      "id": "66f1e2060000000000000006",
       "_id": "66f1e2060000000000000006",
       "title": "Ngày hội Tuyển dụng và Thực tập IUH Career Day 2026",
       "faculty": "Toàn trường",
       "category": "Việc làm",
       "time": {
-        "start": "2026-12-15T07:30:00.000Z",
-        "end": "2026-12-15T16:30:00.000Z"
+        "start": "2026-10-25T07:30:00.000Z",
+        "end": "2026-10-25T16:30:00.000Z"
       },
       "location": "Sân A, Trường Đại học Công nghiệp TP.HCM",
       "organizer": "Trung tâm Hỗ trợ sinh viên và Quan hệ doanh nghiệp",
@@ -202,17 +212,18 @@
       "trainingPoints": 10,
       "aiSummary": {
         "what": "Ngày hội tuyển dụng và kết nối doanh nghiệp dành cho sinh viên IUH.",
-        "when": "07:30 - 16:30 ngày 15/12/2026.",
+        "when": "07:30 - 16:30 ngày 25/10/2026.",
         "where": "Sân A, IUH.",
         "benefits": "Tiếp cận doanh nghiệp, phỏng vấn nhanh, tìm vị trí thực tập và cộng điểm rèn luyện."
       },
       "status": "upcoming",
-      "createdAt": "2026-09-15T08:00:00.000Z"
+      "createdAt": "2026-11-06T17:45:43.729Z",
+      "updatedAt": "2026-11-06T17:45:43.729Z",
+      "id": "66f1e2060000000000000006"
     }
   ],
   "registrations": [
     {
-      "id": "66f1b3010000000000000001",
       "_id": "66f1b3010000000000000001",
       "eventId": "66f1e2010000000000000001",
       "userId": "66f1a1010000000000000001",
@@ -221,10 +232,12 @@
       "qrCode": "EVENTMATE:66f1b3010000000000000001",
       "registeredAt": "2026-09-20T10:00:00.000Z",
       "checkInTime": null,
-      "checkOutTime": null
+      "checkOutTime": null,
+      "createdAt": "2026-11-06T17:45:43.736Z",
+      "updatedAt": "2026-11-06T17:45:43.736Z",
+      "id": "66f1b3010000000000000001"
     },
     {
-      "id": "66f1b3020000000000000002",
       "_id": "66f1b3020000000000000002",
       "eventId": "66f1e2020000000000000002",
       "userId": "66f1a1010000000000000001",
@@ -233,10 +246,12 @@
       "qrCode": "EVENTMATE:66f1b3020000000000000002",
       "registeredAt": "2026-09-20T11:00:00.000Z",
       "checkInTime": "2026-09-25T13:45:00.000Z",
-      "checkOutTime": null
+      "checkOutTime": null,
+      "createdAt": "2026-11-06T17:45:43.736Z",
+      "updatedAt": "2026-11-06T17:45:43.736Z",
+      "id": "66f1b3020000000000000002"
     },
     {
-      "id": "66f1b3030000000000000003",
       "_id": "66f1b3030000000000000003",
       "eventId": "66f1e2040000000000000004",
       "userId": "66f1a1010000000000000001",
@@ -245,65 +260,64 @@
       "qrCode": "EVENTMATE:66f1b3030000000000000003",
       "registeredAt": "2026-08-01T09:30:00.000Z",
       "checkInTime": "2026-08-10T08:15:30.000Z",
-      "checkOutTime": "2026-08-20T16:55:00.000Z"
-    },
-    {
-      "eventId": "66f1e2020000000000000002",
-      "userId": "66f1a1010000000000000001",
-      "participantRole": "attendee",
-      "status": "registered",
-      "id": "6adf71560ed48ed7cdf82e8d",
-      "_id": "6adf71560ed48ed7cdf82e8d",
-      "createdAt": "2026-10-26T15:27:18.154Z"
+      "checkOutTime": "2026-08-20T16:55:00.000Z",
+      "createdAt": "2026-11-06T17:45:43.736Z",
+      "updatedAt": "2026-11-06T17:45:43.736Z",
+      "id": "66f1b3030000000000000003"
     }
   ],
   "feedbacks": [
     {
-      "id": "66f1f4010000000000000001",
       "_id": "66f1f4010000000000000001",
       "eventId": "66f1e2040000000000000004",
       "userId": "66f1a1010000000000000001",
       "rating": 5,
       "comment": "Cuộc thi tổ chức rất chuyên nghiệp, ban giám khảo góp ý rất chi tiết cho sản phẩm nghiên cứu của nhóm mình!",
-      "createdAt": "2026-08-21T09:00:00.000Z"
+      "createdAt": "2026-08-21T09:00:00.000Z",
+      "updatedAt": "2026-11-06T17:45:43.738Z",
+      "id": "66f1f4010000000000000001"
     },
     {
-      "id": "66f1f4020000000000000002",
       "_id": "66f1f4020000000000000002",
       "eventId": "66f1e2050000000000000005",
       "userId": "66f1a1020000000000000002",
       "rating": 4,
       "comment": "Các bạn tình nguyện viên hướng dẫn nhiệt tình, chỉ tiếc là thời gian xếp hàng hơi lâu một chút.",
-      "createdAt": "2026-07-05T14:30:00.000Z"
+      "createdAt": "2026-07-05T14:30:00.000Z",
+      "updatedAt": "2026-11-06T17:45:43.738Z",
+      "id": "66f1f4020000000000000002"
     }
   ],
   "notifications": [
     {
-      "id": "66f1c5010000000000000001",
       "_id": "66f1c5010000000000000001",
       "userId": "66f1a1010000000000000001",
       "title": "Đăng ký sự kiện thành công",
       "body": "Bạn đã đăng ký tham gia 'Hội thảo Trí tuệ Nhân tạo và Ứng dụng trong Kỹ thuật 2026' thành công.",
       "isRead": false,
-      "createdAt": "2026-09-20T10:00:00.000Z"
+      "createdAt": "2026-09-20T10:00:00.000Z",
+      "updatedAt": "2026-11-06T17:45:43.741Z",
+      "id": "66f1c5010000000000000001"
     },
     {
-      "id": "66f1c5020000000000000002",
       "_id": "66f1c5020000000000000002",
       "userId": "66f1a1010000000000000001",
       "title": "Nhắc nhở sự kiện sắp diễn ra",
       "body": "Workshop 'Kỹ năng Thuyết trình & Đàm phán chuyên nghiệp' sẽ bắt đầu vào 13:30 ngày mai.",
       "isRead": true,
-      "createdAt": "2026-09-24T08:00:00.000Z"
+      "createdAt": "2026-09-24T08:00:00.000Z",
+      "updatedAt": "2026-11-06T17:45:43.741Z",
+      "id": "66f1c5020000000000000002"
     },
     {
-      "id": "66f1c5030000000000000003",
       "_id": "66f1c5030000000000000003",
       "userId": "66f1a1020000000000000002",
       "title": "Cập nhật điểm rèn luyện",
       "body": "Bạn vừa được cộng 15 điểm rèn luyện từ sự kiện 'Ngày hội Hiến máu Tình nguyện - Giọt Hồng IUH'.",
       "isRead": false,
-      "createdAt": "2026-07-06T09:00:00.000Z"
+      "createdAt": "2026-07-06T09:00:00.000Z",
+      "updatedAt": "2026-11-06T17:45:43.741Z",
+      "id": "66f1c5030000000000000003"
     }
   ]
 }

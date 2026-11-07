@@ -3,6 +3,7 @@ import type {
   NativeStackScreenProps,
 } from '@react-navigation/native-stack';
 import type { NavigatorScreenParams } from '@react-navigation/native';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
 import type { CheckInStackParamList } from './CheckInStack';
 
 // ─── Auth Stack ───────────────────────────────────────────────────────────────
@@ -12,9 +13,19 @@ export type AuthStackParamList = {
   Register: undefined;
 };
 
+// ─── Main Tabs (Sinh viên) ────────────────────────────────────────────────────
+
+export type MainTabParamList = {
+  Home: undefined;
+  MySchedule: undefined;
+  CheckIn: NavigatorScreenParams<CheckInStackParamList> | undefined;
+  Profile: undefined;
+};
+
 // ─── Main Stack (Sinh viên) ───────────────────────────────────────────────────
 
 export type MainStackParamList = {
+  MainTabs: NavigatorScreenParams<MainTabParamList> | undefined;
   Home: undefined;
   CheckIn: NavigatorScreenParams<CheckInStackParamList> | undefined;
   EventDetail: { eventId?: string; title?: string } | undefined;
@@ -51,6 +62,12 @@ export type RootStackParamList = {
 // Auth
 export type LoginScreenProps = NativeStackScreenProps<AuthStackParamList, 'Login'>;
 export type RegisterScreenProps = NativeStackScreenProps<AuthStackParamList, 'Register'>;
+
+// Main Tabs (Sinh viên)
+export type MainTabHomeScreenProps = BottomTabScreenProps<MainTabParamList, 'Home'>;
+export type MainTabScheduleScreenProps = BottomTabScreenProps<MainTabParamList, 'MySchedule'>;
+export type MainTabCheckInScreenProps = BottomTabScreenProps<MainTabParamList, 'CheckIn'>;
+export type MainTabProfileScreenProps = BottomTabScreenProps<MainTabParamList, 'Profile'>;
 
 // Main (Sinh viên)
 export type HomeScreenProps = NativeStackScreenProps<MainStackParamList, 'Home'>;

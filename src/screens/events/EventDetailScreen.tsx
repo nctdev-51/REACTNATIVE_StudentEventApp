@@ -1,16 +1,15 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useMemo } from "react";
 import {
   Image,
   ScrollView,
   StyleSheet,
-  Text,
   TouchableOpacity,
   View,
-  ActivityIndicator,
   Alert,
   Share,
   StatusBar,
 } from "react-native";
+<<<<<<< HEAD
 
 import {
   useNavigation,
@@ -18,7 +17,21 @@ import {
   RouteProp,
 } from "@react-navigation/native";
 
+=======
+import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { Ionicons } from "@expo/vector-icons";
+import {
+  YStack,
+  XStack,
+  Card,
+  Button,
+  Heading,
+  Paragraph,
+  Text as TamaguiText,
+  Spinner,
+} from "tamagui";
 
 import { MainStackParamList } from "../../navigation/types";
 import AISummary from "../../components/ai/AISummary";
@@ -42,6 +55,7 @@ import {
 
 >>>>>>> 8d9ed42 (Update Event)
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
+<<<<<<< HEAD
 import { Colors } from "../../theme";
 <<<<<<< HEAD
 import {
@@ -49,13 +63,20 @@ import {
   toggleHideEvent,
   deleteEvent,
 } from "../../services/api";
+=======
+import { isEventPast, toggleHideEvent, deleteEvent } from "../../services/api";
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 import { useAppTheme } from "../../theme/ThemeContext";
 =======
 import { summarizeEvent } from "../../services/api";
 import AILoading from "../../components/ai/AILoading";
 import AIError from "../../components/ai/AIError";
 import type { AISummary as AISummaryType } from "../../types/event";
+<<<<<<< HEAD
 >>>>>>> 5723ff0 (AI event)
+=======
+import { findDbEvent, getDefaultDbUser } from "../../data/dbService";
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
 type EventDetailNavProp =
   NativeStackNavigationProp<
@@ -66,9 +87,10 @@ type EventDetailNavProp =
 type EventDetailRouteProp =
   RouteProp<MainStackParamList, "EventDetail">;
 
-function formatDate(dateString: string) {
-  const date = new Date(dateString);
+const DEFAULT_BANNER =
+  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800";
 
+<<<<<<< HEAD
   const day = String(date.getDate()).padStart(2, "0");
   const month = String(
     date.getMonth() + 1
@@ -85,6 +107,22 @@ function formatDate(dateString: string) {
   ).padStart(2, "0");
 
   return `${hours}:${minutes} - ${day}/${month}/${year}`;
+=======
+function formatDate(dateString?: string) {
+  if (!dateString) return "Sắp diễn ra";
+  try {
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "Sắp diễn ra";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes} - ${day}/${month}/${year}`;
+  } catch {
+    return "Sắp diễn ra";
+  }
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 }
 
 export default function EventDetailScreen() {
@@ -94,11 +132,15 @@ export default function EventDetailScreen() {
 =======
   const navigation = useNavigation<EventDetailNavProp>();
   const { theme, isDark } = useAppTheme();
+<<<<<<< HEAD
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
 
   const route =
     useRoute<EventDetailRouteProp>();
 
+=======
+  const route = useRoute<EventDetailRouteProp>();
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   const dispatch = useAppDispatch();
 
     // AI Summary states
@@ -109,16 +151,37 @@ export default function EventDetailScreen() {
   const eventId = route.params?.eventId;
 
   const {
-    selectedEvent: event,
+    selectedEvent,
+    list: eventsList,
     loadingDetail,
     error,
   } = useAppSelector(
     (state) => state.events
   );
 
+<<<<<<< HEAD
   const user = useAppSelector(
     (state) => state.auth.user
   );
+=======
+  // 1. Tận dụng dữ liệu sự kiện có sẵn từ Redux list hoặc db.json (Instant Cache)
+  const cachedEvent = useMemo(() => {
+    if (!eventId) return null;
+    return (
+      eventsList.find(
+        (e) => e._id === eventId || (e as any).id === eventId,
+      ) || findDbEvent(eventId)
+    );
+  }, [eventId, eventsList]);
+
+  // Ưu tiên: Dữ liệu chi tiết từ backend > Dữ liệu cache
+  const event = selectedEvent || cachedEvent;
+
+  const user = useAppSelector((state) => state.auth.user);
+  const defaultStudent = getDefaultDbUser();
+  const currentUser = user || defaultStudent;
+  const currentUserId = currentUser?._id || (currentUser as any)?.id;
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
   const {
     myRegistrations,
@@ -127,20 +190,30 @@ export default function EventDetailScreen() {
     (state) => state.registrations
   );
 
-  // Kiểm tra đã đăng ký chưa
+  // 2. Kiểm tra trạng thái đã đăng ký (hỗ trợ cả id và _id)
   const existingReg = myRegistrations.find(
     (registration) =>
+<<<<<<< HEAD
       registration.eventId === eventId &&
       registration.status !== "cancelled"
+=======
+      (registration.eventId === eventId ||
+        registration.eventId === event?._id ||
+        registration.eventId === (event as any)?.id) &&
+      registration.status !== "cancelled",
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   );
 
   const isRegistered = !!existingReg;
   const isPast = isEventPast(event);
   const [adminModalVisible, setAdminModalVisible] = useState(false);
   const [userDistance, setUserDistance] = useState<number | null>(null);
+  const [bannerError, setBannerError] = useState(false);
 
+  // 3. Tính khoảng cách GPS với xử lý an toàn lỗi Promise
   useEffect(() => {
     if (event?.coordinates?.latitude && event?.coordinates?.longitude) {
+<<<<<<< HEAD
       getCurrentPosition(5000).then((loc) => {
         if (loc) {
           const d = getDistanceMeters(
@@ -152,10 +225,31 @@ export default function EventDetailScreen() {
           setUserDistance(d);
         }
       });
+=======
+      getCurrentPosition(5000)
+        .then((loc) => {
+          if (loc && event?.coordinates) {
+            const d = getDistanceMeters(
+              loc.coords.latitude,
+              loc.coords.longitude,
+              event.coordinates.latitude,
+              event.coordinates.longitude,
+            );
+            setUserDistance(d);
+          }
+        })
+        .catch(() => {
+          setUserDistance(null);
+        });
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
     }
-  }, [event]);
+  }, [event?.coordinates?.latitude, event?.coordinates?.longitude]);
 
+<<<<<<< HEAD
   // Lấy chi tiết sự kiện
+=======
+  // 4. Đồng bộ dữ liệu mới nhất từ backend trong nền
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   useEffect(() => {
     if (eventId) {
       dispatch(fetchEventById(eventId));
@@ -168,7 +262,7 @@ export default function EventDetailScreen() {
 
   // Đăng ký sự kiện
   const handleRegister = async () => {
-    if (!user || !eventId) return;
+    if (!currentUserId || !eventId) return;
 
     if (isPast) {
       Alert.alert(
@@ -189,7 +283,7 @@ export default function EventDetailScreen() {
     const result = await dispatch(
       registerForEvent({
         eventId,
-        userId: user._id,
+        userId: currentUserId,
         participantRole: "attendee",
         status: "registered",
       })
@@ -208,8 +302,12 @@ export default function EventDetailScreen() {
     } else {
       Alert.alert(
         "Thất bại",
+<<<<<<< HEAD
         (result.payload as string) ??
           "Đăng ký thất bại"
+=======
+        (result.payload as string) ?? "Đăng ký thất bại",
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
       );
     }
   };
@@ -237,12 +335,10 @@ export default function EventDetailScreen() {
       setAiError(null);
 
       const result = await summarizeEvent(eventId);
-
       setAiSummary(result);
-    } catch (error: any) {
-      console.error("AI Summary Error:", error);
+    } catch (err: any) {
       setAiSummary(null);
-      const message = error.response?.data?.message;
+      const message = err?.response?.data?.message;
       setAiError(
         message || "Không thể tạo tóm tắt sự kiện. Vui lòng thử lại sau.",
       );
@@ -251,6 +347,7 @@ export default function EventDetailScreen() {
     }
   };
 
+<<<<<<< HEAD
 >>>>>>> 5723ff0 (AI event)
   if (loadingDetail) {
     return (
@@ -271,14 +368,50 @@ export default function EventDetailScreen() {
         <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Đang tải sự kiện...</Text>
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
       </View>
+=======
+  // Chia sẻ Deep Link sự kiện
+  const handleShare = async () => {
+    if (!event) return;
+    const targetId = event._id || (event as any).id || eventId;
+    const link = `studentevent://events/${targetId}`;
+
+    await Share.share({
+      message: `${event.title}\n${link}`,
+    });
+  };
+
+  // Trạng thái đang tải (chỉ khi không có cả dữ liệu cache)
+  if (loadingDetail && !event) {
+    return (
+      <YStack
+        flex={1}
+        justifyContent="center"
+        alignItems="center"
+        backgroundColor={theme.background}
+        gap={12}
+      >
+        <StatusBar barStyle={theme.statusBarStyle} />
+        <Spinner size="large" color={theme.primary} />
+        <Paragraph size="$3" color={theme.textSecondary}>
+          Đang tải thông tin sự kiện...
+        </Paragraph>
+      </YStack>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
     );
   }
 
-  // Error
-  if (error || !event) {
+  // Trạng thái lỗi không tìm thấy sự kiện
+  if (!event) {
     return (
-      <View style={[styles.container, { backgroundColor: theme.background }]}>
+      <YStack
+        flex={1}
+        backgroundColor={theme.background}
+        justifyContent="center"
+        alignItems="center"
+        paddingHorizontal={30}
+      >
         <StatusBar barStyle={theme.statusBarStyle} />
+<<<<<<< HEAD
         <View style={styles.emptyState}>
 <<<<<<< HEAD
           <Text style={styles.icon}>
@@ -313,8 +446,57 @@ export default function EventDetailScreen() {
           </TouchableOpacity>
         </View>
       </View>
+=======
+        <YStack
+          width={70}
+          height={70}
+          borderRadius={35}
+          backgroundColor={theme.primaryLight}
+          alignItems="center"
+          justifyContent="center"
+          marginBottom={16}
+        >
+          <Ionicons name="calendar-outline" size={36} color={theme.primary} />
+        </YStack>
+        <Heading
+          size="$6"
+          fontWeight="700"
+          textAlign="center"
+          marginBottom={8}
+          color={theme.textPrimary}
+        >
+          {error ?? "Chưa có thông tin sự kiện"}
+        </Heading>
+        <Paragraph
+          size="$3"
+          textAlign="center"
+          color={theme.textSecondary}
+          marginBottom={20}
+        >
+          Không tìm thấy sự kiện tương ứng hoặc đã bị gỡ bỏ.
+        </Paragraph>
+        <Button
+          backgroundColor={theme.primary}
+          borderRadius={10}
+          height={44}
+          paddingHorizontal={24}
+          onPress={() => navigation.goBack()}
+          pressStyle={{ opacity: 0.8 }}
+        >
+          <XStack alignItems="center" gap={6}>
+            <Ionicons name="arrow-back" size={18} color="#FFFFFF" />
+            <TamaguiText fontWeight="600" color="#FFFFFF">
+              Quay lại danh sách
+            </TamaguiText>
+          </XStack>
+        </Button>
+      </YStack>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
     );
   }
+
+  const bannerUri =
+    !bannerError && event.images?.[0] ? event.images[0] : DEFAULT_BANNER;
 
   return (
     <ScrollView
@@ -327,6 +509,7 @@ export default function EventDetailScreen() {
       showsVerticalScrollIndicator={false}
     >
       <StatusBar barStyle={theme.statusBarStyle} />
+<<<<<<< HEAD
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
       {/* Ảnh sự kiện */}
       <Image
@@ -426,9 +609,123 @@ export default function EventDetailScreen() {
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
                   <TouchableOpacity
                     style={[styles.adminEditBtn, { backgroundColor: isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF", borderColor: isDark ? "#818CF8" : "#C7D2FE" }]}
+=======
+
+      {/* Ảnh sự kiện */}
+      <Image
+        source={{ uri: bannerUri }}
+        style={styles.bannerImage}
+        resizeMode="cover"
+        onError={() => setBannerError(true)}
+      />
+
+      <YStack padding={16} paddingBottom={40}>
+        {/* Chủ đề + Điểm rèn luyện */}
+        <XStack
+          justifyContent="space-between"
+          alignItems="center"
+          marginBottom={12}
+        >
+          <XStack
+            backgroundColor={isDark ? "rgba(37,99,235,0.2)" : "#DBEAFE"}
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+          >
+            <TamaguiText
+              fontSize={13}
+              fontWeight="600"
+              color={theme.primary}
+            >
+              {event.category || "Học thuật"}
+            </TamaguiText>
+          </XStack>
+
+          <XStack
+            backgroundColor={isDark ? "rgba(16,185,129,0.2)" : "#DCFCE7"}
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+          >
+            <TamaguiText
+              fontSize={13}
+              fontWeight="700"
+              color={isDark ? "#34D399" : "#16A34A"}
+            >
+              +{event.trainingPoints ?? 5} điểm rèn luyện
+            </TamaguiText>
+          </XStack>
+        </XStack>
+
+        {/* Tiêu đề & Đơn vị tổ chức */}
+        <Heading
+          size="$7"
+          fontWeight="800"
+          lineHeight={28}
+          marginBottom={6}
+          color={theme.textPrimary}
+        >
+          {event.title}
+        </Heading>
+        <Paragraph
+          size="$3"
+          color={theme.textSecondary}
+          marginBottom={16}
+        >
+          Đơn vị: {event.faculty || "Toàn trường"}
+        </Paragraph>
+
+        {/* Thẻ thông tin chi tiết (Tamagui Card) */}
+        <Card
+          backgroundColor={theme.surface}
+          borderColor={theme.border}
+          borderWidth={1}
+          borderRadius={14}
+          padding={16}
+          marginBottom={16}
+          elevation={1}
+        >
+          {/* Thời gian */}
+          <XStack alignItems="flex-start">
+            <XStack width={28} alignItems="center" justifyContent="center" marginRight={10} marginTop={2}>
+              <Ionicons name="calendar-outline" size={20} color={theme.primary} />
+            </XStack>
+            <YStack flex={1}>
+              <Paragraph size="$2" color={theme.textTertiary} marginBottom={2}>
+                Thời gian bắt đầu
+              </Paragraph>
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                {formatDate(event.time?.start)}
+              </TamaguiText>
+            </YStack>
+          </XStack>
+
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
+
+          {/* Địa điểm */}
+          <XStack alignItems="flex-start">
+            <XStack width={28} alignItems="center" justifyContent="center" marginRight={10} marginTop={2}>
+              <Ionicons name="location-outline" size={20} color={theme.primary} />
+            </XStack>
+            <YStack flex={1}>
+              <XStack justifyContent="space-between" alignItems="center" marginBottom={4}>
+                <Paragraph size="$2" color={theme.textTertiary}>
+                  Địa điểm tổ chức
+                </Paragraph>
+                {currentUser?.role === "admin" ? (
+                  <Button
+                    size="$2"
+                    borderRadius={6}
+                    borderWidth={1}
+                    height={28}
+                    paddingHorizontal={8}
+                    backgroundColor={isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF"}
+                    borderColor={isDark ? "#818CF8" : "#C7D2FE"}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
                     onPress={() => setAdminModalVisible(true)}
-                    activeOpacity={0.7}
+                    pressStyle={{ opacity: 0.7 }}
                   >
+<<<<<<< HEAD
 <<<<<<< HEAD
                     <Text style={styles.adminEditBtnText}>📍 Đổi địa điểm (Admin)</Text>
 =======
@@ -440,13 +737,32 @@ export default function EventDetailScreen() {
                 ) : (
                   <TouchableOpacity
                     style={[styles.mapLinkBtn, { backgroundColor: isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF", borderColor: isDark ? "#818CF8" : "#C7D2FE" }]}
+=======
+                    <XStack alignItems="center" gap={4}>
+                      <Ionicons name="create-outline" size={13} color={isDark ? "#A5B4FC" : "#4338CA"} />
+                      <TamaguiText fontSize={11} fontWeight="700" color={isDark ? "#A5B4FC" : "#4338CA"}>
+                        Đổi vị trí (Admin)
+                      </TamaguiText>
+                    </XStack>
+                  </Button>
+                ) : (
+                  <Button
+                    size="$2"
+                    borderRadius={6}
+                    borderWidth={1}
+                    height={28}
+                    paddingHorizontal={8}
+                    backgroundColor={isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF"}
+                    borderColor={isDark ? "#818CF8" : "#C7D2FE"}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
                     onPress={() => {
                       if (event.coordinates) {
                         openInGoogleMaps(event.coordinates.latitude, event.coordinates.longitude, event.location);
                       }
                     }}
-                    activeOpacity={0.7}
+                    pressStyle={{ opacity: 0.7 }}
                   >
+<<<<<<< HEAD
                     <Text style={[styles.mapLinkBtnText, { color: isDark ? "#A5B4FC" : "#4338CA" }]}>🗺️ Chỉ đường Map</Text>
                   </TouchableOpacity>
                 )}
@@ -461,22 +777,49 @@ export default function EventDetailScreen() {
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
                     🔒 Phạm vi: Bán kính {event.coordinates.radiusMeters || 300}m quanh địa điểm
                   </Text>
+=======
+                    <XStack alignItems="center" gap={4}>
+                      <Ionicons name="navigate-outline" size={13} color={isDark ? "#A5B4FC" : "#4338CA"} />
+                      <TamaguiText fontSize={11} fontWeight="700" color={isDark ? "#A5B4FC" : "#4338CA"}>
+                        Chỉ đường Map
+                      </TamaguiText>
+                    </XStack>
+                  </Button>
+                )}
+              </XStack>
+
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                {event.location}
+              </TamaguiText>
+
+              {event.coordinates ? (
+                <YStack marginTop={4} gap={2}>
+                  <TamaguiText
+                    fontSize={12}
+                    fontWeight="500"
+                    color={isDark ? "#34D399" : "#059669"}
+                  >
+                    Bán kính hợp lệ: {event.coordinates.radiusMeters || 300}m quanh địa điểm
+                  </TamaguiText>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
                   {userDistance !== null && (
-                    <Text
-                      style={[
-                        styles.distanceStatusText,
+                    <TamaguiText
+                      fontSize={12}
+                      fontWeight="600"
+                      color={
                         userDistance <= (event.coordinates.radiusMeters || 500)
-                          ? styles.textSuccess
-                          : styles.textWarning,
-                      ]}
+                          ? "#059669"
+                          : "#D97706"
+                      }
                     >
                       {userDistance <= (event.coordinates.radiusMeters || 500)
-                        ? `🟢 Cách bạn ${formatDistance(userDistance)} (Đủ điều kiện Check-in)`
-                        : `📍 Cách bạn ${formatDistance(userDistance)} (Chưa vào khu vực tổ chức)`}
-                    </Text>
+                        ? `Cách bạn ${formatDistance(userDistance)} (Đủ điều kiện Check-in)`
+                        : `Cách bạn ${formatDistance(userDistance)} (Chưa vào khu vực tổ chức)`}
+                    </TamaguiText>
                   )}
-                </View>
+                </YStack>
               ) : (
+<<<<<<< HEAD
                 <Text style={[styles.coordsWarning, { color: isDark ? "#FCD34D" : "#D97706" }]}>
                   ℹ️ Điểm danh tự do (Không giới hạn vị trí)
                 </Text>
@@ -535,28 +878,69 @@ export default function EventDetailScreen() {
           <TouchableOpacity
             style={[styles.aiButton, aiLoading && styles.disabledButton]}
             onPress={handleSummarize}
+=======
+                <TamaguiText
+                  fontSize={12}
+                  fontStyle="italic"
+                  marginTop={4}
+                  color={isDark ? "#FCD34D" : "#D97706"}
+                >
+                  Điểm danh tự do (Không giới hạn vị trí)
+                </TamaguiText>
+              )}
+            </YStack>
+          </XStack>
+
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
+
+          {/* Ban tổ chức */}
+          <XStack alignItems="flex-start">
+            <XStack width={28} alignItems="center" justifyContent="center" marginRight={10} marginTop={2}>
+              <Ionicons name="business-outline" size={20} color={theme.primary} />
+            </XStack>
+            <YStack flex={1}>
+              <Paragraph size="$2" color={theme.textTertiary} marginBottom={2}>
+                Ban tổ chức
+              </Paragraph>
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                {event.organizer || "Đoàn Thanh niên IUH"}
+              </TamaguiText>
+            </YStack>
+          </XStack>
+        </Card>
+
+        {/* Khối AI Tóm Tắt */}
+        <YStack marginBottom={16}>
+          <Button
+            height={48}
+            borderRadius={12}
+            backgroundColor="#7C3AED"
+            alignItems="center"
+            justifyContent="center"
+            marginBottom={12}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
             disabled={aiLoading}
-            activeOpacity={0.85}
+            onPress={handleSummarize}
+            pressStyle={{ opacity: 0.85 }}
           >
             {aiLoading ? (
-              <ActivityIndicator color="#FFFFFF" />
+              <Spinner color="#FFFFFF" />
             ) : (
-              <Text style={styles.aiButtonText}>
-                ✨ {aiSummary ? "Tóm tắt lại bằng AI" : "Tóm tắt bằng AI"}
-              </Text>
+              <XStack alignItems="center" gap={8}>
+                <Ionicons name="sparkles" size={17} color="#FFFFFF" />
+                <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
+                  {aiSummary ? "Tóm tắt lại bằng AI" : "Tóm tắt sự kiện bằng AI"}
+                </TamaguiText>
+              </XStack>
             )}
-          </TouchableOpacity>
+          </Button>
 
-          {/* Đang xử lý */}
           {aiLoading && <AILoading />}
-
-          {/* Có lỗi */}
           {!aiLoading && aiError && (
             <AIError message={aiError} onRetry={handleSummarize} />
           )}
-
-          {/* Thành công */}
           {!aiLoading && aiSummary && <AISummary summary={aiSummary} />}
+<<<<<<< HEAD
         </View>
 >>>>>>> 5723ff0 (AI event)
 
@@ -576,9 +960,40 @@ export default function EventDetailScreen() {
           <Text style={[styles.descriptionText, { color: theme.textSecondary }]}>{event.description}</Text>
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
         </View>
+=======
+        </YStack>
 
-        {/* Banner thông báo khi sự kiện đã qua */}
+        {/* Khối Mô Tả */}
+        <Card
+          backgroundColor={theme.surface}
+          borderColor={theme.border}
+          borderWidth={1}
+          borderRadius={14}
+          padding={16}
+          marginBottom={20}
+          elevation={1}
+        >
+          <Heading
+            size="$5"
+            fontWeight="700"
+            color={theme.textPrimary}
+            marginBottom={8}
+          >
+            Mô tả sự kiện
+          </Heading>
+          <Paragraph
+            size="$3"
+            lineHeight={22}
+            color={theme.textSecondary}
+          >
+            {event.description || "Không có mô tả chi tiết cho sự kiện này."}
+          </Paragraph>
+        </Card>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+
+        {/* Banner thông báo sự kiện đã kết thúc */}
         {isPast && (
+<<<<<<< HEAD
           <View style={[
             styles.pastBannerBox,
             { backgroundColor: isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2", borderColor: isDark ? "#F87171" : "#FECACA" }
@@ -598,9 +1013,50 @@ export default function EventDetailScreen() {
           {/* Chia sẻ sự kiện */}
           <TouchableOpacity
             style={[styles.shareButton, { backgroundColor: isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF" }]}
-            onPress={handleShare}
-            activeOpacity={0.85}
+=======
+          <XStack
+            alignItems="center"
+            backgroundColor={isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2"}
+            borderColor={isDark ? "#F87171" : "#FECACA"}
+            borderWidth={1}
+            borderRadius={14}
+            padding={14}
+            marginBottom={16}
+            gap={12}
           >
+            <Ionicons name="time-outline" size={26} color="#DC2626" />
+            <YStack flex={1}>
+              <TamaguiText
+                fontSize={14}
+                fontWeight="700"
+                marginBottom={2}
+                color={isDark ? "#FCA5A5" : "#991B1B"}
+              >
+                Sự kiện đã kết thúc
+              </TamaguiText>
+              <Paragraph
+                size="$2"
+                lineHeight={18}
+                color={isDark ? "#FCD5D5" : "#7F1D1D"}
+              >
+                Sự kiện này đã kết thúc thời gian tổ chức. Bạn chỉ có thể xem lại thông tin lưu trữ và không thể đăng ký hoặc điểm danh được nữa.
+              </Paragraph>
+            </YStack>
+          </XStack>
+        )}
+
+        {/* Các nút hành động chính */}
+        <YStack gap={12}>
+          {/* Nút Chia Sẻ */}
+          <Button
+            height={46}
+            borderRadius={12}
+            backgroundColor={isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF"}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+            onPress={handleShare}
+            pressStyle={{ opacity: 0.85 }}
+          >
+<<<<<<< HEAD
 <<<<<<< HEAD
             <Text style={styles.shareButtonText}>
               🔗 Chia sẻ sự kiện
@@ -634,10 +1090,36 @@ export default function EventDetailScreen() {
             disabled={actionLoading || isRegistered || isPast}
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
             activeOpacity={0.85}
+=======
+            <XStack alignItems="center" gap={8}>
+              <Ionicons name="share-social-outline" size={18} color={theme.primary} />
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.primary}>
+                Chia sẻ sự kiện
+              </TamaguiText>
+            </XStack>
+          </Button>
+
+          {/* Nút Đăng Ký Tham Gia */}
+          <Button
+            height={50}
+            borderRadius={12}
+            backgroundColor={
+              isPast
+                ? "#94A3B8"
+                : isRegistered
+                ? "#10B981"
+                : theme.primary
+            }
+            opacity={actionLoading || isPast ? 0.75 : 1}
+            disabled={actionLoading || isRegistered || isPast}
+            onPress={handleRegister}
+            pressStyle={{ opacity: 0.85 }}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
           >
             {actionLoading ? (
-              <ActivityIndicator color="#fff" />
+              <Spinner color="#FFFFFF" />
             ) : (
+<<<<<<< HEAD
               <Text
 <<<<<<< HEAD
                 style={
@@ -660,9 +1142,32 @@ export default function EventDetailScreen() {
                     : "📋 Đăng ký tham gia"}
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
               </Text>
+=======
+              <XStack alignItems="center" gap={8}>
+                <Ionicons
+                  name={
+                    isPast
+                      ? "close-circle-outline"
+                      : isRegistered
+                      ? "checkmark-circle"
+                      : "clipboard-outline"
+                  }
+                  size={19}
+                  color="#FFFFFF"
+                />
+                <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
+                  {isPast
+                    ? "Đã hết hạn đăng ký"
+                    : isRegistered
+                    ? "Đã đăng ký tham gia"
+                    : "Đăng ký tham gia"}
+                </TamaguiText>
+              </XStack>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
             )}
-          </TouchableOpacity>
+          </Button>
 
+<<<<<<< HEAD
           {/* Check-in */}
           <TouchableOpacity
 <<<<<<< HEAD
@@ -684,6 +1189,17 @@ export default function EventDetailScreen() {
               { backgroundColor: theme.surface, borderColor: theme.border },
               isPast && styles.disabledPastSecondaryBtn,
             ]}
+=======
+          {/* Nút Quét QR Điểm Danh */}
+          <Button
+            height={48}
+            borderRadius={12}
+            borderWidth={1}
+            backgroundColor={theme.surface}
+            borderColor={theme.border}
+            opacity={isPast ? 0.6 : 1}
+            disabled={isPast}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
             onPress={() => {
               if (isPast) {
                 Alert.alert(
@@ -694,9 +1210,9 @@ export default function EventDetailScreen() {
               }
               navigation.navigate("CheckIn");
             }}
-            disabled={isPast}
-            activeOpacity={0.85}
+            pressStyle={{ opacity: 0.85 }}
           >
+<<<<<<< HEAD
             <Text
               style={[
                 styles.secondaryButtonText,
@@ -723,9 +1239,41 @@ export default function EventDetailScreen() {
                       event.title,
                   }
                 )
+=======
+            <XStack alignItems="center" gap={8}>
+              <Ionicons
+                name={isPast ? "lock-closed-outline" : "qr-code-outline"}
+                size={18}
+                color={isPast ? "#94A3B8" : theme.textPrimary}
+              />
+              <TamaguiText
+                fontSize={14}
+                fontWeight="600"
+                color={isPast ? "#94A3B8" : theme.textPrimary}
+              >
+                {isPast ? "Cổng điểm danh đã đóng" : "Quét QR Điểm Danh Ngay"}
+              </TamaguiText>
+            </XStack>
+          </Button>
+
+          {/* Nút Gửi Phản Hồi (Sau khi đã điểm danh) */}
+          {existingReg?.status === "checked_in" && (
+            <Button
+              height={46}
+              borderRadius={12}
+              borderWidth={1}
+              backgroundColor={theme.surfaceSecondary}
+              borderColor={theme.border}
+              onPress={() =>
+                navigation.navigate("Feedback", {
+                  eventId: event._id || (event as any).id || eventId,
+                  eventTitle: event.title,
+                })
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
               }
-              activeOpacity={0.85}
+              pressStyle={{ opacity: 0.85 }}
             >
+<<<<<<< HEAD
 <<<<<<< HEAD
               <Text
                 style={
@@ -752,9 +1300,49 @@ export default function EventDetailScreen() {
                     styles.adminToggleBtn,
                     event.isHidden ? styles.adminUnhideBtn : styles.adminHideBtn,
                   ]}
+=======
+              <XStack alignItems="center" gap={8}>
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={18}
+                  color={theme.primary}
+                />
+                <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                  Gửi phản hồi sự kiện
+                </TamaguiText>
+              </XStack>
+            </Button>
+          )}
+
+          {/* Bảng điều khiển quản trị Admin */}
+          {currentUser?.role === "admin" && (
+            <Card
+              marginTop={12}
+              backgroundColor={isDark ? theme.surfaceSecondary : "#F8FAFC"}
+              borderColor={theme.border}
+              borderWidth={1}
+              borderRadius={14}
+              padding={14}
+            >
+              <XStack alignItems="center" justifyContent="center" gap={6} marginBottom={10}>
+                <Ionicons name="settings-outline" size={16} color={theme.textSecondary} />
+                <TamaguiText fontSize={13} fontWeight="700" color={theme.textSecondary}>
+                  Quản trị sự kiện (Dành cho Admin)
+                </TamaguiText>
+              </XStack>
+
+              <XStack gap={10}>
+                <Button
+                  flex={1}
+                  height={40}
+                  borderRadius={10}
+                  backgroundColor={event.isHidden ? "#10B981" : "#F59E0B"}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
                   onPress={async () => {
+                    const targetId = event._id || (event as any).id || eventId;
+                    if (!targetId) return;
                     const newHidden = await toggleHideEvent(
-                      event._id,
+                      targetId,
                       !!event.isHidden,
                     );
                     if (eventId) dispatch(fetchEventById(eventId));
@@ -765,18 +1353,28 @@ export default function EventDetailScreen() {
                         : "Đã mở lại sự kiện hiển thị cho sinh viên.",
                     );
                   }}
-                  activeOpacity={0.8}
+                  pressStyle={{ opacity: 0.8 }}
                 >
-                  <Text style={styles.adminToggleBtnText}>
-                    {event.isHidden
-                      ? "👁️ Hiển thị lại cho sinh viên"
-                      : "👁️ Ẩn khỏi sinh viên"}
-                  </Text>
-                </TouchableOpacity>
+                  <XStack alignItems="center" gap={6}>
+                    <Ionicons
+                      name={event.isHidden ? "eye-outline" : "eye-off-outline"}
+                      size={16}
+                      color="#FFFFFF"
+                    />
+                    <TamaguiText fontSize={12.5} fontWeight="700" color="#FFFFFF">
+                      {event.isHidden ? "Hiển thị lại" : "Ẩn sự kiện"}
+                    </TamaguiText>
+                  </XStack>
+                </Button>
 
-                <TouchableOpacity
-                  style={styles.adminDeleteBtn}
+                <Button
+                  height={40}
+                  paddingHorizontal={16}
+                  borderRadius={10}
+                  backgroundColor="#EF4444"
                   onPress={() => {
+                    const targetId = event._id || (event as any).id || eventId;
+                    if (!targetId) return;
                     Alert.alert(
                       "Xóa sự kiện",
                       `Bạn có chắc chắn muốn xóa vĩnh viễn sự kiện "${event.title}"?`,
@@ -786,7 +1384,11 @@ export default function EventDetailScreen() {
                           text: "Xóa vĩnh viễn",
                           style: "destructive",
                           onPress: async () => {
+<<<<<<< HEAD
                             await deleteEvent(event._id);
+=======
+                            await deleteEvent(targetId);
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
                             Alert.alert("Đã xóa", "Sự kiện đã được xóa thành công.");
                             navigation.goBack();
                           },
@@ -794,15 +1396,21 @@ export default function EventDetailScreen() {
                       ],
                     );
                   }}
-                  activeOpacity={0.8}
+                  pressStyle={{ opacity: 0.8 }}
                 >
-                  <Text style={styles.adminDeleteBtnText}>🗑️ Xóa</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
+                  <XStack alignItems="center" gap={6}>
+                    <Ionicons name="trash-outline" size={16} color="#FFFFFF" />
+                    <TamaguiText fontSize={12.5} fontWeight="700" color="#FFFFFF">
+                      Xóa
+                    </TamaguiText>
+                  </XStack>
+                </Button>
+              </XStack>
+            </Card>
           )}
-        </View>
-      </View>
+        </YStack>
+      </YStack>
+
       <AdminLocationModal
         visible={adminModalVisible}
         onClose={() => setAdminModalVisible(false)}
@@ -820,121 +1428,17 @@ export default function EventDetailScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
   },
-
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    gap: 12,
-  },
-
-  loadingText: {
-    color: Colors.gray500,
-    fontSize: 14,
-  },
-
   bannerImage: {
     width: "100%",
     height: 220,
     backgroundColor: "#E2E8F0",
   },
-
-  body: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-
-  topRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-
-  categoryBadge: {
-    backgroundColor: "#DBEAFE",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-
-  categoryText: {
-    color: Colors.primary,
-    fontSize: 13,
-    fontWeight: "600",
-  },
-
-  pointBadge: {
-    backgroundColor: "#DCFCE7",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
-  },
-
-  pointText: {
-    color: "#16A34A",
-    fontSize: 13,
-    fontWeight: "700",
-  },
-
-  eventTitle: {
-    fontSize: 22,
-    fontWeight: "800",
-    color: "#0F172A",
-    lineHeight: 28,
-    marginBottom: 6,
-  },
-
-  facultyText: {
-    fontSize: 14,
-    color: "#64748B",
-    marginBottom: 16,
-  },
-
-  infoCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 14,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#E2E8F0",
-  },
-
-  infoRow: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-  },
-
-  infoIcon: {
-    fontSize: 20,
-    marginRight: 12,
-    marginTop: 2,
-  },
-
-  infoContent: {
-    flex: 1,
-  },
-
-  infoLabel: {
-    fontSize: 12,
-    color: "#94A3B8",
-    marginBottom: 2,
-  },
-
-  infoValue: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1E293B",
-  },
-
   divider: {
     height: 1,
-    backgroundColor: "#F1F5F9",
     marginVertical: 12,
   },
+<<<<<<< HEAD
 
   aiSection: {
     marginBottom: 16,
@@ -1250,5 +1754,7 @@ const styles = StyleSheet.create({
     fontSize: 15,
     fontWeight: "700",
   },
+=======
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 });
 >>>>>>> 5723ff0 (AI event)

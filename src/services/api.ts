@@ -27,7 +27,7 @@ const isTunnel =
 const autoDevIp = !isTunnel && debuggerHost ? debuggerHost.split(":")[0] : null;
 
 export const DEV_LAN_IP =
-  autoDevIp || (Platform.OS === "android" ? "172.26.208.1" : "localhost");
+  autoDevIp || (Platform.OS === "android" ? "192.168.1.11" : "localhost");
 export const USE_DEV_LAN_IP = !!autoDevIp;
 
 /**
@@ -35,7 +35,11 @@ export const USE_DEV_LAN_IP = !!autoDevIp;
  * tunnels expire and surface as 503 errors for every app user. Expo inlines
  * EXPO_PUBLIC_* values from .env files at build time.
  */
-export const CLOUD_API_URL = process.env.EXPO_PUBLIC_API_URL?.trim() || null;
+const rawCloudUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+export const CLOUD_API_URL =
+  rawCloudUrl && (rawCloudUrl.startsWith("http://") || rawCloudUrl.startsWith("https://"))
+    ? rawCloudUrl
+    : null;
 
 /**
  * ⚡ CHẾ ĐỘ THỬ NGHIỆM ĐỘC LẬP (KHÔNG CẦN BACKEND):
@@ -79,7 +83,7 @@ export const BASE_URL: string = Platform.select({
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 3500,
+  timeout: 10000,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
@@ -238,24 +242,34 @@ export let inMemoryUsers: User[] = [
 let inMemoryEvents = [...eventsData];
 let inMemoryRegistrations: Registration[] = [
   {
-    _id: "reg_001",
+    _id: "66f1b3010000000000000001",
     eventId: "66f1e2010000000000000001",
     userId: "66f1a1010000000000000001",
     participantRole: "attendee",
-    status: "checked_in",
-    checkInTime: "2026-09-15T08:05:00.000Z",
-    createdAt: "2026-09-10T08:00:00.000Z",
-    checkInLocation: { latitude: 10.8221, longitude: 106.6876 },
+    status: "registered",
+    qrCode: "EVENTMATE:66f1b3010000000000000001",
+    createdAt: "2026-09-20T10:00:00.000Z",
   },
   {
-    _id: "reg_002",
+    _id: "66f1b3020000000000000002",
     eventId: "66f1e2020000000000000002",
-    userId: "66f1a1020000000000000002",
-    participantRole: "attendee",
+    userId: "66f1a1010000000000000001",
+    participantRole: "volunteer",
     status: "checked_in",
-    checkInTime: "2026-09-20T08:10:00.000Z",
-    createdAt: "2026-09-12T09:30:00.000Z",
-    checkInLocation: { latitude: 10.8225, longitude: 106.688 },
+    qrCode: "EVENTMATE:66f1b3020000000000000002",
+    checkInTime: "2026-09-25T13:45:00.000Z",
+    createdAt: "2026-09-20T11:00:00.000Z",
+  },
+  {
+    _id: "66f1b3030000000000000003",
+    eventId: "66f1e2040000000000000004",
+    userId: "66f1a1010000000000000001",
+    participantRole: "attendee",
+    status: "completed",
+    qrCode: "EVENTMATE:66f1b3030000000000000003",
+    checkInTime: "2026-08-10T08:15:30.000Z",
+    checkOutTime: "2026-08-20T16:55:00.000Z",
+    createdAt: "2026-08-01T09:30:00.000Z",
   },
 ];
 
@@ -389,7 +403,9 @@ export const getEvents = async (params?: {
     const status = err?.response?.status;
     if (
       err?.code === "ERR_NETWORK" ||
+      err?.code === "ECONNABORTED" ||
       !err?.response ||
+      status === 404 ||
       (status && status >= 500)
     ) {
       console.warn(
@@ -410,7 +426,9 @@ export const getEventById = async (id: string): Promise<Event> => {
     const status = err?.response?.status;
     if (
       err?.code === "ERR_NETWORK" ||
+      err?.code === "ERR_INVALID_URL" ||
       !err?.response ||
+      status === 404 ||
       (status && status >= 500)
     ) {
       const found = inMemoryEvents.find(
@@ -839,6 +857,15 @@ export const cancelRegistration = async (
 
 // ─── Feedbacks ────────────────────────────────────────────────────────────────
 
+export const getAllFeedbacks = async (): Promise<Feedback[]> => {
+  try {
+    const res = await apiClient.get("/feedbacks");
+    return unwrapList<Feedback>(res.data);
+  } catch (e) {
+    return [];
+  }
+};
+
 export const getFeedbacksByEvent = async (
   eventId: string,
 ): Promise<Feedback[]> => {
@@ -850,11 +877,35 @@ export const getFeedbacksByEvent = async (
   }
 };
 
+export const getFeedbacksByUser = async (
+  userId: string,
+): Promise<Feedback[]> => {
+  try {
+    const res = await apiClient.get("/feedbacks", { params: { userId } });
+    return unwrapList<Feedback>(res.data);
+  } catch (e) {
+    return [];
+  }
+};
+
 export const createFeedback = async (
   data: CreateFeedbackPayload,
 ): Promise<Feedback> => {
-  const res = await apiClient.post("/feedbacks", data);
-  return unwrapOne<Feedback>(res.data);
+  try {
+    const res = await apiClient.post("/feedbacks", data);
+    return unwrapOne<Feedback>(res.data);
+  } catch (e) {
+    // Trả về fallback feedback nếu máy chủ offline để ứng dụng không bị crash
+    return {
+      id: "fb_" + Date.now(),
+      _id: "fb_" + Date.now(),
+      eventId: data.eventId,
+      userId: data.userId,
+      rating: data.rating,
+      comment: data.comment,
+      createdAt: new Date().toISOString(),
+    };
+  }
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────
@@ -999,7 +1050,9 @@ export default {
   qrCheckIn,
   adminManualCheckIn,
   cancelRegistration,
+  getAllFeedbacks,
   getFeedbacksByEvent,
+  getFeedbacksByUser,
   createFeedback,
   getNotificationsByUser,
   markNotificationAsRead,

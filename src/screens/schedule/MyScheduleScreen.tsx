@@ -823,8 +823,6 @@ export default function MyScheduleScreen({
         )}
       </ScrollView>
 
-      {/* ── Bottom Navigation Bar ───────────────────────────────────────── */}
-      <AppBottomTab activeTab={activeTab} onTabPress={handleTabPress} />
     </SafeAreaView>
   );
 }

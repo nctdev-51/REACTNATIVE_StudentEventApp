@@ -1,17 +1,16 @@
+<<<<<<< HEAD
 import React, { useState, useEffect, useCallback } from 'react';
+=======
+import React, { useState, useEffect, useCallback } from "react";
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 import {
-  View,
-  Text,
   Image,
-  TouchableOpacity,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   Platform,
   StatusBar,
   Alert,
   Modal,
-  TextInput,
   KeyboardAvoidingView,
 <<<<<<< HEAD
 } from 'react-native';
@@ -25,8 +24,22 @@ import api from '../../services/api';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 =======
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import {
+  YStack,
+  XStack,
+  Card,
+  Button,
+  Heading,
+  Paragraph,
+  Text as TamaguiText,
+  Input as TamaguiInput,
+  Spinner,
+} from "tamagui";
+
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { logout, updateUser } from "../../features/auth/authSlice";
@@ -35,8 +48,16 @@ import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme";
+<<<<<<< HEAD
 import { getDefaultDbUser } from "../../data/dbService";
 >>>>>>> e79c48e (abc)
+=======
+import {
+  getDefaultDbUser,
+  getUserStatsFromDb,
+  loadFeedbacksFromStorage,
+} from "../../data/dbService";
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,6 +86,7 @@ export interface ProfileScreenProps {
 }
 
 // ---------------------------------------------------------------------------
+<<<<<<< HEAD
 // Constants
 // ---------------------------------------------------------------------------
 
@@ -495,6 +517,9 @@ const tabStyles = StyleSheet.create({
 
 // ---------------------------------------------------------------------------
 // MenuItem Component
+=======
+// MenuItem Component (Tamagui based)
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 // ---------------------------------------------------------------------------
 
 interface MenuItemProps {
@@ -507,13 +532,25 @@ interface MenuItemProps {
 
 function MenuItem({ icon, label, badge, isLast = false, onPress }: MenuItemProps) {
   return (
+<<<<<<< HEAD
     <TouchableOpacity
       style={[menuStyles.row, isLast && menuStyles.rowLast]}
+=======
+    <XStack
+      alignItems="center"
+      paddingVertical={14}
+      paddingHorizontal={16}
+      backgroundColor={bgColor}
+      borderBottomWidth={isLast ? 0 : 1}
+      borderBottomColor={borderSubtle}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
       onPress={onPress}
-      activeOpacity={0.65}
+      pressStyle={{ opacity: 0.7 }}
+      cursor="pointer"
       accessibilityRole="button"
       accessibilityLabel={label}
     >
+<<<<<<< HEAD
       <View style={menuStyles.iconBox}>{icon}</View>
       <Text style={menuStyles.label}>{label}</Text>
       <View style={menuStyles.rightBox}>
@@ -560,8 +597,36 @@ const menuStyles = StyleSheet.create({
   },
 });
 
+=======
+      <XStack width={28} alignItems="center" justifyContent="center" marginRight={12}>
+        {icon}
+      </XStack>
+      <TamaguiText flex={1} fontSize={15} fontWeight="500" color={textColor}>
+        {label}
+      </TamaguiText>
+      <XStack alignItems="center" gap={4}>
+        {badge ? (
+          <XStack
+            paddingHorizontal={8}
+            paddingVertical={2}
+            borderRadius={8}
+            backgroundColor={badgeBg}
+            marginRight={4}
+          >
+            <TamaguiText fontSize={13} fontWeight="600" color={textColor}>
+              {badge}
+            </TamaguiText>
+          </XStack>
+        ) : null}
+        <Ionicons name="chevron-forward" size={18} color={chevronColor} />
+      </XStack>
+    </XStack>
+  );
+}
+
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 // ---------------------------------------------------------------------------
-// ActivityStats Item
+// ActivityStats Item (Tamagui based)
 // ---------------------------------------------------------------------------
 
 interface ActivityStatItemProps {
@@ -571,6 +636,7 @@ interface ActivityStatItemProps {
 
 function ActivityStatItem({ value, label }: ActivityStatItemProps) {
   return (
+<<<<<<< HEAD
     <View style={statStyles.item}>
       <Text style={statStyles.value}>{value}</Text>
       <Text style={statStyles.label}>{label}</Text>
@@ -598,6 +664,19 @@ const statStyles = StyleSheet.create({
   },
 });
 
+=======
+    <YStack flex={1} alignItems="center" paddingVertical={4}>
+      <Heading size="$7" fontWeight="700" color={accentColor} marginBottom={4}>
+        {value}
+      </Heading>
+      <Paragraph size="$2" textAlign="center" color={labelColor} lineHeight={15}>
+        {label}
+      </Paragraph>
+    </YStack>
+  );
+}
+
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 // ---------------------------------------------------------------------------
 // ProfileScreen
 // ---------------------------------------------------------------------------
@@ -638,13 +717,88 @@ export default function ProfileScreen({
   const [editFaculty, setEditFaculty] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
 
-  useEffect(() => {
-    const targetId = currentUser?._id || defaultStudent?._id;
-    if (targetId) {
-      dispatch(fetchMyRegistrations(targetId));
+  const targetUserId = currentUser?._id || defaultStudent?._id;
+
+  // Đếm chính xác số lượng sự kiện người dùng đã đánh giá từ Backend
+  const [personalReviewsCount, setPersonalReviewsCount] = useState<number>(() => {
+    return getUserStatsFromDb(targetUserId).reviews;
+  });
+
+  const loadPersonalReviews = useCallback(async () => {
+    try {
+      // 1. Đồng bộ trực tiếp từ API Backend_v2 MongoDB
+      const apiFeedbacks = targetUserId
+        ? await api.getFeedbacksByUser(targetUserId)
+        : await api.getAllFeedbacks();
+
+      if (Array.isArray(apiFeedbacks)) {
+        const userFeedbacks = apiFeedbacks.filter((f: any) => {
+          const uId =
+            typeof f.userId === "object" && f.userId !== null
+              ? f.userId._id || f.userId.id
+              : f.userId;
+          return (
+            !targetUserId ||
+            uId === targetUserId ||
+            (defaultStudent?._id && uId === defaultStudent._id)
+          );
+        });
+
+        // Đếm số sự kiện phân biệt (distinct eventId) mà sinh viên đã gửi đánh giá
+        const reviewedEventIds = new Set(
+          userFeedbacks
+            .map((f: any) =>
+              typeof f.eventId === "object" && f.eventId !== null
+                ? f.eventId._id || f.eventId.id
+                : f.eventId,
+            )
+            .filter(Boolean),
+        );
+        setPersonalReviewsCount(reviewedEventIds.size);
+        return;
+      }
+
+      // 2. Fallback sang local storage & dbService nếu offline
+      const allFeedbacks = await loadFeedbacksFromStorage();
+      const userFeedbacks = allFeedbacks.filter((f) => {
+        const fUser: any = f.userId;
+        const uId =
+          typeof fUser === "object" && fUser !== null
+            ? fUser._id || fUser.id
+            : fUser;
+        return (
+          uId === targetUserId ||
+          (defaultStudent?._id && uId === defaultStudent._id)
+        );
+      });
+      const reviewedEventIds = new Set(
+        userFeedbacks.map((f) => f.eventId).filter(Boolean),
+      );
+      setPersonalReviewsCount(reviewedEventIds.size);
+    } catch {
+      const stats = getUserStatsFromDb(targetUserId);
+      setPersonalReviewsCount(stats.reviews);
     }
+<<<<<<< HEAD
   }, [dispatch, currentUser?._id, defaultStudent?._id]);
 >>>>>>> e79c48e (abc)
+=======
+  }, [targetUserId, defaultStudent?._id]);
+
+  useEffect(() => {
+    if (targetUserId) {
+      dispatch(fetchMyRegistrations(targetUserId));
+    }
+    loadPersonalReviews();
+  }, [dispatch, targetUserId, loadPersonalReviews]);
+
+  useFocusEffect(
+    useCallback(() => {
+      setActiveTab("profile");
+      loadPersonalReviews();
+    }, [loadPersonalReviews]),
+  );
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
   // Compute real user details and stats from Redux
   const displayName =
@@ -673,6 +827,7 @@ export default function ProfileScreen({
     currentUser?.phone || profile?.phone || defaultStudent?.phone || "";
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   const eventsAttendedCount = myRegistrations.filter((r) => r.status === 'checked_in').length;
   const pointsAccumulated = currentUser?.point ?? 0;
   const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
@@ -684,9 +839,20 @@ export default function ProfileScreen({
 =======
   const eventsAttendedCount = myRegistrations.filter(
     (r) => r.status === "checked_in",
+=======
+  const registeredAttended = myRegistrations.filter(
+    (r) => r.status === "checked_in" || (r.status as string) === "completed",
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   ).length;
-  const pointsAccumulated = currentUser?.point ?? defaultStudent?.point ?? 0;
-  const reviewsCount = eventsAttendedCount; // Estimated or equal to attended events
+  const eventsAttendedCount =
+    myRegistrations.length > 0
+      ? registeredAttended
+      : getUserStatsFromDb(targetUserId).eventsAttended;
+  const pointsAccumulated =
+    currentUser?.point ??
+    defaultStudent?.point ??
+    getUserStatsFromDb(targetUserId).pointsAccumulated;
+  const reviewsCount = personalReviewsCount;
 
   const handleOpenEditProfile = () => {
     setEditFullName(currentUser?.fullName || displayName);
@@ -742,6 +908,7 @@ export default function ProfileScreen({
     }
   };
 
+<<<<<<< HEAD
   // Toggle theme locally for responsive UI feedback
   const handleToggleTheme = () => {
 <<<<<<< HEAD
@@ -755,6 +922,8 @@ export default function ProfileScreen({
   // Wire up bottom tab navigation
   const handleTabPress = (tab: TabKey) => {
 =======
+=======
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   // Xử lý chuyển tab dưới cùng
   const handleTabPress = (tab: AppTabKey) => {
 >>>>>>> 3fca7b4 (feat: integrate bottom tab navigation and enhance QR scanner functionality)
@@ -799,13 +968,17 @@ export default function ProfileScreen({
   };
 
   return (
-    <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]}>
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: theme.background }]}
+      edges={["top"]}
+    >
       <StatusBar barStyle={theme.statusBarStyle} />
 
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+<<<<<<< HEAD
         {/* ── Top row với nút Left Navbar (☰) & Tùy chọn ──────────────────── */}
         <View style={styles.topRow}>
           <LeftNavbarButton />
@@ -815,6 +988,33 @@ export default function ProfileScreen({
             activeOpacity={0.7}
 <<<<<<< HEAD
 =======
+=======
+        {/* ── Top row với nút Left Navbar (☰), Tiêu đề & Tùy chọn ──────────── */}
+        <XStack
+          alignItems="center"
+          justifyContent="space-between"
+          paddingHorizontal={20}
+          paddingTop={Platform.OS === "android" ? 12 : 8}
+          paddingBottom={8}
+        >
+          <XStack alignItems="center" gap={10}>
+            <LeftNavbarButton />
+            <Heading size="$6" fontWeight="700" color={theme.textPrimary}>
+              Hồ sơ cá nhân
+            </Heading>
+          </XStack>
+
+          <Button
+            size="$3"
+            circular
+            padding={0}
+            width={36}
+            height={36}
+            backgroundColor={theme.surface}
+            borderColor={theme.border}
+            borderWidth={1}
+            pressStyle={{ opacity: 0.7 }}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
             onPress={() => {
               Alert.alert(
                 "Thông tin tài khoản",
@@ -825,12 +1025,22 @@ export default function ProfileScreen({
             accessibilityRole="button"
             accessibilityLabel="Tùy chọn khác"
           >
+<<<<<<< HEAD
             <Text style={styles.optionsDots}>•••</Text>
           </TouchableOpacity>
         </View>
+=======
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={18}
+              color={theme.textSecondary}
+            />
+          </Button>
+        </XStack>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
         {/* ── Avatar ──────────────────────────────────────────────────────── */}
-        <View style={styles.avatarWrapper}>
+        <YStack alignItems="center" marginTop={8} marginBottom={12}>
           {avatarUrl && !imageError ? (
             <Image
               source={{ uri: avatarUrl }}
@@ -841,15 +1051,30 @@ export default function ProfileScreen({
               accessibilityLabel={`Ảnh đại diện của ${displayName}`}
             />
           ) : (
+<<<<<<< HEAD
             <View style={styles.avatarFallback}>
               <Text style={styles.avatarFallbackInitial}>
+=======
+            <YStack
+              width={90}
+              height={90}
+              borderRadius={45}
+              justifyContent="center"
+              alignItems="center"
+              borderWidth={3}
+              backgroundColor={theme.primary}
+              borderColor={theme.surface}
+            >
+              <TamaguiText fontSize={36} fontWeight="700" color="#FFFFFF">
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
                 {displayName.charAt(0).toUpperCase()}
-              </Text>
-            </View>
+              </TamaguiText>
+            </YStack>
           )}
-        </View>
+        </YStack>
 
         {/* ── Student info ─────────────────────────────────────────────────── */}
+<<<<<<< HEAD
         <Text style={styles.displayName}>{displayName}</Text>
         <Text style={styles.studentId}>MSSV: {studentId}</Text>
         <Text style={styles.faculty}>{faculty}</Text>
@@ -874,10 +1099,91 @@ export default function ProfileScreen({
         <View style={styles.menuCard}>
           <MenuItem
             icon={<CalendarIcon color="#334155" />}
+=======
+        <Heading
+          size="$6"
+          fontWeight="700"
+          textAlign="center"
+          color={theme.textPrimary}
+          marginBottom={4}
+        >
+          {displayName}
+        </Heading>
+        <Paragraph
+          size="$3"
+          textAlign="center"
+          color={theme.textSecondary}
+          marginBottom={2}
+        >
+          MSSV: {studentId}
+        </Paragraph>
+        <Paragraph
+          size="$3"
+          textAlign="center"
+          color={theme.textSecondary}
+          marginBottom={20}
+        >
+          {faculty}
+        </Paragraph>
+
+        {/* ── Activity stats card (Tamagui Card) ─────────── */}
+        <Card
+          marginHorizontal={20}
+          borderRadius={16}
+          borderWidth={1}
+          borderColor={theme.border}
+          backgroundColor={theme.surface}
+          paddingVertical={14}
+          paddingHorizontal={12}
+          marginBottom={20}
+          elevation={2}
+        >
+          <XStack justifyContent="space-around" alignItems="center">
+            <ActivityStatItem
+              value={eventsAttendedCount}
+              label="Sự kiện đã tham gia"
+              accentColor={theme.primary}
+              labelColor={theme.textSecondary}
+            />
+            <ActivityStatItem
+              value={pointsAccumulated}
+              label="Điểm tích lũy"
+              accentColor={theme.primary}
+              labelColor={theme.textSecondary}
+            />
+            <ActivityStatItem
+              value={reviewsCount}
+              label="Đã đánh giá"
+              accentColor={theme.primary}
+              labelColor={theme.textSecondary}
+            />
+          </XStack>
+        </Card>
+
+        {/* ── Menu list (Tamagui Card) ────────────────────────────────────── */}
+        <Card
+          marginHorizontal={20}
+          borderRadius={16}
+          borderWidth={1}
+          borderColor={theme.border}
+          backgroundColor={theme.surface}
+          overflow="hidden"
+          elevation={2}
+        >
+          <MenuItem
+            icon={
+              <Ionicons
+                name="calendar-outline"
+                size={20}
+                color={theme.textSecondary}
+              />
+            }
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
             label="Lịch sử tham gia"
             onPress={() => navigation.navigate('MySchedule')}
           />
           <MenuItem
+<<<<<<< HEAD
             icon={<UserOutlineIcon color="#334155" />}
             label="Thông tin cá nhân"
             onPress={handleOpenEditProfile}
@@ -889,11 +1195,21 @@ export default function ProfileScreen({
             onPress={() => Alert.alert('Cài đặt', 'Cài đặt ứng dụng')}
 =======
             icon={<UserOutlineIcon color={theme.textSecondary} />}
+=======
+            icon={
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={theme.textSecondary}
+              />
+            }
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
             label="Thông tin cá nhân"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
             borderSubtle={theme.borderSubtle}
             chevronColor={theme.textTertiary}
+<<<<<<< HEAD
             onPress={() =>
               Alert.alert(
                 "Thông tin sinh viên",
@@ -901,34 +1217,122 @@ export default function ProfileScreen({
               )
             }
 >>>>>>> c4f94b6 (Refactor check-in screens to enhance UI and UX with theme support)
+=======
+            onPress={handleOpenEditProfile}
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
           />
           <MenuItem
+<<<<<<< HEAD
             icon={<MoonCrescentIcon color="#334155" />}
             label="Đổi theme"
             badge={currentTheme}
             onPress={handleToggleTheme}
+=======
+            icon={
+              <Ionicons
+                name="star-outline"
+                size={20}
+                color={theme.textSecondary}
+              />
+            }
+            label="Góp ý & Đánh giá sự kiện"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => navigation.navigate("Feedback")}
+          />
+
+          <MenuItem
+            icon={
+              <Ionicons
+                name="settings-outline"
+                size={20}
+                color={theme.textSecondary}
+              />
+            }
+            label="Cài đặt ứng dụng"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() =>
+              Alert.alert(
+                "Cài đặt",
+                "Ứng dụng Quản lý Sự kiện Sinh viên IUH v1.0.0",
+              )
+            }
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
           />
           <MenuItem
+<<<<<<< HEAD
             icon={<LogoutIcon color={DANGER_COLOR} />}
             label="Đăng xuất"
             isLast
             onPress={handleLogout}
           />
         </View>
+=======
+            icon={
+              <Ionicons
+                name={isDark ? "sunny-outline" : "moon-outline"}
+                size={20}
+                color={theme.primary}
+              />
+            }
+            label="Đổi theme (Sáng / Tối)"
+            badge={mode}
+            badgeBg={theme.badgeBackground}
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            isLast={true}
+            onPress={toggleTheme}
+          />
+        </Card>
+
+        {/* ── Nút Đăng xuất riêng biệt nổi bật (Tamagui Button) ── */}
+        <Button
+          marginHorizontal={20}
+          marginTop={14}
+          borderRadius={14}
+          borderWidth={1}
+          height={52}
+          backgroundColor={isDark ? "#261214" : "#FEF2F2"}
+          borderColor={isDark ? "#7F1D1D" : "#FECACA"}
+          onPress={handleLogoutPress}
+          pressStyle={{ opacity: 0.75 }}
+          accessibilityRole="button"
+          accessibilityLabel="Đăng xuất khỏi tài khoản"
+        >
+          <XStack alignItems="center" gap={8}>
+            <Ionicons name="log-out-outline" size={20} color={theme.danger} />
+            <TamaguiText fontSize={15} fontWeight="700" color={theme.danger}>
+              Đăng xuất tài khoản
+            </TamaguiText>
+          </XStack>
+        </Button>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
       </ScrollView>
 
-      {/* ── Bottom navigation bar ───────────────────────────────────────── */}
-      <AppBottomTab activeTab={activeTab} onTabPress={handleTabPress} />
 
-      {/* ── Modal Chỉnh Sửa Thông Tin Cá Nhân ───────────────────────────── */}
+      {/* ── Modal Chỉnh Sửa Thông Tin Cá Nhân (Tamagui Card + Input + Button) ── */}
       <Modal
         visible={editModalVisible}
         transparent
         animationType="slide"
         onRequestClose={() => setEditModalVisible(false)}
       >
-        <View style={editStyles.overlay}>
+        <YStack
+          flex={1}
+          backgroundColor="rgba(15, 23, 42, 0.65)"
+          justifyContent="center"
+          alignItems="center"
+          padding={16}
+        >
           <KeyboardAvoidingView
+<<<<<<< HEAD
             behavior={Platform.OS === 'ios' ? 'padding' : undefined}
             style={editStyles.card}
           >
@@ -993,90 +1397,313 @@ export default function ProfileScreen({
                 </Text>
               </TouchableOpacity>
             </ScrollView>
+=======
+            behavior={Platform.OS === "ios" ? "padding" : undefined}
+            style={editStyles.keyboardWrap}
+          >
+            <Card
+              width="100%"
+              maxWidth={420}
+              backgroundColor="#FFFFFF"
+              borderRadius={16}
+              overflow="hidden"
+              maxHeight="85%"
+            >
+              <XStack
+                alignItems="center"
+                justifyContent="space-between"
+                paddingHorizontal={16}
+                paddingVertical={14}
+                backgroundColor="#1E3A8A"
+              >
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons
+                    name="person-circle-outline"
+                    size={20}
+                    color="#FFFFFF"
+                  />
+                  <TamaguiText fontSize={15} fontWeight="800" color="#FFFFFF">
+                    Cập Nhật Thông Tin Cá Nhân
+                  </TamaguiText>
+                </XStack>
+                <Button
+                  size="$2"
+                  circular
+                  padding={0}
+                  backgroundColor="transparent"
+                  onPress={() => setEditModalVisible(false)}
+                  pressStyle={{ opacity: 0.7 }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Đóng modal"
+                >
+                  <Ionicons name="close" size={22} color="#E0E7FF" />
+                </Button>
+              </XStack>
+
+              <ScrollView
+                style={editStyles.body}
+                showsVerticalScrollIndicator={false}
+              >
+                <Paragraph size="$2" fontWeight="700" color="#334155" marginBottom={6} marginTop={4}>
+                  Mã số sinh viên (MSSV)
+                </Paragraph>
+                <XStack
+                  alignItems="center"
+                  justifyContent="space-between"
+                  backgroundColor="#F1F5F9"
+                  borderRadius={10}
+                  paddingHorizontal={12}
+                  height={42}
+                  borderWidth={1}
+                  borderColor="#E2E8F0"
+                  marginBottom={10}
+                >
+                  <TamaguiText fontSize={13} color="#64748B" fontWeight="600">
+                    {studentId}
+                  </TamaguiText>
+                  <XStack
+                    backgroundColor="#E2E8F0"
+                    paddingHorizontal={6}
+                    paddingVertical={2}
+                    borderRadius={4}
+                  >
+                    <TamaguiText fontSize={10} color="#94A3B8" fontWeight="700">
+                      Cố định
+                    </TamaguiText>
+                  </XStack>
+                </XStack>
+
+                <Paragraph size="$2" fontWeight="700" color="#334155" marginBottom={6} marginTop={4}>
+                  Email trường
+                </Paragraph>
+                <XStack
+                  alignItems="center"
+                  justifyContent="space-between"
+                  backgroundColor="#F1F5F9"
+                  borderRadius={10}
+                  paddingHorizontal={12}
+                  height={42}
+                  borderWidth={1}
+                  borderColor="#E2E8F0"
+                  marginBottom={10}
+                >
+                  <TamaguiText fontSize={13} color="#64748B" fontWeight="600">
+                    {currentUser?.email || "sv@iuh.edu.vn"}
+                  </TamaguiText>
+                  <XStack
+                    backgroundColor="#E2E8F0"
+                    paddingHorizontal={6}
+                    paddingVertical={2}
+                    borderRadius={4}
+                  >
+                    <TamaguiText fontSize={10} color="#94A3B8" fontWeight="700">
+                      Cố định
+                    </TamaguiText>
+                  </XStack>
+                </XStack>
+
+                <Paragraph size="$2" fontWeight="700" color="#334155" marginBottom={6} marginTop={4}>
+                  Họ và tên *
+                </Paragraph>
+                <TamaguiInput
+                  backgroundColor="#F8FAFC"
+                  borderWidth={1}
+                  borderColor="#CBD5E1"
+                  borderRadius={10}
+                  paddingHorizontal={12}
+                  height={42}
+                  fontSize={13.5}
+                  color="#0F172A"
+                  marginBottom={10}
+                  value={editFullName}
+                  onChangeText={setEditFullName}
+                  placeholder="Nhập họ và tên..."
+                />
+
+                <Paragraph size="$2" fontWeight="700" color="#334155" marginBottom={6} marginTop={4}>
+                  Số điện thoại
+                </Paragraph>
+                <TamaguiInput
+                  backgroundColor="#F8FAFC"
+                  borderWidth={1}
+                  borderColor="#CBD5E1"
+                  borderRadius={10}
+                  paddingHorizontal={12}
+                  height={42}
+                  fontSize={13.5}
+                  color="#0F172A"
+                  marginBottom={10}
+                  value={editPhone}
+                  onChangeText={setEditPhone}
+                  placeholder="Ví dụ: 0912345678"
+                  keyboardType="phone-pad"
+                />
+
+                <Paragraph size="$2" fontWeight="700" color="#334155" marginBottom={6} marginTop={4}>
+                  Khoa / Viện đào tạo
+                </Paragraph>
+                <TamaguiInput
+                  backgroundColor="#F8FAFC"
+                  borderWidth={1}
+                  borderColor="#CBD5E1"
+                  borderRadius={10}
+                  paddingHorizontal={12}
+                  height={42}
+                  fontSize={13.5}
+                  color="#0F172A"
+                  marginBottom={10}
+                  value={editFaculty}
+                  onChangeText={setEditFaculty}
+                  placeholder="Ví dụ: Khoa Công nghệ thông tin"
+                />
+
+                <XStack
+                  alignItems="center"
+                  justifyContent="space-between"
+                  backgroundColor="#EFF6FF"
+                  borderRadius={10}
+                  padding={12}
+                  borderWidth={1}
+                  borderColor="#BFDBFE"
+                  marginTop={4}
+                  marginBottom={16}
+                >
+                  <XStack alignItems="center" gap={6}>
+                    <Ionicons name="star" size={15} color="#1D4ED8" />
+                    <TamaguiText fontSize={12} fontWeight="700" color="#1D4ED8">
+                      Điểm rèn luyện tích lũy:
+                    </TamaguiText>
+                  </XStack>
+                  <TamaguiText fontSize={14} fontWeight="800" color="#2563EB">
+                    {pointsAccumulated} / 100 ĐRL
+                  </TamaguiText>
+                </XStack>
+
+                <Button
+                  backgroundColor="#2563EB"
+                  height={46}
+                  borderRadius={12}
+                  alignItems="center"
+                  justifyContent="center"
+                  marginBottom={16}
+                  disabled={savingProfile}
+                  onPress={handleSaveProfile}
+                  pressStyle={{ opacity: 0.8 }}
+                >
+                  {savingProfile ? (
+                    <Spinner color="#FFFFFF" />
+                  ) : (
+                    <TamaguiText fontSize={14} fontWeight="700" color="#FFFFFF">
+                      Lưu Thay Đổi
+                    </TamaguiText>
+                  )}
+                </Button>
+              </ScrollView>
+            </Card>
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
           </KeyboardAvoidingView>
-        </View>
+        </YStack>
       </Modal>
 
-      {/* ── Modal xác nhận Đăng xuất ────────────────────────────────────── */}
+      {/* ── Modal xác nhận Đăng xuất (Tamagui Card + Button) ─────────────── */}
       <Modal
         visible={logoutModalVisible}
         transparent
         animationType="fade"
         onRequestClose={() => setLogoutModalVisible(false)}
       >
-        <View style={styles.modalOverlay}>
-          <View
-            style={[
-              styles.modalCard,
-              {
-                backgroundColor: theme.surface,
-                borderColor: theme.border,
-              },
-            ]}
+        <YStack
+          flex={1}
+          backgroundColor="rgba(0, 0, 0, 0.65)"
+          justifyContent="center"
+          alignItems="center"
+          paddingHorizontal={28}
+        >
+          <Card
+            width="100%"
+            maxWidth={360}
+            borderRadius={20}
+            borderWidth={1}
+            borderColor={theme.border}
+            backgroundColor={theme.surface}
+            padding={24}
+            alignItems="center"
+            elevation={6}
           >
-            <View
-              style={[
-                styles.modalIconCircle,
-                { backgroundColor: isDark ? "#3B181A" : "#FEE2E2" },
-              ]}
+            <YStack
+              width={56}
+              height={56}
+              borderRadius={28}
+              justifyContent="center"
+              alignItems="center"
+              marginBottom={16}
+              backgroundColor={isDark ? "#3B181A" : "#FEE2E2"}
             >
-              <LogoutIcon color={theme.danger} />
-            </View>
+              <Ionicons name="log-out-outline" size={28} color={theme.danger} />
+            </YStack>
 
-            <Text style={[styles.modalTitle, { color: theme.textPrimary }]}>
+            <Heading
+              size="$5"
+              fontWeight="700"
+              textAlign="center"
+              marginBottom={8}
+              color={theme.textPrimary}
+            >
               Xác nhận đăng xuất
-            </Text>
+            </Heading>
 
-            <Text style={[styles.modalMessage, { color: theme.textSecondary }]}>
+            <Paragraph
+              size="$3"
+              lineHeight={21}
+              textAlign="center"
+              marginBottom={24}
+              color={theme.textSecondary}
+            >
               Bạn có chắc chắn muốn đăng xuất khỏi tài khoản{" "}
-              <Text style={{ fontWeight: "700", color: theme.textPrimary }}>
+              <TamaguiText fontWeight="700" color={theme.textPrimary}>
                 {displayName}
-              </Text>{" "}
+              </TamaguiText>{" "}
               không? Mọi phiên làm việc hiện tại sẽ kết thúc.
-            </Text>
+            </Paragraph>
 
-            <View style={styles.modalActions}>
-              <TouchableOpacity
-                style={[
-                  styles.modalCancelBtn,
-                  {
-                    borderColor: theme.border,
-                    backgroundColor: theme.background,
-                  },
-                ]}
-                activeOpacity={0.8}
+            <XStack gap={12} width="100%">
+              <Button
+                flex={1}
+                height={46}
+                borderRadius={12}
+                borderWidth={1}
+                borderColor={theme.border}
+                backgroundColor={theme.background}
+                pressStyle={{ opacity: 0.8 }}
                 onPress={() => setLogoutModalVisible(false)}
               >
-                <Text
-                  style={[
-                    styles.modalCancelText,
-                    { color: theme.textPrimary },
-                  ]}
-                >
+                <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
                   Hủy bỏ
-                </Text>
-              </TouchableOpacity>
+                </TamaguiText>
+              </Button>
 
-              <TouchableOpacity
-                style={[
-                  styles.modalLogoutBtn,
-                  { backgroundColor: theme.danger },
-                ]}
-                activeOpacity={0.8}
+              <Button
+                flex={1}
+                height={46}
+                borderRadius={12}
+                backgroundColor={theme.danger}
+                pressStyle={{ opacity: 0.8 }}
                 onPress={confirmLogout}
               >
-                <Text style={styles.modalLogoutText}>Đăng xuất</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
+                <TamaguiText fontSize={14} fontWeight="700" color="#FFFFFF">
+                  Đăng xuất
+                </TamaguiText>
+              </Button>
+            </XStack>
+          </Card>
+        </YStack>
       </Modal>
     </SafeAreaView>
   );
 }
 
 // ---------------------------------------------------------------------------
-// Styles
+// Native Styles (Image & Scroll layout)
 // ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
@@ -1087,6 +1714,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: 24,
   },
+<<<<<<< HEAD
 
   // Top row
   topRow: {
@@ -1112,6 +1740,8 @@ const styles = StyleSheet.create({
     marginTop: 4,
     marginBottom: 12,
   },
+=======
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   avatarImage: {
     width: 86,
     height: 86,
@@ -1120,6 +1750,7 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: BACKGROUND,
   },
+<<<<<<< HEAD
   avatarFallback: {
     width: 86,
     height: 86,
@@ -1342,10 +1973,19 @@ const editStyles = StyleSheet.create({
     fontSize: 16,
     color: '#E0E7FF',
     fontWeight: '700',
+=======
+});
+
+const editStyles = StyleSheet.create({
+  keyboardWrap: {
+    width: "100%",
+    alignItems: "center",
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   },
   body: {
     padding: 16,
   },
+<<<<<<< HEAD
   label: {
     fontSize: 12,
     fontWeight: '700',
@@ -1424,4 +2064,6 @@ const editStyles = StyleSheet.create({
     fontWeight: '700',
     color: '#FFFFFF',
   },
+=======
+>>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 });
