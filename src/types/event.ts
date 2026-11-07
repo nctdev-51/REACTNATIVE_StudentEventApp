@@ -47,6 +47,9 @@ export interface Event {
 
   aiSummary?: AISummary;
 
+  /** Học kỳ mà sự kiện thuộc về (admin gán); không có thì suy ra từ thời gian */
+  semesterId?: string;
+
   status: "upcoming" | "ongoing" | "completed" | "past";
 
   /** Trạng thái ẩn bởi admin (khi ẩn, sinh viên sẽ không nhìn thấy trên trang chủ) */

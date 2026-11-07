@@ -30,6 +30,7 @@ import {
   setFilterFaculty,
   setFilterDate,
   setFilterStatus,
+  setFilterSemester,
   selectFilteredEvents,
 } from "../../features/events/eventsSlice";
 import {
@@ -37,6 +38,7 @@ import {
   selectUnreadCount,
 } from "../../features/notifications/notificationsSlice";
 import SearchBar from "../../components/events/SearchBar";
+import SemesterPicker from "../../components/events/SemesterPicker";
 import { isEventPast } from "../../services/api";
 import CategoryChip from "../../components/events/CategoryChip";
 import FeaturedEventCard from "../../components/events/FeaturedEventCard";
@@ -77,7 +79,7 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useAppTheme();
 
-  const { loading, error, filter } = useAppSelector((state) => state.events);
+  const { loading, error, filter, list: allEvents } = useAppSelector((state) => state.events);
   const filteredEvents = useAppSelector(selectFilteredEvents);
   const user = useAppSelector((state) => state.auth.user);
   const unreadCount = useAppSelector(selectUnreadCount);
@@ -161,6 +163,7 @@ export default function HomeScreen() {
     filter.date,
     filter.status,
     filter.searchQuery,
+    filter.semesterId,
   ]);
 
   const userName = user?.fullName ?? "Sinh viên";
@@ -275,6 +278,14 @@ export default function HomeScreen() {
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Hồ sơ</Text>
         </TouchableOpacity>
       </View>
+
+      {/* Chọn học kỳ — hoạt động hiển thị theo học kỳ đã chọn */}
+      <SemesterPicker
+        value={filter.semesterId}
+        onChange={(semesterId) => dispatch(setFilterSemester(semesterId))}
+        events={allEvents}
+        style={styles.semesterPicker}
+      />
 
       {/* Tìm kiếm */}
       <SearchBar />
@@ -720,7 +731,7 @@ export default function HomeScreen() {
                 Không tìm thấy sự kiện
               </Text>
               <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
-                Hãy thử tìm kiếm hoặc chọn bộ lọc khác.
+                Học kỳ này chưa có hoạt động phù hợp. Hãy thử chọn học kỳ khác hoặc đổi bộ lọc.
               </Text>
             </View>
           ) : undefined
@@ -738,6 +749,9 @@ export default function HomeScreen() {
 }
 
 const styles = StyleSheet.create({
+  semesterPicker: {
+    marginBottom: 16,
+  },
   filterButton: {
   borderWidth: 1,
   borderColor: "#E2E8F0",

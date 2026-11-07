@@ -7,6 +7,10 @@ import {
 
 import { Event } from "../../types";
 import api from "../../services/api";
+import {
+  getCurrentSemesterId,
+  getEventSemesterId,
+} from "../../utils/semester";
 
 interface EventsState {
   list: Event[];
@@ -21,6 +25,8 @@ interface EventsState {
     date: string | null;
     status: string | null;
     searchQuery: string;
+    /** Học kỳ đang xem — null nghĩa là tất cả học kỳ */
+    semesterId: string | null;
   };
 }
 
@@ -37,6 +43,7 @@ const initialState: EventsState = {
     date: null,
     status: null,
     searchQuery: "",
+    semesterId: getCurrentSemesterId(),
   },
 };
 
@@ -110,6 +117,13 @@ const eventsSlice = createSlice({
       state.filter.status = action.payload;
     },
 
+    setFilterSemester(
+      state,
+      action: PayloadAction<string | null>
+    ) {
+      state.filter.semesterId = action.payload;
+    },
+
     setSearchQuery(
       state,
       action: PayloadAction<string>
@@ -124,6 +138,7 @@ const eventsSlice = createSlice({
         date: null,
         status: null,
         searchQuery: "",
+        semesterId: getCurrentSemesterId(),
       };
     },
 
@@ -177,6 +192,7 @@ export const {
   setFilterFaculty,
   setFilterDate,
   setFilterStatus,
+  setFilterSemester,
   setSearchQuery,
   resetFilter,
   clearSelectedEvent,
@@ -193,6 +209,11 @@ export const selectFilteredEvents = createSelector(
     return list.filter((event) => {
       // Ẩn sự kiện nếu đã bị Admin ẩn khỏi sinh viên
       if (event.isHidden) return false;
+
+      // Lọc học kỳ: chỉ hiện sự kiện thuộc học kỳ đang chọn
+      if (filter.semesterId && getEventSemesterId(event) !== filter.semesterId) {
+        return false;
+      }
 
       const matchCategory =
         !filter.category || event.category === filter.category;
