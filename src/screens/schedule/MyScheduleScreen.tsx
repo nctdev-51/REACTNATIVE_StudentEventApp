@@ -21,7 +21,7 @@ import { fetchEvents } from "../../features/events/eventsSlice";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme/ThemeContext";
-import { mergeRegistrations } from '../../utils/registrations';
+import { mergeRegistrations, hasEventEnded } from '../../utils/registrations';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -35,6 +35,9 @@ export interface RegisteredEvent {
   date: string;
   time: string;
   startAt?: string;
+  endAt?: string;
+  checkedIn?: boolean;
+  checkInClosed?: boolean;
   location: string;
   imageUrl: string;
   daysLeft?: number;
@@ -471,6 +474,16 @@ interface EventCardProps {
   onPress?: (event: RegisteredEvent) => void;
 }
 
+function formatScheduleDuration(milliseconds: number, roundUp = false) {
+  const totalMinutes = Math.max(0, roundUp ? Math.ceil(milliseconds / 60000) : Math.floor(milliseconds / 60000));
+  if (totalMinutes === 0) return 'dưới 1 phút';
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  return [days > 0 ? `${days} ngày` : '', hours > 0 ? `${hours} giờ` : '', minutes > 0 ? `${minutes} phút` : '']
+    .filter(Boolean).join(' ');
+}
+
 function EventCard({ event, onPress }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -486,8 +499,13 @@ function EventCard({ event, onPress }: EventCardProps) {
   const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
   const urgent = Number.isFinite(start) ? remaining <= 86400000 : (event.daysLeft ?? Infinity) <= 1;
+  const end = event.endAt ? Date.parse(event.endAt) : NaN;
+  const ongoingText = Number.isFinite(end) && end <= now ? 'Sự kiện đã kết thúc'
+    : `Đã qua giờ bắt đầu ${formatScheduleDuration(now - start)}\n${Number.isFinite(end)
+      ? `Còn ${formatScheduleDuration(end - now, true)} đến khi kết thúc`
+      : 'Chưa có giờ kết thúc'}`;
   const countdown = !Number.isFinite(start) ? (event.daysLeft !== undefined ? `Còn ${event.daysLeft} ngày` : '')
-    : remaining <= 0 ? 'Đã đến giờ bắt đầu'
+    : remaining <= 0 ? ongoingText
     : remaining < 60000 ? 'Sắp bắt đầu'
     : days > 0 ? `Còn ${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`
     : hours > 0 ? `Còn ${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ''}`
@@ -538,6 +556,11 @@ function EventCard({ event, onPress }: EventCardProps) {
         </View>
 
         {/* Days Left Badge */}
+        {event.status === 'past' && <View style={[cardStyles.badge, { backgroundColor: event.checkedIn ? '#DCFCE7' : '#FEE2E2' }]}>
+          <Text style={[cardStyles.badgeText, { color: event.checkedIn ? '#16A34A' : '#DC2626' }]}>
+            {event.checkedIn ? 'Đã check-in' : event.checkInClosed ? 'Chưa check-in · Đã đóng điểm danh' : 'Chưa check-in'}
+          </Text>
+        </View>}
         {event.status === 'upcoming' && countdown !== '' && (
           <View style={[cardStyles.badge, urgent && { backgroundColor: '#FEE2E2' }]}>
             <Text style={[cardStyles.badgeText, urgent && { color: '#DC2626' }]}>{countdown}</Text>
@@ -652,6 +675,7 @@ export default function MyScheduleScreen({
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [dateFilter, setDateFilter] = useState<'all' | 'today'>('all');
+  const [scheduleNow, setScheduleNow] = useState(Date.now());
 
   const loadData = useCallback(async () => {
     if (currentUser?._id) {
@@ -662,7 +686,10 @@ export default function MyScheduleScreen({
 
   useFocusEffect(
     useCallback(() => {
+      setScheduleNow(Date.now());
       void loadData();
+      const timer = setInterval(() => setScheduleNow(Date.now()), 60000);
+      return () => clearInterval(timer);
     }, [loadData]),
   );
 
@@ -697,7 +724,9 @@ export default function MyScheduleScreen({
           let dateStr = "Sắp diễn ra";
           let timeStr = "08:00";
           let daysLeft: number | undefined = undefined;
-          let isPast = r.status === "checked_in";
+          const checkedIn = r.status === 'checked_in';
+          const checkInClosed = hasEventEnded(matchedEvent, scheduleNow);
+          const isPast = checkedIn || checkInClosed;
 
           if (matchedEvent?.time?.start) {
             const startDate = new Date(matchedEvent.time.start);
@@ -716,12 +745,6 @@ export default function MyScheduleScreen({
             dateStr = `${day}/${month}/${year}`;
             timeStr = `${hours}:${minutes}`;
 
-            if (
-              matchedEvent.time.end &&
-              new Date(matchedEvent.time.end) < now
-            ) {
-              isPast = true;
-            }
           }
 
           const fallbackImage =
@@ -733,6 +756,9 @@ export default function MyScheduleScreen({
             date: dateStr,
             time: timeStr,
             startAt: matchedEvent?.time?.start,
+            endAt: matchedEvent?.time?.end,
+            checkedIn,
+            checkInClosed,
             location: matchedEvent?.location || "Trường ĐH Công nghiệp TP.HCM",
             imageUrl: matchedEvent?.images?.[0] || fallbackImage,
             daysLeft: isPast ? undefined : daysLeft,
@@ -744,7 +770,7 @@ export default function MyScheduleScreen({
           (evt, idx, arr) => arr.findIndex((x) => x.id === evt.id) === idx,
         )
     );
-  }, [myRegistrations, eventsList]);
+  }, [myRegistrations, eventsList, scheduleNow]);
 
   // Use props if explicitly passed and not empty, otherwise use real backend events
   const allEvents =

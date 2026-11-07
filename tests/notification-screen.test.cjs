@@ -5,7 +5,7 @@ const vm = require('node:vm');
 const ts = require('typescript');
 const React = require('react');
 
-function setup(granted = true, fallbackChannel = false, events = []) {
+function setup(granted = true, fallbackChannel = false, events = [], registrations = events.map(e => ({ eventId: e._id, userId: 'student1', status: 'registered' }))) {
   const sent = [], saved = [], alerts = [];
   let synced = 0, cancelled = 0, index = 0;
   const states = [false, '', '5', false, true, Date.now()];
@@ -30,13 +30,18 @@ function setup(granted = true, fallbackChannel = false, events = []) {
     '../../services/localNotifications': { scheduleNotificationAsync: async request => { sent.push(request); return 'test'; }, SchedulableTriggerInputTypes: { DATE: 'date' } },
     '../../services/eventReminders': service,
     '../../services/reminderSettings': settings,
-    '../../hooks/redux': { useAppSelector: fn => fn({ auth: { user: { _id: 'student1' } }, events: { list: events }, registrations: { myRegistrations: [] } }), useAppDispatch: () => () => ({ unwrap: async () => [] }) },
+    '../../hooks/redux': { useAppSelector: fn => fn({ auth: { user: { _id: 'student1' } }, events: { list: events }, registrations: { myRegistrations: registrations } }), useAppDispatch: () => () => ({ unwrap: async () => [] }) },
     '../../features/events/eventsSlice': { fetchEvents: () => ({}) },
     '../../features/check-in/registrationsSlice': { fetchMyRegistrations: () => ({}) },
     '@react-navigation/native': { useNavigation: () => ({ navigate() {} }), useFocusEffect() {} },
     '../../theme/ThemeContext': { useAppTheme: () => ({ theme: {}, isDark: false }) },
     '@expo/vector-icons': { Ionicons: 'Icon' },
   };
+  const utilities = { exports: {} };
+  vm.runInNewContext(ts.transpileModule(fs.readFileSync('src/utils/registrations.ts', 'utf8'), {
+    compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
+  }).outputText, utilities);
+  modules['../../utils/registrations'] = utilities.exports;
   const context = { exports: {}, Date, console, require(name) {
     assert.ok(name in modules, 'Unexpected dependency: ' + name);
     return modules[name];
@@ -64,15 +69,16 @@ function setup(granted = true, fallbackChannel = false, events = []) {
   return { actions, buttons, list, sent, saved, alerts, counts: () => ({ synced, cancelled }) };
 }
 
-test('notification page lists future visible events nearest first, after action buttons', () => {
-  const event = (id, offset, extra = {}) => ({ _id: id, title: id, location: 'IUH', status: 'upcoming', time: { start: new Date(Date.now() + offset).toISOString() }, ...extra });
-  const events = [event('later', 7200000), event('past', -60000), event('nearest', 3600000),
-    event('hidden', 1800000, { isHidden: true }), event('completed', 1800000, { status: 'completed' })];
-  const { list, buttons } = setup(true, false, events);
-  assert.equal(JSON.stringify(list.data.map(e => e._id)), JSON.stringify(['nearest', 'later']));
-  assert.equal(buttons.length, 6);
-  assert.equal(buttons[4].accessibilityLabel, 'Chi tiết sự kiện nearest');
-  assert.equal(buttons[5].accessibilityLabel, 'Chi tiết sự kiện later');
+test('notification page lists only registered upcoming and ongoing events, after action buttons', () => {
+  const event = (id, offset, extra = {}) => ({ _id: id, title: id, location: 'IUH', status: 'upcoming', time: { start: new Date(Date.now() + offset).toISOString(), end: new Date(Date.now() + offset + 3600000).toISOString() }, ...extra });
+  const events = [event('later', 7200000), event('ended', -7200000), event('nearest', 3600000),
+    event('ongoing', -60000), event('completed', 1800000, { status: 'completed' }), event('not_registered', 1800000), event('checked_in', 1800000)];
+  const registrations = events.filter(e => e._id !== 'not_registered').map(e => ({ eventId: e._id, userId: 'student1', status: e._id === 'checked_in' ? 'checked_in' : 'registered' }));
+  const { list, buttons } = setup(true, false, events, registrations);
+  assert.equal(JSON.stringify(list.data.map(e => e._id)), JSON.stringify(['ongoing', 'nearest', 'later']));
+  assert.equal(buttons.length, 7);
+  assert.equal(buttons[4].accessibilityLabel, 'Chi tiết sự kiện ongoing');
+  assert.equal(buttons[5].accessibilityLabel, 'Chi tiết sự kiện nearest');
 });
 
 test('all four notification buttons use permission, correct timing and persisted settings', async () => {

@@ -24,6 +24,7 @@ import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { MainStackParamList } from '../../navigation/types';
 import type { Event } from '../../types/event';
+import { upcomingRegisteredEvents } from '../../utils/registrations';
 
 function EventImage({ uri, title }: { uri?: string; title: string }) {
   const [failed, setFailed] = useState(false);
@@ -60,11 +61,7 @@ export default function NotificationReminderScreen() {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const events = useAppSelector(s => s.events.list);
   const registrations = useAppSelector(s => s.registrations.myRegistrations);
-  const registeredIds = new Set(registrations.filter(r => r.userId === userId && r.status === 'registered')
-    .map(r => typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId as Event)._id : r.eventId));
-  const upcomingEvents = events.filter(event => !event.isHidden && event.status !== 'completed' &&
-    event.status !== 'past' && Date.parse(event.time.start) > now)
-    .sort((a, b) => Date.parse(a.time.start) - Date.parse(b.time.start));
+  const upcomingEvents = upcomingRegisteredEvents(registrations, events, userId, now);
 
   useFocusEffect(useCallback(() => {
     setNow(Date.now());
@@ -77,14 +74,19 @@ export default function NotificationReminderScreen() {
   }, [dispatch, userId]));
 
   const renderEvent = ({ item: event }: { item: Event }) => {
-    const registered = registeredIds.has(event._id);
     const remaining = Date.parse(event.time.start) - now;
     const startsWithinOneDay = remaining <= 24 * 60 * 60 * 1000;
     const totalMinutes = Math.ceil(remaining / 60000);
     const days = Math.floor(totalMinutes / 1440);
     const hours = Math.floor((totalMinutes % 1440) / 60);
     const minutesLeft = totalMinutes % 60;
-    const timeLeft = remaining < 60000 ? 'Sắp bắt đầu' : days > 0
+    const endMinutes = event.time.end ? Math.ceil((Date.parse(event.time.end) - now) / 60000) : NaN;
+    const endHours = Math.floor(endMinutes / 60);
+    const endRemainder = endMinutes % 60;
+    const ongoingLabel = Number.isFinite(endMinutes)
+      ? `Đang diễn ra · Còn ${endHours > 0 ? `${endHours} giờ ` : ''}${endRemainder} phút đến khi kết thúc`
+      : 'Đang diễn ra';
+    const timeLeft = remaining <= 0 ? ongoingLabel : remaining < 60000 ? 'Sắp bắt đầu' : days > 0
       ? `Còn ${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`
       : hours > 0 ? `Còn ${hours} giờ${minutesLeft > 0 ? ` ${minutesLeft} phút` : ''}`
       : `Còn ${minutesLeft} phút`;
@@ -104,9 +106,6 @@ export default function NotificationReminderScreen() {
           {' · '}{timeLeft}
         </Text>
         <Text style={[styles.notificationMessage, { color: theme.textSecondary }]}>{event.location}</Text>
-        <Text style={[styles.notificationMessage, { color: registered ? theme.primary : theme.textSecondary, marginTop: 8 }]}>
-          {registered ? 'Đã đăng ký · Áp dụng thiết lập nhắc bên trên' : 'Chưa đăng ký · Mở sự kiện để đăng ký nhận nhắc nhở'}
-        </Text>
       </TouchableOpacity>
     );
   };
