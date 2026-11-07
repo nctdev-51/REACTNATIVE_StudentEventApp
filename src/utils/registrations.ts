@@ -9,6 +9,23 @@ export function entityId(value: unknown): string {
   return value == null ? '' : String(value);
 }
 
+export function hasEventEnded(event: Event | undefined, now: number) {
+  return event?.status === 'completed' || event?.status === 'past' ||
+    (!!event?.time?.end && Date.parse(event.time.end) <= now);
+}
+
+export function upcomingRegisteredEvents(registrations: Registration[], events: Event[], userId: string | undefined, now: number): Event[] {
+  if (!userId) return [];
+  return mergeRegistrations(registrations, events)
+    .filter(r => entityId(r.userId) === userId && r.status === 'registered')
+    .map(r => {
+      if (typeof r.eventId === 'object' && r.eventId !== null) return r.eventId as Event;
+      return events.find(e => e._id === entityId(r.eventId) || e.id === entityId(r.eventId));
+    })
+    .filter((event): event is Event => !!event && !hasEventEnded(event, now))
+    .sort((a, b) => Date.parse(a.time.start) - Date.parse(b.time.start));
+}
+
 /** One registration per user/event. A confirmed check-in wins over an old registration. */
 export function mergeRegistrations(registrations: Registration[], events: Event[] = []): Registration[] {
   const aliases = new Map<string, string>();

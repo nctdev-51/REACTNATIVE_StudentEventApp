@@ -39,10 +39,14 @@ import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme/ThemeContext";
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
 =======
 import { mergeRegistrations } from '../../utils/registrations';
 >>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
+=======
+import { mergeRegistrations, hasEventEnded } from '../../utils/registrations';
+>>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -56,6 +60,9 @@ export interface RegisteredEvent {
   date: string;
   time: string;
   startAt?: string;
+  endAt?: string;
+  checkedIn?: boolean;
+  checkInClosed?: boolean;
   location: string;
   imageUrl: string;
   daysLeft?: number;
@@ -459,6 +466,16 @@ interface EventCardProps {
   onPress?: (event: RegisteredEvent) => void;
 }
 
+function formatScheduleDuration(milliseconds: number, roundUp = false) {
+  const totalMinutes = Math.max(0, roundUp ? Math.ceil(milliseconds / 60000) : Math.floor(milliseconds / 60000));
+  if (totalMinutes === 0) return 'dưới 1 phút';
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  return [days > 0 ? `${days} ngày` : '', hours > 0 ? `${hours} giờ` : '', minutes > 0 ? `${minutes} phút` : '']
+    .filter(Boolean).join(' ');
+}
+
 function EventCard({ event, onPress }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
   const [now, setNow] = useState(Date.now());
@@ -474,8 +491,13 @@ function EventCard({ event, onPress }: EventCardProps) {
   const hours = Math.floor((totalMinutes % 1440) / 60);
   const minutes = totalMinutes % 60;
   const urgent = Number.isFinite(start) ? remaining <= 86400000 : (event.daysLeft ?? Infinity) <= 1;
+  const end = event.endAt ? Date.parse(event.endAt) : NaN;
+  const ongoingText = Number.isFinite(end) && end <= now ? 'Sự kiện đã kết thúc'
+    : `Đã qua giờ bắt đầu ${formatScheduleDuration(now - start)}\n${Number.isFinite(end)
+      ? `Còn ${formatScheduleDuration(end - now, true)} đến khi kết thúc`
+      : 'Chưa có giờ kết thúc'}`;
   const countdown = !Number.isFinite(start) ? (event.daysLeft !== undefined ? `Còn ${event.daysLeft} ngày` : '')
-    : remaining <= 0 ? 'Đã đến giờ bắt đầu'
+    : remaining <= 0 ? ongoingText
     : remaining < 60000 ? 'Sắp bắt đầu'
     : days > 0 ? `Còn ${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`
     : hours > 0 ? `Còn ${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ''}`
@@ -526,6 +548,11 @@ function EventCard({ event, onPress }: EventCardProps) {
         </View>
 
         {/* Days Left Badge */}
+        {event.status === 'past' && <View style={[cardStyles.badge, { backgroundColor: event.checkedIn ? '#DCFCE7' : '#FEE2E2' }]}>
+          <Text style={[cardStyles.badgeText, { color: event.checkedIn ? '#16A34A' : '#DC2626' }]}>
+            {event.checkedIn ? 'Đã check-in' : event.checkInClosed ? 'Chưa check-in · Đã đóng điểm danh' : 'Chưa check-in'}
+          </Text>
+        </View>}
         {event.status === 'upcoming' && countdown !== '' && (
           <View style={[cardStyles.badge, urgent && { backgroundColor: '#FEE2E2' }]}>
             <Text style={[cardStyles.badgeText, urgent && { color: '#DC2626' }]}>{countdown}</Text>
@@ -634,6 +661,7 @@ export default function MyScheduleScreen({
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
   const [dateFilter, setDateFilter] = useState<'all' | 'today'>('all');
+  const [scheduleNow, setScheduleNow] = useState(Date.now());
 
   const loadData = useCallback(async () => {
     if (currentUser?._id) {
@@ -642,9 +670,20 @@ export default function MyScheduleScreen({
     await dispatch(fetchEvents());
   }, [dispatch, currentUser?._id]);
 
+<<<<<<< HEAD
   useFocusEffect(useCallback(() => {
     void loadData();
   }, [loadData]));
+=======
+  useFocusEffect(
+    useCallback(() => {
+      setScheduleNow(Date.now());
+      void loadData();
+      const timer = setInterval(() => setScheduleNow(Date.now()), 60000);
+      return () => clearInterval(timer);
+    }, [loadData]),
+  );
+>>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -683,10 +722,19 @@ export default function MyScheduleScreen({
             );
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 
+<<<<<<< HEAD
         let dateStr = 'Sắp diễn ra';
         let timeStr = '08:00';
         let daysLeft: number | undefined = undefined;
         let isPast = r.status === 'checked_in';
+=======
+          let dateStr = "Sắp diễn ra";
+          let timeStr = "08:00";
+          let daysLeft: number | undefined = undefined;
+          const checkedIn = r.status === 'checked_in';
+          const checkInClosed = hasEventEnded(matchedEvent, scheduleNow);
+          const isPast = checkedIn || checkInClosed;
+>>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
 
         if (matchedEvent?.time?.start) {
           const startDate = new Date(matchedEvent.time.start);
@@ -703,8 +751,11 @@ export default function MyScheduleScreen({
           dateStr = `${day}/${month}/${year}`;
           timeStr = `${hours}:${minutes}`;
 
+<<<<<<< HEAD
           if (matchedEvent.time.end && new Date(matchedEvent.time.end) < now) {
             isPast = true;
+=======
+>>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
           }
         }
 
@@ -737,6 +788,9 @@ export default function MyScheduleScreen({
             date: dateStr,
             time: timeStr,
             startAt: matchedEvent?.time?.start,
+            endAt: matchedEvent?.time?.end,
+            checkedIn,
+            checkInClosed,
             location: matchedEvent?.location || "Trường ĐH Công nghiệp TP.HCM",
             imageUrl: matchedEvent?.images?.[0] || fallbackImage,
             daysLeft: isPast ? undefined : daysLeft,
@@ -748,7 +802,7 @@ export default function MyScheduleScreen({
           (evt, idx, arr) => arr.findIndex((x) => x.id === evt.id) === idx,
         )
     );
-  }, [myRegistrations, eventsList]);
+  }, [myRegistrations, eventsList, scheduleNow]);
 
   // Use props if explicitly passed and not empty, otherwise use real backend events
   const allEvents =
