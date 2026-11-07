@@ -48,7 +48,6 @@ import { logout, updateUser } from "../../features/auth/authSlice";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
-import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme";
 <<<<<<< HEAD
 import { getDefaultDbUser } from "../../data/dbService";
@@ -58,7 +57,6 @@ import { getDefaultDbUser } from "../../data/dbService";
 import {
   getDefaultDbUser,
   getUserStatsFromDb,
-  loadFeedbacksFromStorage,
   findDbEvent,
 } from "../../data/dbService";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
@@ -84,12 +82,17 @@ export interface UserProfile {
   stats: ActivityStats;
 }
 
+<<<<<<< HEAD
 export type TabKey = 'home' | 'schedule' | 'checkin' | 'profile';
 
 export interface ProfileScreenProps {
   profile?: UserProfile;
   initialTheme?: 'Sáng' | 'Tối';
   initialTab?: TabKey;
+=======
+export interface ProfileScreenProps {
+  profile?: UserProfile;
+>>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
 }
 
 // ---------------------------------------------------------------------------
@@ -689,9 +692,13 @@ const statStyles = StyleSheet.create({
 // ---------------------------------------------------------------------------
 
 export default function ProfileScreen({
+<<<<<<< HEAD
   profile = DEFAULT_PROFILE,
   initialTheme = 'Sáng',
   initialTab = 'profile',
+=======
+  profile,
+>>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
 }: ProfileScreenProps) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
   const dispatch = useAppDispatch();
@@ -707,8 +714,11 @@ export default function ProfileScreen({
 >>>>>>> e99db1b (feat: cap nhat font trang ca nhan & feedback, sua hien thi QR admin va tinh dong diem ren luyen tich luy)
 
   const defaultStudent = getDefaultDbUser();
+<<<<<<< HEAD
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [currentTheme, setCurrentTheme] = useState<'Sáng' | 'Tối'>(initialTheme);
+=======
+>>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
   const [imageError, setImageError] = useState<boolean>(false);
 
   // Edit Profile Modal State
@@ -779,26 +789,7 @@ export default function ProfileScreen({
 
         const count = reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length;
         setPersonalReviewsCount(count);
-        return;
       }
-
-      // 2. Fallback sang local storage nếu offline
-      const allFeedbacks = await loadFeedbacksFromStorage();
-      const userFeedbacks = allFeedbacks.filter((f) => {
-        const fUser: any = f.userId;
-        const uId =
-          typeof fUser === "object" && fUser !== null
-            ? fUser._id || fUser.id
-            : fUser;
-        return (
-          uId === targetUserId ||
-          (defaultStudent?._id && uId === defaultStudent._id)
-        );
-      });
-      const reviewedEventIds = new Set(
-        userFeedbacks.map((f) => f.eventId).filter(Boolean),
-      );
-      setPersonalReviewsCount(reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length);
     } catch {
       const stats = getUserStatsFromDb(targetUserId);
       setPersonalReviewsCount(stats.reviews);
@@ -822,7 +813,6 @@ export default function ProfileScreen({
 
   useFocusEffect(
     useCallback(() => {
-      setActiveTab("profile");
       loadPersonalReviews();
     }, [loadPersonalReviews]),
   );
@@ -905,7 +895,6 @@ export default function ProfileScreen({
       : (currentUser?.point ??
         defaultStudent?.point ??
         getUserStatsFromDb(targetUserId).pointsAccumulated);
-  const reviewsCount = personalReviewsCount;
 
   const handleOpenEditProfile = () => {
     setEditFullName(currentUser?.fullName || displayName);
@@ -961,6 +950,7 @@ export default function ProfileScreen({
     }
   };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   // Toggle theme locally for responsive UI feedback
   const handleToggleTheme = () => {
@@ -1018,6 +1008,34 @@ export default function ProfileScreen({
         },
       ]
     );
+=======
+  // Mở modal xác nhận đăng xuất
+  const handleLogoutPress = () => {
+    setLogoutModalVisible(true);
+  };
+
+  // Thực hiện đăng xuất tài khoản
+  const confirmLogout = async () => {
+    setLogoutModalVisible(false);
+
+    // 1. Thu hồi / xoá token axios interceptor
+    try {
+      setAuthToken(null);
+    } catch (e) {
+      // ignore
+    }
+
+    // 2. Cập nhật Redux: RootNavigator sẽ tự động nhận diện isAuthenticated = false
+    // và lập tức chuyển về AuthStack (LoginScreen)
+    dispatch(logout());
+
+    // 3. Thông báo máy chủ backend ngầm
+    try {
+      await api.logout();
+    } catch (err) {
+      // Bỏ qua lỗi kết nối máy chủ khi đăng xuất
+    }
+>>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
   };
 
   return (
@@ -1205,7 +1223,7 @@ export default function ProfileScreen({
               labelColor={theme.textSecondary}
             />
             <ActivityStatItem
-              value={reviewsCount}
+              value={personalReviewsCount}
               label="Đã đánh giá"
               accentColor={theme.primary}
               labelColor={theme.textSecondary}
@@ -1545,7 +1563,7 @@ export default function ProfileScreen({
                   marginBottom={10}
                 >
                   <TamaguiText fontSize={13} color="#64748B" fontWeight="600">
-                    {currentUser?.email || "sv@iuh.edu.vn"}
+                    {email}
                   </TamaguiText>
                   <XStack
                     backgroundColor="#E2E8F0"

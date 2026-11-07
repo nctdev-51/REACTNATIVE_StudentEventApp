@@ -49,9 +49,13 @@ import {
 } from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
+<<<<<<< HEAD
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { submitFeedback } from "../../features/events/feedbacksSlice";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
+=======
+import { useAppSelector } from "../../hooks/redux";
+>>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
 import { useAppTheme } from "../../theme";
 import api from "../../services/api";
 import {
@@ -60,10 +64,8 @@ import {
   getOnlyAttendedEventsFromDb,
   getEnrichedFeedbacksFromDb,
   loadFeedbacksFromStorage,
-  saveFeedbacksToStorage,
   mergeFeedbacksIntoDb,
   enrichFeedback,
-  addFeedbackToDb,
   EnrichedFeedback,
 } from "../../data/dbService";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
@@ -132,7 +134,6 @@ function StarRating({ value, onChange, size = 36 }: StarRatingProps) {
 =======
   starActive: string;
   starInactive: string;
-  readonly?: boolean;
 }
 
 function StarRating({
@@ -141,7 +142,6 @@ function StarRating({
   size = 36,
   starActive,
   starInactive,
-  readonly = false,
 }: StarRatingProps) {
   const ratingLabels: Record<number, string> = {
     1: "1/5 - Cần cải thiện",
@@ -165,9 +165,9 @@ function StarRating({
           return (
             <TouchableOpacity
               key={star}
-              onPress={() => !readonly && onChange(star)}
-              activeOpacity={readonly ? 1 : 0.7}
-              disabled={readonly}
+              onPress={() => onChange(star)}
+              activeOpacity={0.7}
+              
               accessibilityRole="button"
               accessibilityLabel={`${star} sao`}
               style={starStyles.touchable}
@@ -211,6 +211,7 @@ const starStyles = StyleSheet.create({
 export default function FeedbackScreen() {
   const navigation = useNavigation<FeedbackNavProp>();
   const route = useRoute<FeedbackRouteProp>();
+<<<<<<< HEAD
   const dispatch = useAppDispatch();
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -270,6 +271,8 @@ export default function FeedbackScreen() {
 =======
   const { theme, isDark, toggleTheme } = useAppTheme();
 =======
+=======
+>>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
   const { theme, isDark } = useAppTheme();
 >>>>>>> d17115d (chỉnh sửa sáng tối)
 
@@ -698,13 +701,6 @@ export default function FeedbackScreen() {
           return [enrichedServer, ...filtered];
         });
         mergeFeedbacksIntoDb([serverRes]);
-      } else {
-        const newEnriched = addFeedbackToDb(payload);
-        setFeedbacks((prev) => {
-          const key = newEnriched.id || newEnriched._id;
-          const filtered = prev.filter((f) => (f.id || f._id) !== key);
-          return [newEnriched, ...filtered];
-        });
       }
 
       // Xoá draft comment
