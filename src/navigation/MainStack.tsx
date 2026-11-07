@@ -11,10 +11,12 @@ import FeedbackScreen from '../screens/events/FeedbackScreen';
 import FilterScreen from '../screens/events/FilterScreen';
 import RegistrationSuccessScreen from '../screens/events/RegistrationSuccessScreen';
 import { useAppTheme } from '../theme/ThemeContext';
+import { useEventReminders } from '../hooks/useEventReminders';
 
 const Stack = createNativeStackNavigator<MainStackParamList>();
 
 export default function MainStack() {
+  useEventReminders();
   const { theme } = useAppTheme();
 
   return (

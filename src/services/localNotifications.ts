@@ -6,6 +6,7 @@ export { getPermissionsAsync, requestPermissionsAsync } from 'expo-notifications
 export { setNotificationChannelAsync } from 'expo-notifications/build/setNotificationChannelAsync';
 export { scheduleNotificationAsync } from 'expo-notifications/build/scheduleNotificationAsync';
 export { cancelScheduledNotificationAsync } from 'expo-notifications/build/cancelScheduledNotificationAsync';
+export { cancelAllScheduledNotificationsAsync } from 'expo-notifications/build/cancelAllScheduledNotificationsAsync';
 export { getAllScheduledNotificationsAsync } from 'expo-notifications/build/getAllScheduledNotificationsAsync';
 export { AndroidImportance } from 'expo-notifications/build/NotificationChannelManager.types';
 export { IosAuthorizationStatus } from 'expo-notifications/build/NotificationPermissions.types';
