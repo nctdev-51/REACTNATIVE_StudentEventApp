@@ -8,7 +8,7 @@
       "role": "student",
       "studentId": "SV01",
       "faculty": "Khoa Công nghệ thông tin",
-      "point": 120,
+      "point": 38,
       "phone": null,
       "avatar": "https://i.pravatar.cc/300?img=12",
       "avatarUrl": "https://i.pravatar.cc/300?img=12",
@@ -228,10 +228,10 @@
       "eventId": "66f1e2010000000000000001",
       "userId": "66f1a1010000000000000001",
       "participantRole": "attendee",
-      "status": "registered",
+      "status": "checked_in",
       "qrCode": "EVENTMATE:66f1b3010000000000000001",
       "registeredAt": "2026-09-20T10:00:00.000Z",
-      "checkInTime": null,
+      "checkInTime": "2026-10-15T08:30:00.000Z",
       "checkOutTime": null,
       "createdAt": "2026-11-06T17:45:43.736Z",
       "updatedAt": "2026-11-06T17:45:43.736Z",
@@ -267,6 +267,15 @@
     }
   ],
   "feedbacks": [
+    {
+      "_id": "6aef45a6085cbbf6547e77a3",
+      "id": "6aef45a6085cbbf6547e77a3",
+      "eventId": "66f1e2020000000000000002",
+      "userId": "66f1a1010000000000000001",
+      "rating": 5,
+      "comment": "Workshop rất bổ ích và diễn giả hướng dẫn chi tiết!",
+      "createdAt": "2026-11-07T15:43:15.034Z"
+    },
     {
       "_id": "66f1f4010000000000000001",
       "eventId": "66f1e2040000000000000004",

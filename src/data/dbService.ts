@@ -66,7 +66,7 @@ export const getDefaultDbUser = () => {
       name: 'Nguyễn Văn A',
       email: 'sv01@iuh.edu.vn',
       faculty: 'Khoa Công nghệ thông tin',
-      point: 120,
+      point: 38,
       role: 'student',
       phone: '0901234567',
       avatarUrl: 'https://i.pravatar.cc/300?img=12',
@@ -99,8 +99,8 @@ export const findDbUser = (query?: string) => {
 
 /** Tìm sự kiện theo ID */
 export const findDbEvent = (eventId?: string) => {
-  if (!eventId) return dbState.events[0] || null;
-  return dbState.events.find((e) => e.id === eventId || e._id === eventId) || dbState.events[0] || null;
+  if (!eventId) return null;
+  return dbState.events.find((e) => e.id === eventId || e._id === eventId) || null;
 };
 
 /**
@@ -113,20 +113,35 @@ export const getUserStatsFromDb = (userId?: string): UserStats => {
   const targetUser = findDbUser(userId);
   const uId = targetUser?._id || targetUser?.id;
 
-  const attendedCount = dbState.registrations.filter((r) => {
+  const attendedRegs = dbState.registrations.filter((r) => {
     const isUser = r.userId === uId;
     const isAttended = r.status === 'checked_in' || (r.status as string) === 'completed';
     return isUser && isAttended;
-  }).length;
+  });
 
   const reviewsCount = dbState.feedbacks.filter(
     (f) => f.userId === uId
   ).length;
 
-  const points = typeof targetUser?.point === 'number' ? targetUser.point : 120;
+  // Tính tổng điểm rèn luyện từ các sự kiện đã tham gia
+  const pointsSum = attendedRegs.reduce((sum, r) => {
+    const evId =
+      typeof r.eventId === 'object' && r.eventId !== null
+        ? (r.eventId as any)._id || (r.eventId as any).id
+        : r.eventId;
+    const ev = dbState.events.find((e) => (e._id || e.id) === evId);
+    return sum + (Number(ev?.trainingPoints) || 0);
+  }, 0);
+
+  const points =
+    pointsSum > 0
+      ? pointsSum
+      : typeof targetUser?.point === 'number'
+      ? targetUser.point
+      : 38;
 
   return {
-    eventsAttended: attendedCount,
+    eventsAttended: attendedRegs.length,
     pointsAccumulated: points,
     reviews: reviewsCount,
   };

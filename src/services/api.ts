@@ -170,7 +170,7 @@ export const MOCK_DEFAULT_USER: User = {
   studentId: "SV01",
   fullName: "Nguyễn Văn A",
   email: "sv01@iuh.edu.vn",
-  point: 120,
+  point: 38,
   role: "student",
   faculty: "Khoa Công nghệ thông tin",
   avatarUrl: "https://i.pravatar.cc/300?img=12",
@@ -245,8 +245,9 @@ let inMemoryRegistrations: Registration[] = [
     eventId: "66f1e2010000000000000001",
     userId: "66f1a1010000000000000001",
     participantRole: "attendee",
-    status: "registered",
+    status: "checked_in",
     qrCode: "EVENTMATE:66f1b3010000000000000001",
+    checkInTime: "2026-10-15T08:30:00.000Z",
     createdAt: "2026-09-20T10:00:00.000Z",
   },
   {
@@ -965,21 +966,8 @@ export const getFeedbacksByUser = async (
 export const createFeedback = async (
   data: CreateFeedbackPayload,
 ): Promise<Feedback> => {
-  try {
-    const res = await apiClient.post("/feedbacks", data);
-    return unwrapOne<Feedback>(res.data);
-  } catch (e) {
-    // Trả về fallback feedback nếu máy chủ offline để ứng dụng không bị crash
-    return {
-      id: "fb_" + Date.now(),
-      _id: "fb_" + Date.now(),
-      eventId: data.eventId,
-      userId: data.userId,
-      rating: data.rating,
-      comment: data.comment,
-      createdAt: new Date().toISOString(),
-    };
-  }
+  const res = await apiClient.post("/feedbacks", data);
+  return unwrapOne<Feedback>(res.data);
 };
 
 // ─── Notifications ────────────────────────────────────────────────────────────

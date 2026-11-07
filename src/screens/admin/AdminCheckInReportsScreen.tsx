@@ -246,7 +246,7 @@ export default function AdminCheckInReportsScreen() {
         )}
 
         {/* Vị trí check-in */}
-        {item.checkInLocation && (
+        {item.checkInLocation?.latitude != null && item.checkInLocation?.longitude != null && (
           <View style={[styles.locationBox, { backgroundColor: theme.surfaceSecondary }]}>
             <Text style={styles.locCoords}>
               📍 GPS: {item.checkInLocation.latitude.toFixed(5)}, {item.checkInLocation.longitude.toFixed(5)}

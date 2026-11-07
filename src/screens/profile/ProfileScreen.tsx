@@ -18,12 +18,14 @@ import {
   XStack,
   Card,
   Button,
-  Heading,
-  Paragraph,
-  Text as TamaguiText,
   Input as TamaguiInput,
   Spinner,
 } from "tamagui";
+import {
+  AppText as TamaguiText,
+  AppHeading as Heading,
+  AppParagraph as Paragraph,
+} from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
@@ -31,12 +33,11 @@ import { logout, updateUser } from "../../features/auth/authSlice";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
-import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme";
 import {
   getDefaultDbUser,
   getUserStatsFromDb,
-  loadFeedbacksFromStorage,
+  findDbEvent,
 } from "../../data/dbService";
 
 // ---------------------------------------------------------------------------
@@ -59,11 +60,8 @@ export interface UserProfile {
   stats?: ActivityStats;
 }
 
-export type TabKey = "home" | "schedule" | "checkin" | "profile";
-
 export interface ProfileScreenProps {
   profile?: UserProfile;
-  initialTab?: TabKey;
 }
 
 // ---------------------------------------------------------------------------
@@ -170,7 +168,6 @@ function ActivityStatItem({
 
 export default function ProfileScreen({
   profile,
-  initialTab = "profile",
 }: ProfileScreenProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<MainStackParamList>>();
@@ -181,9 +178,9 @@ export default function ProfileScreen({
   const myRegistrations = useAppSelector(
     (state) => state.registrations.myRegistrations,
   );
+  const eventsList = useAppSelector((state) => state.events.list);
 
   const defaultStudent = getDefaultDbUser();
-  const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [imageError, setImageError] = useState<boolean>(false);
 
   // Edit Profile Modal State
@@ -203,25 +200,33 @@ export default function ProfileScreen({
 
   const loadPersonalReviews = useCallback(async () => {
     try {
-      // 1. Đồng bộ trực tiếp từ API Backend_v2 MongoDB
-      const apiFeedbacks = targetUserId
-        ? await api.getFeedbacksByUser(targetUserId)
+      // 1. Lấy trực tiếp từ Backend MongoDB qua API
+      const queryId = targetUserId || currentUser?.studentId || defaultStudent?._id;
+      const apiFeedbacks = queryId
+        ? await api.getFeedbacksByUser(queryId)
         : await api.getAllFeedbacks();
 
       if (Array.isArray(apiFeedbacks)) {
+        const targetStudentId = currentUser?.studentId || defaultStudent?.studentId;
         const userFeedbacks = apiFeedbacks.filter((f: any) => {
           const uId =
             typeof f.userId === "object" && f.userId !== null
               ? f.userId._id || f.userId.id
               : f.userId;
+          const uStudentId =
+            typeof f.userId === "object" && f.userId !== null
+              ? f.userId.studentId
+              : null;
           return (
-            !targetUserId ||
-            uId === targetUserId ||
+            !queryId ||
+            uId === queryId ||
+            (targetUserId && uId === targetUserId) ||
+            (targetStudentId && uStudentId === targetStudentId) ||
             (defaultStudent?._id && uId === defaultStudent._id)
           );
         });
 
-        // Đếm số sự kiện phân biệt (distinct eventId) mà sinh viên đã gửi đánh giá
+        // Đếm số sự kiện phân biệt (distinct eventId) sinh viên đã gửi đánh giá
         const reviewedEventIds = new Set(
           userFeedbacks
             .map((f: any) =>
@@ -231,32 +236,15 @@ export default function ProfileScreen({
             )
             .filter(Boolean),
         );
-        setPersonalReviewsCount(reviewedEventIds.size);
-        return;
-      }
 
-      // 2. Fallback sang local storage & dbService nếu offline
-      const allFeedbacks = await loadFeedbacksFromStorage();
-      const userFeedbacks = allFeedbacks.filter((f) => {
-        const fUser: any = f.userId;
-        const uId =
-          typeof fUser === "object" && fUser !== null
-            ? fUser._id || fUser.id
-            : fUser;
-        return (
-          uId === targetUserId ||
-          (defaultStudent?._id && uId === defaultStudent._id)
-        );
-      });
-      const reviewedEventIds = new Set(
-        userFeedbacks.map((f) => f.eventId).filter(Boolean),
-      );
-      setPersonalReviewsCount(reviewedEventIds.size);
+        const count = reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length;
+        setPersonalReviewsCount(count);
+      }
     } catch {
       const stats = getUserStatsFromDb(targetUserId);
       setPersonalReviewsCount(stats.reviews);
     }
-  }, [targetUserId, defaultStudent?._id]);
+  }, [targetUserId, currentUser?.studentId, defaultStudent?._id, defaultStudent?.studentId]);
 
   useEffect(() => {
     if (targetUserId) {
@@ -267,7 +255,6 @@ export default function ProfileScreen({
 
   useFocusEffect(
     useCallback(() => {
-      setActiveTab("profile");
       loadPersonalReviews();
     }, [loadPersonalReviews]),
   );
@@ -298,18 +285,36 @@ export default function ProfileScreen({
   const phone =
     currentUser?.phone || profile?.phone || defaultStudent?.phone || "";
 
-  const registeredAttended = myRegistrations.filter(
+  const attendedRegistrations = myRegistrations.filter(
     (r) => r.status === "checked_in" || (r.status as string) === "completed",
-  ).length;
+  );
+  const registeredAttended = attendedRegistrations.length;
   const eventsAttendedCount =
     myRegistrations.length > 0
       ? registeredAttended
       : getUserStatsFromDb(targetUserId).eventsAttended;
+
+  // Điểm tích luỹ bằng tổng điểm rèn luyện các sự kiện đã tham gia
+  const calculatedPointsFromEvents = attendedRegistrations.reduce((sum, r) => {
+    const eventObj: any = r.eventId;
+    let pts = 0;
+    if (typeof eventObj === "object" && eventObj !== null) {
+      pts = Number(eventObj.trainingPoints) || 0;
+    } else if (typeof eventObj === "string") {
+      const found =
+        eventsList.find((e: any) => (e._id || e.id) === eventObj) ||
+        findDbEvent(eventObj);
+      pts = Number(found?.trainingPoints) || 0;
+    }
+    return sum + pts;
+  }, 0);
+
   const pointsAccumulated =
-    currentUser?.point ??
-    defaultStudent?.point ??
-    getUserStatsFromDb(targetUserId).pointsAccumulated;
-  const reviewsCount = personalReviewsCount;
+    calculatedPointsFromEvents > 0
+      ? calculatedPointsFromEvents
+      : (currentUser?.point ??
+        defaultStudent?.point ??
+        getUserStatsFromDb(targetUserId).pointsAccumulated);
 
   const handleOpenEditProfile = () => {
     setEditFullName(currentUser?.fullName || displayName);
@@ -348,24 +353,6 @@ export default function ProfileScreen({
       );
     } finally {
       setSavingProfile(false);
-    }
-  };
-
-  // Xử lý chuyển tab dưới cùng
-  const handleTabPress = (tab: AppTabKey) => {
-    setActiveTab(tab);
-    switch (tab) {
-      case "home":
-        navigation.navigate("Home");
-        break;
-      case "schedule":
-        navigation.navigate("MySchedule");
-        break;
-      case "checkin":
-        navigation.navigate("CheckIn");
-        break;
-      case "profile":
-        break;
     }
   };
 
@@ -532,7 +519,7 @@ export default function ProfileScreen({
               labelColor={theme.textSecondary}
             />
             <ActivityStatItem
-              value={reviewsCount}
+              value={personalReviewsCount}
               label="Đã đánh giá"
               accentColor={theme.primary}
               labelColor={theme.textSecondary}
@@ -769,7 +756,7 @@ export default function ProfileScreen({
                   marginBottom={10}
                 >
                   <TamaguiText fontSize={13} color="#64748B" fontWeight="600">
-                    {currentUser?.email || "sv@iuh.edu.vn"}
+                    {email}
                   </TamaguiText>
                   <XStack
                     backgroundColor="#E2E8F0"

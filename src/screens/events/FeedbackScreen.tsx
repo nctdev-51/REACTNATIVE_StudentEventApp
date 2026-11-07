@@ -21,16 +21,17 @@ import {
   XStack,
   Card,
   Button,
-  Heading,
-  Paragraph,
-  Text as TamaguiText,
   TextArea,
   Spinner,
 } from "tamagui";
+import {
+  AppText as TamaguiText,
+  AppHeading as Heading,
+  AppParagraph as Paragraph,
+} from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
-import { useAppDispatch, useAppSelector } from "../../hooks/redux";
-import { submitFeedback } from "../../features/events/feedbacksSlice";
+import { useAppSelector } from "../../hooks/redux";
 import { useAppTheme } from "../../theme";
 import api from "../../services/api";
 import {
@@ -40,10 +41,8 @@ import {
   getOnlyAttendedEventsFromDb,
   getEnrichedFeedbacksFromDb,
   loadFeedbacksFromStorage,
-  saveFeedbacksToStorage,
   mergeFeedbacksIntoDb,
   enrichFeedback,
-  addFeedbackToDb,
   EnrichedFeedback,
 } from "../../data/dbService";
 
@@ -62,7 +61,6 @@ interface StarRatingProps {
   size?: number;
   starActive: string;
   starInactive: string;
-  readonly?: boolean;
 }
 
 function StarRating({
@@ -71,7 +69,6 @@ function StarRating({
   size = 36,
   starActive,
   starInactive,
-  readonly = false,
 }: StarRatingProps) {
   const ratingLabels: Record<number, string> = {
     1: "1/5 - Cần cải thiện",
@@ -95,9 +92,9 @@ function StarRating({
           return (
             <TouchableOpacity
               key={star}
-              onPress={() => !readonly && onChange(star)}
-              activeOpacity={readonly ? 1 : 0.7}
-              disabled={readonly}
+              onPress={() => onChange(star)}
+              activeOpacity={0.7}
+              
               accessibilityRole="button"
               accessibilityLabel={`${star} sao`}
               style={starStyles.touchable}
@@ -129,7 +126,6 @@ const starStyles = StyleSheet.create({
 export default function FeedbackScreen() {
   const navigation = useNavigation<FeedbackNavProp>();
   const route = useRoute<FeedbackRouteProp>();
-  const dispatch = useAppDispatch();
   const { theme, isDark } = useAppTheme();
 
   const authUser = useAppSelector((s) => s.auth.user);
@@ -403,51 +399,48 @@ export default function FeedbackScreen() {
     setSubmittingEventId(eventId);
 
     try {
-      // 1. Lưu ngay vào dbService in-memory và AsyncStorage
-      const newEnriched = addFeedbackToDb(payload);
-      setFeedbacks((prev) => {
-        const key = newEnriched.id || newEnriched._id;
-        const filtered = prev.filter((f) => (f.id || f._id) !== key);
-        return [newEnriched, ...filtered];
-      });
-
-      // 2. Gửi API lên server lưu vào server/db.json & sync src/data/db.json
+      // 1. Gửi trực tiếp lên Backend MongoDB
+      let serverRes: any = null;
       try {
-        const serverRes = await Promise.race([
-          api.createFeedback(payload),
-          new Promise<null>((_, reject) =>
-            setTimeout(() => reject(new Error("Timeout")), 3000),
-          ),
-        ]);
-
-        if (serverRes && (serverRes.id || serverRes._id)) {
-          const enrichedServer = enrichFeedback(serverRes);
-          setFeedbacks((prev) => {
-            const sKey = serverRes.id || serverRes._id;
-            const tempKey = newEnriched.id || newEnriched._id;
-            const filtered = prev.filter(
-              (f) => (f.id || f._id) !== tempKey && (f.id || f._id) !== sKey,
-            );
-            return [enrichedServer, ...filtered];
-          });
-          mergeFeedbacksIntoDb([serverRes]);
+        serverRes = await api.createFeedback(payload);
+      } catch (apiErr: any) {
+        console.warn("[FeedbackScreen] Lỗi khi lưu vào MongoDB:", apiErr?.response?.data || apiErr?.message);
+        const errMsg = apiErr?.response?.data?.message || apiErr?.message || "Không thể kết nối đến máy chủ MongoDB.";
+        if (Platform.OS === "web") {
+          alert(`Không thể gửi đánh giá: ${errMsg}\nVui lòng kiểm tra server Backend MongoDB trên cổng 5000.`);
+        } else {
+          Alert.alert(
+            "Không thể lưu đánh giá",
+            `Lỗi máy chủ MongoDB: ${errMsg}\nVui lòng đảm bảo server Backend đã được khởi động và kết nối ổn định.`,
+            [{ text: "Đóng", style: "default" }]
+          );
         }
-      } catch (apiErr) {
-        console.log("[FeedbackScreen] API fallback to local storage:", apiErr);
+        return;
+      }
+
+      // 2. Khi MongoDB lưu thành công, cập nhật state và đồng bộ local
+      if (serverRes && (serverRes.id || serverRes._id)) {
+        const enrichedServer = enrichFeedback(serverRes);
+        setFeedbacks((prev) => {
+          const sKey = serverRes.id || serverRes._id;
+          const filtered = prev.filter((f) => (f.id || f._id) !== sKey);
+          return [enrichedServer, ...filtered];
+        });
+        mergeFeedbacksIntoDb([serverRes]);
       }
 
       // Xoá draft comment
       setDraftComments((prev) => ({ ...prev, [eventId]: "" }));
 
-      // 3. Thông báo và GIỮ NGUYÊN NGƯỜI DÙNG Ở LẠI TRANG
+      // 3. Thông báo thành công từ MongoDB
       if (Platform.OS === "web") {
         alert(
-          `Đánh giá thành công!\nCảm ơn bạn đã đóng góp ý kiến cho sự kiện "${evt.title}". Đánh giá của bạn đã được ghi nhận.`,
+          `Đánh giá thành công!\nĐánh giá cho sự kiện "${evt.title}" (${ratingVal} sao) đã được lưu trực tiếp vào cơ sở dữ liệu MongoDB.`,
         );
       } else {
         Alert.alert(
           "Đánh giá thành công!",
-          `Cảm ơn bạn đã đóng góp ý kiến cho sự kiện "${evt.title}" với ${ratingVal} sao! Đánh giá đã được lưu vào hệ thống.`,
+          `Đánh giá cho sự kiện "${evt.title}" (${ratingVal} sao) đã được lưu trực tiếp vào cơ sở dữ liệu MongoDB.`,
           [{ text: "Đóng", style: "default" }],
         );
       }
