@@ -130,7 +130,7 @@ export default function FeedbackScreen() {
   const navigation = useNavigation<FeedbackNavProp>();
   const route = useRoute<FeedbackRouteProp>();
   const dispatch = useAppDispatch();
-  const { theme, isDark, toggleTheme } = useAppTheme();
+  const { theme, isDark } = useAppTheme();
 
   const authUser = useAppSelector((s) => s.auth.user);
   const defaultStudent = getDefaultDbUser();
@@ -480,7 +480,6 @@ export default function FeedbackScreen() {
         {/* ── Top Header Bar ── */}
         <XStack
           alignItems="center"
-          justifyContent="space-between"
           marginBottom={14}
           paddingTop={Platform.OS === "android" ? 10 : 6}
         >
@@ -505,32 +504,6 @@ export default function FeedbackScreen() {
               <Ionicons name="chevron-back" size={20} color={theme.primary} />
               <TamaguiText fontSize={14} fontWeight="600" color={theme.primary}>
                 Quay lại
-              </TamaguiText>
-            </XStack>
-          </Button>
-
-          {/* Nút bấm đổi theme Sáng/Tối giữ nguyên trạng thái khi reload */}
-          <Button
-            size="$3"
-            borderRadius={20}
-            borderWidth={1}
-            backgroundColor={theme.surface}
-            borderColor={theme.border}
-            paddingHorizontal={12}
-            height={36}
-            onPress={toggleTheme}
-            pressStyle={{ opacity: 0.7 }}
-            accessibilityRole="button"
-            accessibilityLabel={`Chuyển chế độ ${isDark ? "Sáng" : "Tối"}`}
-          >
-            <XStack alignItems="center" gap={6}>
-              <Ionicons
-                name={isDark ? "sunny" : "moon"}
-                size={17}
-                color={isDark ? "#FBBF24" : theme.primary}
-              />
-              <TamaguiText fontSize={13} fontWeight="600" color={theme.textPrimary}>
-                {isDark ? "Chế độ Tối" : "Chế độ Sáng"}
               </TamaguiText>
             </XStack>
           </Button>
