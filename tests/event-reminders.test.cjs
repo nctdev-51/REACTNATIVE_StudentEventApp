@@ -4,16 +4,26 @@ const fs = require('node:fs');
 const vm = require('node:vm');
 const ts = require('typescript');
 
-function setup(os = 'android', granted = true) {
+function setup(os = 'android', granted = true, channelError = null) {
+  const settings = { minutes: 30, enabled: true };
   const scheduled = new Map();
   const calls = [];
   const notifications = {
     AndroidImportance: { HIGH: 4 }, IosAuthorizationStatus: { PROVISIONAL: 3 },
     SchedulableTriggerInputTypes: { DATE: 'date' },
     setNotificationHandler() {},
-    async setNotificationChannelAsync() { calls.push('channel'); },
+    async setNotificationChannelAsync(id, options) {
+      if (channelError) { calls.push('channel-error'); throw channelError; }
+      // Android's channel manager reads audioAttributes when sound is present.
+      // Its legacy argument bridge can throw on that absent nested object.
+      if ('sound' in options && options.audioAttributes == null) {
+        throw new Error('Native channel sound configuration requires non-null audioAttributes');
+      }
+      calls.push('channel');
+    },
     async getPermissionsAsync() { calls.push('permission'); return { granted, canAskAgain: false }; },
     async cancelScheduledNotificationAsync(id) { scheduled.delete(id); },
+    async cancelAllScheduledNotificationsAsync() { scheduled.clear(); },
     async scheduleNotificationAsync(item) { scheduled.set(item.identifier, item); },
     async getAllScheduledNotificationsAsync() { return [...scheduled.values()]; },
   };
@@ -21,11 +31,12 @@ function setup(os = 'android', granted = true) {
   const code = ts.transpileModule(fs.readFileSync('src/services/eventReminders.ts', 'utf8'), {
     compilerOptions: { module: ts.ModuleKind.CommonJS, target: ts.ScriptTarget.ES2020 },
   }).outputText;
-  vm.runInNewContext(code, { exports, Date, Promise, encodeURIComponent,
-    require: name => name === 'react-native' ? { Platform: { OS: os } } : notifications,
+  vm.runInNewContext(code, { exports, Date, Promise, encodeURIComponent, console: { warn() {} },
+    require: name => name === 'react-native' ? { Platform: { OS: os } }
+      : name === './reminderSettings' ? { loadReminderSettings: async () => settings } : notifications,
   });
   const event = { _id: 'event1', title: 'Workshop', location: 'Hall A', time: { start: new Date(Date.now() + 7200000).toISOString() } };
-  return { service: exports, scheduled, calls, event };
+  return { service: exports, scheduled, calls, event, settings };
 }
 
 test('schedules exactly 30 minutes before start and scopes reminders to user', async () => {
@@ -38,6 +49,34 @@ test('schedules exactly 30 minutes before start and scopes reminders to user', a
   assert.deepEqual(calls, ['channel', 'permission']);
   assert.equal((await service.getEventReminders('student1')).length, 1);
   assert.equal((await service.getEventReminders('student2')).length, 0);
+});
+
+test('Android channel setup avoids absent audio attributes and notifications retain default sound', async () => {
+  const { service, scheduled, event } = setup();
+  assert.equal(await service.requestReminderPermission(), true);
+  assert.equal(await service.scheduleEventReminder(event, 'student1'), 'scheduled');
+  assert.equal([...scheduled.values()][0].content.sound, 'default');
+});
+
+test('native channel NullPointerException uses Expo fallback and still schedules reminders', async () => {
+  const failure = new Error("java.lang.NullPointerException: Attempt to invoke virtual method 'java.lang.Class java.lang.Object.getClass()' on a null object reference");
+  const { service, scheduled, event, calls } = setup('android', true, failure);
+  assert.equal(await service.requestReminderPermission(), true);
+  assert.equal(await service.scheduleEventReminder(event, 'student1'), 'scheduled');
+  const item = [...scheduled.values()][0];
+  assert.equal(Object.hasOwn(item.trigger, 'channelId'), false);
+  assert.equal(item.content.sound, 'default');
+  assert.equal(calls.filter(c => c === 'channel-error').length, 1);
+  assert.ok(calls.includes('permission'));
+});
+
+test('native channel fallback respects denied permission; unrelated native errors remain visible', async () => {
+  const failure = new Error('java.lang.NullPointerException: java.lang.Object.getClass()');
+  const { service, scheduled, event } = setup('android', false, failure);
+  assert.equal(await service.scheduleEventReminder(event, 'student1'), 'denied');
+  assert.equal(scheduled.size, 0);
+  const other = setup('android', true, new Error('native module unavailable'));
+  await assert.rejects(other.service.requestReminderPermission(), /native module unavailable/);
 });
 test('concurrent requests do not create duplicates', async () => {
   const { service, scheduled, event } = setup();
@@ -74,4 +113,46 @@ test('cancelling a reminder removes only the selected event for that user', asyn
   await service.cancelEventReminder('event1', 'student1');
   assert.equal(scheduled.size, 1);
   assert.equal((await service.getEventReminders('student1'))[0].content.data.eventId, 'event2');
+});
+
+test('global minutes reschedule all registered events and survive repeated sync without duplicates', async () => {
+  const { service, scheduled, event, settings } = setup();
+  const events = [event, { ...event, _id: 'event2' }];
+  const registrations = events.map(e => ({ eventId: e._id, userId: 'student1', status: 'registered' }));
+  assert.equal((await service.syncEventReminders(events, registrations, 'student1')).scheduled, 2);
+  settings.minutes = 5;
+  await service.syncEventReminders(events, registrations, 'student1');
+  await service.syncEventReminders(events, registrations, 'student1');
+  assert.equal(scheduled.size, 2);
+  for (const item of scheduled.values()) {
+    assert.equal(item.trigger.date.getTime(), Date.parse(event.time.start) - 5 * 60000);
+    assert.match(item.content.body, /5/);
+  }
+});
+
+test('check-in, cancellation, account switch and disabling remove stale reminders', async () => {
+  const { service, scheduled, event, settings } = setup();
+  const registrations = [{ eventId: event._id, userId: 'student1', status: 'registered' }];
+  for (const status of ['checked_in', 'cancelled']) {
+    await service.syncEventReminders([event], registrations, 'student1');
+    await service.syncEventReminders([event], [{ ...registrations[0], status }], 'student1');
+    assert.equal(scheduled.size, 0);
+  }
+  await service.syncEventReminders([event], registrations, 'student1');
+  await service.syncEventReminders([event], registrations, 'student2');
+  assert.equal(scheduled.size, 0);
+  await service.syncEventReminders([event], registrations, 'student1');
+  settings.enabled = false;
+  await service.cancelAllReminders();
+  await service.syncEventReminders([event], registrations, 'student1');
+  assert.equal(scheduled.size, 0);
+});
+
+test('bulk scheduling skips expired reminders and reports denied permission', async () => {
+  const { service, scheduled, event } = setup('android', false);
+  const registrations = [{ eventId: event._id, userId: 'student1', status: 'registered' }];
+  assert.equal((await service.syncEventReminders([event], registrations, 'student1')).denied, true);
+  assert.equal(scheduled.size, 0);
+  const expired = { ...event, time: { start: new Date(Date.now() + 60000).toISOString() } };
+  assert.equal((await service.syncEventReminders([expired], registrations, 'student1')).skipped, 1);
 });

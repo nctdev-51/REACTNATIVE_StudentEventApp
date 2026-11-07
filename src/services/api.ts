@@ -17,6 +17,7 @@ import {
   UpdateUserPayload,
 } from "../types";
 import { AISummary } from "../types/event";
+import { mergeRegistrations } from '../utils/registrations';
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
@@ -220,6 +221,24 @@ export let inMemoryUsers: User[] = [
 ];
 
 let inMemoryEvents = [...eventsData];
+// Only successful QR responses are overlaid on a stale server response. Keep
+// these separate from seeded demo registrations and scope them to the user.
+let confirmedQrCheckIns: Registration[] = [];
+
+function rememberQrCheckIn(payload: { eventId: string; userId?: string }, response: any) {
+  if (!response?.success || !payload.userId) return response;
+  const registration = response.data?.registration;
+  confirmedQrCheckIns = mergeRegistrations([...confirmedQrCheckIns, {
+    ...registration,
+    _id: registration?._id || registration?.id || `qr_${payload.userId}_${payload.eventId}`,
+    eventId: payload.eventId,
+    userId: payload.userId,
+    participantRole: registration?.participantRole || 'attendee',
+    status: 'checked_in',
+    checkInTime: registration?.checkInTime || new Date().toISOString(),
+  }], inMemoryEvents);
+  return response;
+}
 let inMemoryRegistrations: Registration[] = [
   {
     _id: "66f1b3010000000000000001",
@@ -596,13 +615,17 @@ export const getAllRegistrations = async (): Promise<Registration[]> => {
 export const getRegistrationsByUser = async (
   userId: string,
 ): Promise<Registration[]> => {
+  const mergeCheckIns = (list: Registration[]) => mergeRegistrations([
+    ...list,
+    ...confirmedQrCheckIns.filter(r => r.userId === userId),
+  ], inMemoryEvents);
   try {
     const res = await apiClient.get("/registrations", { params: { userId } });
     const list = unwrapList<Registration>(res.data);
-    if (list.length > 0) return list;
-    return inMemoryRegistrations.filter((r) => r.userId === userId);
+    if (list.length > 0) return mergeCheckIns(list);
+    return mergeCheckIns(inMemoryRegistrations.filter((r) => r.userId === userId));
   } catch (e) {
-    return inMemoryRegistrations.filter((r) => r.userId === userId);
+    return mergeCheckIns(inMemoryRegistrations.filter((r) => r.userId === userId));
   }
 };
 
@@ -688,7 +711,7 @@ export const qrCheckIn = async (payload: {
 }): Promise<any> => {
   try {
     const res = await apiClient.post("/registrations/check-in", payload);
-    return res.data;
+    return rememberQrCheckIn(payload, res.data);
   } catch (err: any) {
     if (err?.code === "ERR_NETWORK" || !err?.response) {
       console.warn("[API] Offline QR Check-in Mock Mode");
@@ -762,14 +785,14 @@ export const qrCheckIn = async (payload: {
         checkInLocation: payload.userLocation,
       };
       inMemoryRegistrations.unshift(newReg);
-      return {
+      return rememberQrCheckIn(payload, {
         success: true,
         message: "Điểm danh thành công! Vị trí toạ độ GPS hợp lệ.",
         data: {
           registration: newReg,
           event: matchedEvent,
         },
-      };
+      });
     }
     throw err;
   }
