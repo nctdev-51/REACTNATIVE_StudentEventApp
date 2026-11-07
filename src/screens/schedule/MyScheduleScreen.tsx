@@ -8,7 +8,6 @@ import {
   StyleSheet,
   Platform,
   StatusBar,
-  Alert,
   ActivityIndicator,
   RefreshControl,
 } from "react-native";
@@ -22,6 +21,7 @@ import { fetchEvents } from "../../features/events/eventsSlice";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTab";
 import { useAppTheme } from "../../theme/ThemeContext";
+import { mergeRegistrations, hasEventEnded } from '../../utils/registrations';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -34,6 +34,10 @@ export interface RegisteredEvent {
   title: string;
   date: string;
   time: string;
+  startAt?: string;
+  endAt?: string;
+  checkedIn?: boolean;
+  checkInClosed?: boolean;
   location: string;
   imageUrl: string;
   daysLeft?: number;
@@ -470,8 +474,42 @@ interface EventCardProps {
   onPress?: (event: RegisteredEvent) => void;
 }
 
+function formatScheduleDuration(milliseconds: number, roundUp = false) {
+  const totalMinutes = Math.max(0, roundUp ? Math.ceil(milliseconds / 60000) : Math.floor(milliseconds / 60000));
+  if (totalMinutes === 0) return 'dưới 1 phút';
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  return [days > 0 ? `${days} ngày` : '', hours > 0 ? `${hours} giờ` : '', minutes > 0 ? `${minutes} phút` : '']
+    .filter(Boolean).join(' ');
+}
+
 function EventCard({ event, onPress }: EventCardProps) {
   const [imageError, setImageError] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  useFocusEffect(useCallback(() => {
+    setNow(Date.now());
+    const timer = setInterval(() => setNow(Date.now()), 60000);
+    return () => clearInterval(timer);
+  }, []));
+  const start = Date.parse(event.startAt || `${event.date.split('/').reverse().join('-')}T${event.time}`);
+  const remaining = start - now;
+  const totalMinutes = Math.ceil(remaining / 60000);
+  const days = Math.floor(totalMinutes / 1440);
+  const hours = Math.floor((totalMinutes % 1440) / 60);
+  const minutes = totalMinutes % 60;
+  const urgent = Number.isFinite(start) ? remaining <= 86400000 : (event.daysLeft ?? Infinity) <= 1;
+  const end = event.endAt ? Date.parse(event.endAt) : NaN;
+  const ongoingText = Number.isFinite(end) && end <= now ? 'Sự kiện đã kết thúc'
+    : `Đã qua giờ bắt đầu ${formatScheduleDuration(now - start)}\n${Number.isFinite(end)
+      ? `Còn ${formatScheduleDuration(end - now, true)} đến khi kết thúc`
+      : 'Chưa có giờ kết thúc'}`;
+  const countdown = !Number.isFinite(start) ? (event.daysLeft !== undefined ? `Còn ${event.daysLeft} ngày` : '')
+    : remaining <= 0 ? ongoingText
+    : remaining < 60000 ? 'Sắp bắt đầu'
+    : days > 0 ? `Còn ${days} ngày${hours > 0 ? ` ${hours} giờ` : ''}`
+    : hours > 0 ? `Còn ${hours} giờ${minutes > 0 ? ` ${minutes} phút` : ''}`
+    : `Còn ${minutes} phút`;
 
   return (
     <TouchableOpacity
@@ -518,9 +556,14 @@ function EventCard({ event, onPress }: EventCardProps) {
         </View>
 
         {/* Days Left Badge */}
-        {event.daysLeft !== undefined && (
-          <View style={cardStyles.badge}>
-            <Text style={cardStyles.badgeText}>Còn {event.daysLeft} ngày</Text>
+        {event.status === 'past' && <View style={[cardStyles.badge, { backgroundColor: event.checkedIn ? '#DCFCE7' : '#FEE2E2' }]}>
+          <Text style={[cardStyles.badgeText, { color: event.checkedIn ? '#16A34A' : '#DC2626' }]}>
+            {event.checkedIn ? 'Đã check-in' : event.checkInClosed ? 'Chưa check-in · Đã đóng điểm danh' : 'Chưa check-in'}
+          </Text>
+        </View>}
+        {event.status === 'upcoming' && countdown !== '' && (
+          <View style={[cardStyles.badge, urgent && { backgroundColor: '#FEE2E2' }]}>
+            <Text style={[cardStyles.badgeText, urgent && { color: '#DC2626' }]}>{countdown}</Text>
           </View>
         )}
       </View>
@@ -630,6 +673,9 @@ export default function MyScheduleScreen({
     useState<ScheduleTabFilter>(initialFilter);
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [showDateFilter, setShowDateFilter] = useState(false);
+  const [dateFilter, setDateFilter] = useState<'all' | 'today'>('all');
+  const [scheduleNow, setScheduleNow] = useState(Date.now());
 
   const loadData = useCallback(async () => {
     if (currentUser?._id) {
@@ -640,7 +686,10 @@ export default function MyScheduleScreen({
 
   useFocusEffect(
     useCallback(() => {
+      setScheduleNow(Date.now());
       void loadData();
+      const timer = setInterval(() => setScheduleNow(Date.now()), 60000);
+      return () => clearInterval(timer);
     }, [loadData]),
   );
 
@@ -655,7 +704,7 @@ export default function MyScheduleScreen({
     if (!myRegistrations || myRegistrations.length === 0) return [];
 
     return (
-      myRegistrations
+      mergeRegistrations(myRegistrations, eventsList)
         .filter((r) => r.status !== "cancelled")
         .map((r) => {
           const rawEventId =
@@ -675,7 +724,9 @@ export default function MyScheduleScreen({
           let dateStr = "Sắp diễn ra";
           let timeStr = "08:00";
           let daysLeft: number | undefined = undefined;
-          let isPast = r.status === "checked_in";
+          const checkedIn = r.status === 'checked_in';
+          const checkInClosed = hasEventEnded(matchedEvent, scheduleNow);
+          const isPast = checkedIn || checkInClosed;
 
           if (matchedEvent?.time?.start) {
             const startDate = new Date(matchedEvent.time.start);
@@ -694,12 +745,6 @@ export default function MyScheduleScreen({
             dateStr = `${day}/${month}/${year}`;
             timeStr = `${hours}:${minutes}`;
 
-            if (
-              matchedEvent.time.end &&
-              new Date(matchedEvent.time.end) < now
-            ) {
-              isPast = true;
-            }
           }
 
           const fallbackImage =
@@ -710,6 +755,10 @@ export default function MyScheduleScreen({
             title: matchedEvent?.title || "Sự kiện đã đăng ký",
             date: dateStr,
             time: timeStr,
+            startAt: matchedEvent?.time?.start,
+            endAt: matchedEvent?.time?.end,
+            checkedIn,
+            checkInClosed,
             location: matchedEvent?.location || "Trường ĐH Công nghiệp TP.HCM",
             imageUrl: matchedEvent?.images?.[0] || fallbackImage,
             daysLeft: isPast ? undefined : daysLeft,
@@ -721,12 +770,23 @@ export default function MyScheduleScreen({
           (evt, idx, arr) => arr.findIndex((x) => x.id === evt.id) === idx,
         )
     );
-  }, [myRegistrations, eventsList]);
+  }, [myRegistrations, eventsList, scheduleNow]);
 
   // Use props if explicitly passed and not empty, otherwise use real backend events
   const allEvents =
     propEvents && propEvents.length > 0 ? propEvents : backendEvents;
-  const filteredEvents = allEvents.filter((e) => e.status === activeFilter);
+  const today = new Date();
+  const todayLabel = `${String(today.getDate()).padStart(2, '0')}/${String(today.getMonth() + 1).padStart(2, '0')}/${today.getFullYear()}`;
+  const filteredEvents = allEvents.filter((e) => e.status === activeFilter &&
+    (dateFilter === 'all' || e.date === todayLabel)).sort((a, b) => {
+      const timestamp = (event: RegisteredEvent) => Date.parse(event.startAt ||
+        `${event.date.split('/').reverse().join('-')}T${event.time}`);
+      const aStart = timestamp(a);
+      const bStart = timestamp(b);
+      if (!Number.isFinite(aStart)) return Number.isFinite(bStart) ? 1 : 0;
+      if (!Number.isFinite(bStart)) return -1;
+      return activeFilter === 'past' ? bStart - aStart : aStart - bStart;
+    });
 
   // Wire up bottom tab navigation
   const handleTabPress = (tab: AppTabKey) => {
@@ -763,7 +823,7 @@ export default function MyScheduleScreen({
     if (onFilterPress) {
       onFilterPress();
     } else {
-      Alert.alert("Bộ lọc", "Lọc sự kiện theo thời gian hoặc khoa viện.");
+      setShowDateFilter(value => !value);
     }
   };
 
@@ -796,10 +856,26 @@ export default function MyScheduleScreen({
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Bộ lọc"
+          accessibilityState={{ expanded: showDateFilter }}
         >
-          <FilterIcon color={theme.textPrimary} />
+          <FilterIcon color={dateFilter === 'today' ? theme.primary : theme.textPrimary} />
         </TouchableOpacity>
       </View>
+
+      {showDateFilter && (
+        <View style={{ flexDirection: 'row', gap: 10, paddingHorizontal: 20, paddingVertical: 12 }}>
+          {([{ value: 'all', label: 'Tất cả' }, { value: 'today', label: 'Hôm nay' }] as const).map(option => (
+            <TouchableOpacity key={option.value}
+              onPress={() => setDateFilter(option.value)}
+              accessibilityRole="button" accessibilityState={{ selected: dateFilter === option.value }}
+              style={{ borderWidth: 1, borderColor: dateFilter === option.value ? theme.primary : theme.border,
+                backgroundColor: dateFilter === option.value ? theme.primary : theme.surface,
+                paddingHorizontal: 18, paddingVertical: 9, borderRadius: 20 }}>
+              <Text style={{ color: dateFilter === option.value ? '#FFFFFF' : theme.textPrimary, fontWeight: '600' }}>{option.label}</Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
 
       {/* ── Segmented Control / Filter Tabs ─────────────────────────────── */}
       <View
@@ -897,7 +973,7 @@ export default function MyScheduleScreen({
         ) : (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
-              {activeFilter === "upcoming"
+              {dateFilter === 'today' ? 'Bạn không có sự kiện nào hôm nay trong mục này' : activeFilter === "upcoming"
                 ? "Bạn chưa có sự kiện nào sắp diễn ra"
                 : "Bạn chưa tham gia sự kiện nào"}
             </Text>
