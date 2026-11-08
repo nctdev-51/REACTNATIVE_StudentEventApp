@@ -61,6 +61,7 @@ export interface Event {
 
   trainingPoints: number;
 
+  /** Tóm tắt bởi AI */
   aiSummary?: AISummary;
 
   /** Học kỳ mà sự kiện thuộc về (admin gán); không có thì suy ra từ thời gian */

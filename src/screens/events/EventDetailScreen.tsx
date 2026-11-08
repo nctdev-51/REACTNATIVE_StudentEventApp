@@ -383,7 +383,7 @@ export default function EventDetailScreen() {
       setAiLoading(true);
       setAiError(null);
 
-      const result = await summarizeEvent(eventId);
+      const result = await summarizeEvent(eventId, event || undefined);
       setAiSummary(result);
     } catch (err: any) {
       setAiSummary(null);

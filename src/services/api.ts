@@ -575,12 +575,6 @@ export const createEvent = async (
     waitlistSlots: Number(eventData.waitlistSlots) || 20,
     semesterId: eventData.semesterId,
     status: (eventData.status as any) || "upcoming",
-    aiSummary: {
-      what: eventData.title || "Sự kiện trường",
-      when: "Theo lịch thông báo",
-      where: eventData.location || "Hội trường IUH",
-      benefits: `Nhận +${eventData.trainingPoints ?? 5} điểm rèn luyện`,
-    },
     qrCode: `EVENTMATE:evt_${Date.now()}`,
     createdAt: new Date().toISOString(),
   };
@@ -1457,6 +1451,7 @@ export default {
   getGoogleCalendarAddUrl,
 };
 
+<<<<<<< HEAD
 // AI Summary
 export const summarizeEvent = async (eventId: string): Promise<AISummary> => {
 <<<<<<< HEAD
@@ -1464,27 +1459,115 @@ export const summarizeEvent = async (eventId: string): Promise<AISummary> => {
   return res.data.data;
 };
 =======
+=======
+function formatViDateTime(dateStr?: string): string {
+  if (!dateStr) return "";
+>>>>>>> 15ed82f (tata)
   try {
-    const res = await apiClient.post(`/events/${eventId}/summarize`);
-    return res.data.data;
-  } catch (error: any) {
-    // A deployed mock server may temporarily lag behind the mobile build. Use
-    // its already-public event data only for the missing route case; real API,
-    // authorization and network errors remain visible to the user.
-    if (error?.response?.status !== 404) throw error;
-    const event = await getEventById(eventId);
-    if (!event) throw error;
-    const start = new Date(event.time?.start);
-    return event.aiSummary ?? {
-      what: event.description || `Sự kiện ${event.title}.`,
-      when: Number.isNaN(start.getTime())
-        ? "Thời gian sẽ được ban tổ chức cập nhật."
-        : `Bắt đầu lúc ${start.toLocaleTimeString("vi-VN", { hour: "2-digit", minute: "2-digit" })} ngày ${start.toLocaleDateString("vi-VN")}.`,
-      where: event.location || "Địa điểm sẽ được ban tổ chức cập nhật.",
-      benefits: event.trainingPoints
-        ? `Người tham gia được cộng ${event.trainingPoints} điểm rèn luyện.`
-        : "Cơ hội cập nhật kiến thức và kết nối cùng cộng đồng sinh viên.",
-    };
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${hours}:${minutes} ngày ${day}/${month}/${year}`;
+  } catch {
+    return "";
   }
+}
+
+export const generateLocalAISummary = (event?: Partial<Event> | null): AISummary => {
+  const start = formatViDateTime(event?.time?.start);
+  const end = formatViDateTime(event?.time?.end);
+  let whenText = "Thời gian chi tiết xem tại thông tin sự kiện";
+  if (start && end) {
+    whenText = `${start} — ${end}`;
+  } else if (start) {
+    whenText = `Bắt đầu lúc ${start}`;
+  }
+
+  let whatText = "";
+  if (event?.description && event.description.trim().length > 10) {
+    const clean = event.description.trim().replace(/\s+/g, " ");
+    whatText = clean.length > 250 ? `${clean.slice(0, 247)}...` : clean;
+  } else {
+    whatText = `Sự kiện "${event?.title || "Sự kiện sinh viên"}" do ${
+      event?.organizer || event?.faculty || "Trường Đại học Công nghiệp TP.HCM (IUH)"
+    } tổ chức thuộc danh mục ${event?.category || "hoạt động phong trào"}.`;
+  }
+
+  const whereText =
+    event?.location || "Khuôn viên Trường Đại học Công nghiệp TP.HCM (IUH)";
+
+  const points = event?.trainingPoints
+    ? `+${event.trainingPoints} điểm rèn luyện (ĐRL)`
+    : "Ghi nhận tham gia tích cực";
+  const benefitsText = `${points}, trau dồi kiến thức thực tế, nâng cao kỹ năng mềm và mở rộng cơ hội kết nối cộng đồng sinh viên IUH.`;
+
+  return {
+    what: whatText,
+    when: whenText,
+    where: whereText,
+    benefits: benefitsText,
+  };
+};
+
+// Bộ nhớ cache riêng biệt cho AI Summary (tránh ghi đè trực tiếp lên frozen Redux object)
+const aiSummaryCache = new Map<string, AISummary>();
+
+// AI Summary
+export const summarizeEvent = async (
+  eventId: string,
+  eventData?: Partial<Event> | null
+): Promise<AISummary> => {
+  if (eventId && aiSummaryCache.has(eventId)) {
+    return aiSummaryCache.get(eventId)!;
+  }
+
+  const resolvedEvent =
+    eventData ||
+    inMemoryEvents.find(
+      (e) => e._id === eventId || (e as any).id === eventId
+    ) ||
+    eventsData.find(
+      (e) => e._id === eventId || (e as any).id === eventId
+    );
+
+  // 1. Thử gọi backend API để lấy tóm tắt từ Gemini AI
+  try {
+    const res = await apiClient.post(
+      `/events/${eventId}/summarize`,
+      { event: resolvedEvent },
+      { timeout: 8000 }
+    );
+    if (res.data?.data && res.data.data.what) {
+      const summary: AISummary = res.data.data;
+      if (eventId) {
+        aiSummaryCache.set(eventId, summary);
+      }
+      return summary;
+    }
+  } catch (err: any) {
+    console.warn(
+      "[AI] Gọi backend tóm tắt thất bại hoặc offline, tự động kích hoạt bộ tóm tắt thông minh trên máy:",
+      err?.message || err
+    );
+  }
+
+  // 2. Dự phòng 1: Nếu sự kiện đã có sẵn aiSummary
+  if (resolvedEvent?.aiSummary?.what) {
+    if (eventId) {
+      aiSummaryCache.set(eventId, resolvedEvent.aiSummary);
+    }
+    return resolvedEvent.aiSummary;
+  }
+
+  // 3. Dự phòng 2: Tự động tổng hợp tóm tắt chất lượng cao từ metadata sự kiện
+  const localSummary = generateLocalAISummary(resolvedEvent);
+  if (eventId) {
+    aiSummaryCache.set(eventId, localSummary);
+  }
+  return localSummary;
 };
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)

@@ -70,12 +70,6 @@ const eventSchema = new mongoose.Schema(
       type: Number,
       default: 0,
     },
-    aiSummary: {
-      what: { type: String, default: "" },
-      when: { type: String, default: "" },
-      where: { type: String, default: "" },
-      benefits: { type: String, default: "" },
-    },
     status: {
       type: String,
       enum: ["draft", "pending_approval", "published", "registration_closed", "upcoming", "ongoing", "completed", "cancelled", "past"],
