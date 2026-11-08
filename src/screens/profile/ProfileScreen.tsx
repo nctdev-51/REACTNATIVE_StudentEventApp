@@ -43,6 +43,7 @@ import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import { useAppTheme } from "../../theme";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { getDefaultDbUser } from "../../data/dbService";
 <<<<<<< HEAD
 >>>>>>> e79c48e (abc)
@@ -60,6 +61,8 @@ import { Ionicons } from "@expo/vector-icons";
 =======
 import NotificationPreferencesModal from "../../components/notifications/NotificationPreferencesModal";
 >>>>>>> 83e603c (Tam fix 1 vai cho)
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
 
 import ActivityStatItem from "../../components/profile/ActivityStatItem";
 import MenuItem from "../../components/profile/MenuItem";
@@ -714,22 +717,32 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
   const dispatch = useAppDispatch();
 
+  // 1. LẤY THÔNG TIN NGƯỜI DÙNG TỪ REDUX (DỮ LIỆU ĐỒNG BỘ TỪ MONGODB KHI LOGIN)
   const currentUser = useAppSelector((state) => state.auth.user);
+<<<<<<< HEAD
 <<<<<<< HEAD
   const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
 =======
+=======
+  const currentUserId = currentUser?._id;
+
+  // 2. LẤY DANH SÁCH ĐĂNG KÝ VÀ SỰ KIỆN TỪ REDUX
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
   const myRegistrations = useAppSelector(
     (state) => state.registrations.myRegistrations,
   );
   const eventsList = useAppSelector((state) => state.events.list);
 >>>>>>> e99db1b (feat: cap nhat font trang ca nhan & feedback, sua hien thi QR admin va tinh dong diem ren luyen tich luy)
 
+<<<<<<< HEAD
   const defaultStudent = getDefaultDbUser();
 <<<<<<< HEAD
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [currentTheme, setCurrentTheme] = useState<'Sáng' | 'Tối'>(initialTheme);
 =======
 >>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
   const [imageError, setImageError] = useState<boolean>(false);
   const [editModalVisible, setEditModalVisible] = useState(false);
 <<<<<<< HEAD
@@ -754,57 +767,32 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 
-  const targetUserId = currentUser?._id || defaultStudent?._id;
-
-  // Đếm chính xác số lượng sự kiện người dùng đã đánh giá từ Backend
-  const [personalReviewsCount, setPersonalReviewsCount] = useState<number>(() => {
-    return getUserStatsFromDb(targetUserId).reviews;
-  });
+  // 3. ĐẾM SỐ LƯỢNG ĐÁNH GIÁ CỦA USER TRỰC TIẾP TỪ BACKEND MONGODB
+  const [personalReviewsCount, setPersonalReviewsCount] = useState<number>(0);
 
   const loadPersonalReviews = useCallback(async () => {
+    if (!currentUserId) return;
     try {
-      const queryId = targetUserId || currentUser?.studentId || defaultStudent?._id;
-      const apiFeedbacks = queryId
-        ? await api.getFeedbacksByUser(queryId)
-        : await api.getAllFeedbacks();
-
-      if (Array.isArray(apiFeedbacks)) {
-        const targetStudentId = currentUser?.studentId || defaultStudent?.studentId;
-        const userFeedbacks = apiFeedbacks.filter((f: any) => {
-          const uId =
-            typeof f.userId === "object" && f.userId !== null
-              ? f.userId._id || f.userId.id
-              : f.userId;
-          const uStudentId =
-            typeof f.userId === "object" && f.userId !== null
-              ? f.userId.studentId
-              : null;
-          return (
-            !queryId ||
-            uId === queryId ||
-            (targetUserId && uId === targetUserId) ||
-            (targetStudentId && uStudentId === targetStudentId) ||
-            (defaultStudent?._id && uId === defaultStudent._id)
-          );
-        });
-
+      // Gọi API lấy các đánh giá của chính sinh viên này từ MongoDB
+      const userFeedbacks = await api.getFeedbacksByUser(currentUserId);
+      if (Array.isArray(userFeedbacks)) {
+        // Đếm số lượng sự kiện duy nhất mà sinh viên đã đánh giá
         const reviewedEventIds = new Set(
           userFeedbacks
-            .map((f: any) =>
-              typeof f.eventId === "object" && f.eventId !== null
-                ? f.eventId._id || f.eventId.id
-                : f.eventId,
-            )
+            .map((f: any) => {
+              const e = f.eventId;
+              return typeof e === "object" && e !== null ? e._id || e.id : e;
+            })
             .filter(Boolean),
         );
-
-        const count = reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length;
-        setPersonalReviewsCount(count);
+        setPersonalReviewsCount(
+          reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length,
+        );
       }
-    } catch {
-      const stats = getUserStatsFromDb(targetUserId);
-      setPersonalReviewsCount(stats.reviews);
+    } catch (err) {
+      console.warn("[ProfileScreen] Không thể tải số lượt đánh giá:", err);
     }
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   }, [dispatch, currentUser?._id, defaultStudent?._id]);
@@ -814,13 +802,17 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
   }, [targetUserId, currentUser?.studentId, defaultStudent?._id, defaultStudent?.studentId]);
 >>>>>>> e99db1b (feat: cap nhat font trang ca nhan & feedback, sua hien thi QR admin va tinh dong diem ren luyen tich luy)
+=======
+  }, [currentUserId]);
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
 
+  // Đồng bộ lại danh sách đăng ký và số lượt đánh giá khi vào màn hình
   useEffect(() => {
-    if (targetUserId) {
-      dispatch(fetchMyRegistrations(targetUserId));
+    if (currentUserId) {
+      dispatch(fetchMyRegistrations(currentUserId));
     }
     loadPersonalReviews();
-  }, [dispatch, targetUserId, loadPersonalReviews]);
+  }, [dispatch, currentUserId, loadPersonalReviews]);
 
   useFocusEffect(
     useCallback(() => {
@@ -829,32 +821,21 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
   );
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
-  // Compute real user details and stats from Redux
+  // 4. THÔNG TIN CÁ NHÂN LẤY TRỰC TIẾP TỪ MONGODB (state.auth.user)
   const displayName =
-    currentUser?.fullName ||
-    profile?.displayName ||
-    defaultStudent?.fullName ||
-    "Sinh viên";
+    currentUser?.fullName || profile?.displayName || "Sinh viên IUH";
   const studentId =
-    currentUser?.studentId ||
-    profile?.studentId ||
-    defaultStudent?.studentId ||
-    "20000001";
+    currentUser?.studentId || profile?.studentId || "20000001";
   const faculty =
-    currentUser?.faculty ||
-    profile?.faculty ||
-    defaultStudent?.faculty ||
-    "Khoa Công nghệ thông tin";
+    currentUser?.faculty || profile?.faculty || "Khoa Công nghệ thông tin";
   const avatarUrl =
-    currentUser?.avatarUrl || profile?.avatarUrl || defaultStudent?.avatarUrl;
+    currentUser?.avatarUrl || profile?.avatarUrl;
   const email =
-    currentUser?.email ||
-    profile?.email ||
-    defaultStudent?.email ||
-    "student@iuh.edu.vn";
+    currentUser?.email || profile?.email || "student@iuh.edu.vn";
   const phone =
-    currentUser?.phone || profile?.phone || defaultStudent?.phone || "";
+    currentUser?.phone || profile?.phone || "";
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -884,17 +865,23 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
     myRegistrations.length > 0
       ? registeredAttended
       : getUserStatsFromDb(targetUserId).eventsAttended;
+=======
+  // 5. TÍNH TOÁN CÁC CHỈ SỐ HOẠT ĐỘNG THỰC TẾ
+  // - Chỉ số 1: Số sự kiện đã tham gia (những đăng ký có status là checked_in hoặc completed)
+  const attendedRegistrations = myRegistrations.filter(
+    (r) => r.status === "checked_in" || (r.status as string) === "completed",
+  );
+  const eventsAttendedCount = attendedRegistrations.length;
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
 
-  // Điểm tích luỹ bằng tổng điểm rèn luyện các sự kiện đã tham gia
+  // - Chỉ số 2: Điểm rèn luyện tích lũy từ các sự kiện đã tham gia hoặc điểm lưu trên MongoDB
   const calculatedPointsFromEvents = attendedRegistrations.reduce((sum, r) => {
     const eventObj: any = r.eventId;
     let pts = 0;
     if (typeof eventObj === "object" && eventObj !== null) {
       pts = Number(eventObj.trainingPoints) || 0;
     } else if (typeof eventObj === "string") {
-      const found =
-        eventsList.find((e: any) => (e._id || e.id) === eventObj) ||
-        findDbEvent(eventObj);
+      const found = eventsList.find((e: any) => (e._id || e.id) === eventObj);
       pts = Number(found?.trainingPoints) || 0;
     }
     return sum + pts;
@@ -903,10 +890,9 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
   const pointsAccumulated =
     calculatedPointsFromEvents > 0
       ? calculatedPointsFromEvents
-      : (currentUser?.point ??
-        defaultStudent?.point ??
-        getUserStatsFromDb(targetUserId).pointsAccumulated);
+      : (currentUser?.point ?? 0);
 
+<<<<<<< HEAD
 <<<<<<< HEAD
   const handleOpenEditProfile = () => {
     setEditFullName(currentUser?.fullName || displayName);
@@ -1027,13 +1013,21 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
   // Lưu thông tin cá nhân
   const handleSaveProfile = async (data: { fullName: string; phone: string; faculty: string }) => {
+=======
+  // 6. CẬP NHẬT THÔNG TIN CÁ NHÂN LÊN MONGODB QUA API
+  const handleSaveProfile = async (data: {
+    fullName: string;
+    phone: string;
+    faculty: string;
+  }) => {
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
     await api.updateProfile(data);
     dispatch(updateUser(data));
     Alert.alert("Thành công", "Thông tin cá nhân đã được lưu thành công.");
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
   };
 
-  // Thực hiện đăng xuất tài khoản
+  // 7. THỰC HIỆN ĐĂNG XUẤT TÀI KHOẢN
   const confirmLogout = async () => {
     setLogoutModalVisible(false);
     try {
@@ -1200,6 +1194,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
         </View>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         {/* ── Student info ─────────────────────────────────────────────────── */}
 <<<<<<< HEAD
         <Text style={styles.displayName}>{displayName}</Text>
@@ -1236,6 +1231,9 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
         >
 =======
         {/* Student Info */}
+=======
+        {/* Thông tin sinh viên */}
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
         <Text style={[styles.nameText, { color: theme.textPrimary }]}>
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
           {displayName}
@@ -1243,11 +1241,17 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
         <Text style={[styles.subText, { color: theme.textSecondary }]}>
           MSSV: {studentId}
         </Text>
-        <Text style={[styles.subText, styles.facultyText, { color: theme.textSecondary }]}>
+        <Text
+          style={[
+            styles.subText,
+            styles.facultyText,
+            { color: theme.textSecondary },
+          ]}
+        >
           {faculty}
         </Text>
 
-        {/* Activity Stats Card */}
+        {/* 3 Thẻ thống kê hoạt động */}
         <View
           style={[
             styles.statsCard,
@@ -1279,7 +1283,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           </View>
         </View>
 
-        {/* Menu list */}
+        {/* Menu điều hướng */}
         <View
           style={[
             styles.menuCard,
@@ -1291,6 +1295,9 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
         >
           <MenuItem
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             icon={
               <Ionicons
                 name="calendar-outline"
@@ -1298,14 +1305,18 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
                 color={theme.textSecondary}
               />
             }
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
             icon={<Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             label="Lịch sử tham gia"
             onPress={() => navigation.navigate('MySchedule')}
           />
           <MenuItem
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
             icon={<UserOutlineIcon color="#334155" />}
@@ -1320,6 +1331,8 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
             icon={<UserOutlineIcon color={theme.textSecondary} />}
 =======
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             icon={
               <Ionicons
                 name="person-outline"
@@ -1327,10 +1340,13 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
                 color={theme.textSecondary}
               />
             }
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
             icon={<Ionicons name="person-outline" size={20} color={theme.textSecondary} />}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             label="Thông tin cá nhân"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
@@ -1355,11 +1371,14 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           <MenuItem
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             icon={<MoonCrescentIcon color="#334155" />}
             label="Đổi theme"
             badge={currentTheme}
             onPress={handleToggleTheme}
 =======
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             icon={
               <Ionicons
                 name="star-outline"
@@ -1367,9 +1386,12 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
                 color={theme.textSecondary}
               />
             }
+<<<<<<< HEAD
 =======
             icon={<Ionicons name="star-outline" size={20} color={theme.textSecondary} />}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             label="Góp ý & Đánh giá sự kiện"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
@@ -1379,6 +1401,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           />
 
           <MenuItem
+<<<<<<< HEAD
 <<<<<<< HEAD
             icon={
               <Ionicons
@@ -1398,6 +1421,8 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           />
 
           <MenuItem
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             icon={
               <Ionicons
                 name="settings-outline"
@@ -1405,9 +1430,12 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
                 color={theme.textSecondary}
               />
             }
+<<<<<<< HEAD
 =======
             icon={<Ionicons name="settings-outline" size={20} color={theme.textSecondary} />}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+>>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             label="Cài đặt ứng dụng"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
