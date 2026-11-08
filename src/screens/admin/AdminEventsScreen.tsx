@@ -116,6 +116,25 @@ export default function AdminEventsScreen() {
           )}
         </View>
 
+        {/* Quota & Attendees Capacity Box */}
+        <View style={[styles.quotaBox, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.4)' : '#F1F5F9', borderColor: theme.border }]}>
+          <View style={styles.quotaRow}>
+            <Text style={[styles.quotaLabel, { color: theme.textSecondary }]}>
+              👥 Quota: <Text style={{ fontWeight: '700', color: theme.primary }}>{item.maxSlots || 100} chỗ</Text> (Waitlist: {item.waitlistSlots || 20})
+            </Text>
+            <TouchableOpacity
+              onPress={() =>
+                navigation.navigate('AdminCheckInReports', {
+                  eventId: item._id || (item as any).id,
+                })
+              }
+              style={[styles.manageAttendeesBtn, { backgroundColor: theme.primary }]}
+            >
+              <Text style={styles.manageAttendeesBtnText}>Quản lý SV & Quota</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+
         {/* Buttons Row */}
         <View style={styles.actionsRow}>
           {/* Cài đặt GPS */}
@@ -184,9 +203,26 @@ export default function AdminEventsScreen() {
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={theme.statusBarStyle} />
-      {/* Search & Top Action */}
+      {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
-        <View style={[styles.searchBox, { backgroundColor: theme.inputBackground }]}>
+        <View style={styles.topTitleRow}>
+          <View style={{ flex: 1 }}>
+            <Text style={[styles.screenHeading, { color: theme.textPrimary }]}>📍 Quản Lý Sự Kiện & Địa Điểm</Text>
+            <Text style={[styles.screenSubheading, { color: theme.textSecondary }]}>
+              Cấu hình toạ độ GPS, Quota và hiển thị mã QR
+            </Text>
+          </View>
+          <TouchableOpacity
+            style={[styles.createBtn, { backgroundColor: theme.primary }]}
+            onPress={() => navigation.navigate('AdminCreateEvent')}
+            activeOpacity={0.85}
+          >
+            <Text style={styles.createBtnText}>➕ Tạo mới</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Search */}
+        <View style={[styles.searchBox, { backgroundColor: theme.inputBackground, marginTop: 10 }]}>
           <Text style={styles.searchIcon}>🔍</Text>
           <TextInput
             style={[styles.searchInput, { color: theme.textPrimary }]}
@@ -201,14 +237,6 @@ export default function AdminEventsScreen() {
             </TouchableOpacity>
           ) : null}
         </View>
-
-        <TouchableOpacity
-          style={[styles.createBtn, { backgroundColor: theme.primary }]}
-          onPress={() => navigation.navigate('AdminCreateEvent')}
-          activeOpacity={0.85}
-        >
-          <Text style={styles.createBtnText}>➕ Tạo mới</Text>
-        </TouchableOpacity>
       </View>
 
       {/* List */}
@@ -252,22 +280,33 @@ export default function AdminEventsScreen() {
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: '#F8FAFC' },
   header: {
-    padding: 16,
-    flexDirection: 'row',
-    gap: 10,
-    alignItems: 'center',
+    paddingHorizontal: 16,
+    paddingTop: 14,
+    paddingBottom: 12,
     backgroundColor: '#FFFFFF',
     borderBottomWidth: 1,
     borderBottomColor: '#E2E8F0',
   },
+  topTitleRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  screenHeading: {
+    fontSize: 17,
+    fontWeight: '800',
+  },
+  screenSubheading: {
+    fontSize: 11.5,
+    marginTop: 2,
+  },
   searchBox: {
-    flex: 1,
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#F1F5F9',
     borderRadius: 10,
     paddingHorizontal: 12,
-    height: 42,
+    height: 40,
   },
   searchIcon: { fontSize: 16, marginRight: 6 },
   searchInput: { flex: 1, fontSize: 13, color: '#0F172A' },
@@ -412,6 +451,31 @@ const styles = StyleSheet.create({
   },
   hideBtnText: {
     color: '#B45309',
+    fontSize: 11.5,
+    fontWeight: '700',
+  },
+  quotaBox: {
+    borderWidth: 1,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    marginBottom: 10,
+  },
+  quotaRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  quotaLabel: {
+    fontSize: 12.5,
+  },
+  manageAttendeesBtn: {
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+  },
+  manageAttendeesBtnText: {
+    color: '#FFFFFF',
     fontSize: 11.5,
     fontWeight: '700',
   },

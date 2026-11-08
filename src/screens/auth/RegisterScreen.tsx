@@ -152,7 +152,7 @@ export default function RegisterScreen() {
           {/* Header */}
           <TouchableOpacity
             style={styles.backBtn}
-            onPress={() => navigation.goBack()}
+            onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigation.navigate('Login'))}
           >
             <Text style={[styles.backArrow, { color: theme.primary }]}>‹</Text>
             <Text style={[styles.backLabel, { color: theme.primary }]}>Đăng nhập</Text>

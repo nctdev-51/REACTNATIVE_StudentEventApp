@@ -17,7 +17,7 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
-import { logout, updateUser } from "../../features/auth/authSlice";
+import { logout, updateUser, switchTestAccount } from "../../features/auth/authSlice";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
@@ -179,6 +179,13 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
       await api.logout();
     } catch {
       // Bỏ qua lỗi kết nối khi đăng xuất
+    }
+  };
+
+  const switchToAdmin = async () => {
+    const result = await dispatch(switchTestAccount("admin"));
+    if (switchTestAccount.rejected.match(result)) {
+      Alert.alert("Không thể chuyển tài khoản", result.payload as string);
     }
   };
 
@@ -401,6 +408,17 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
             chevronColor={theme.textTertiary}
             isLast={true}
             onPress={toggleTheme}
+          />
+
+          <MenuItem
+            icon={<Ionicons name="shield-checkmark-outline" size={20} color="#7E22CE" />}
+            label="Chuyển nhanh sang Admin (demo)"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            isLast={true}
+            onPress={() => void switchToAdmin()}
           />
         </View>
 

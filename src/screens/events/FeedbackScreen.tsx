@@ -20,6 +20,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import type { MainStackParamList } from "../../navigation/types";
+import { navigate } from "../../navigation/navigationRef";
 import { useAppSelector } from "../../hooks/redux";
 import { useAppTheme } from "../../theme";
 import api from "../../services/api";
@@ -336,9 +337,13 @@ export default function FeedbackScreen() {
               borderColor: theme.border,
             },
           ]}
-          onPress={() =>
-            navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Home")
-          }
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigate("Home");
+            }
+          }}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Quay lại"

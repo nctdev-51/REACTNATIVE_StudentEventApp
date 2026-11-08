@@ -25,6 +25,7 @@ import {
 } from "tamagui";
 
 import { MainStackParamList } from "../../navigation/types";
+import { navigate } from "../../navigation/navigationRef";
 import AISummary from "../../components/ai/AISummary";
 import AdminLocationModal from "../../components/events/AdminLocationModal";
 import { getDistanceMeters, formatDistance } from "../../utils/locationUtils";
@@ -367,7 +368,7 @@ export default function EventDetailScreen() {
           borderRadius={10}
           height={44}
           paddingHorizontal={24}
-          onPress={() => navigation.goBack()}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigate("Home"))}
           pressStyle={{ opacity: 0.8 }}
         >
           <XStack alignItems="center" gap={6}>
@@ -979,7 +980,22 @@ export default function EventDetailScreen() {
                 );
                 return;
               }
-              navigation.navigate("CheckIn");
+              const targetEventId = event._id || (event as any).id || eventId;
+              try {
+                navigation.navigate("CheckIn", {
+                  screen: "QRScanner",
+                  params: {
+                    eventId: targetEventId,
+                  },
+                } as any);
+              } catch {
+                navigate("CheckIn", {
+                  screen: "QRScanner",
+                  params: {
+                    eventId: targetEventId,
+                  },
+                });
+              }
             }}
             pressStyle={{ opacity: 0.85 }}
           >
@@ -1099,7 +1115,11 @@ export default function EventDetailScreen() {
                           onPress: async () => {
                             await deleteEvent(targetId);
                             Alert.alert("Đã xóa", "Sự kiện đã được xóa thành công.");
-                            navigation.goBack();
+                            if (navigation.canGoBack()) {
+                              navigation.goBack();
+                            } else {
+                              navigate("Home");
+                            }
                           },
                         },
                       ],

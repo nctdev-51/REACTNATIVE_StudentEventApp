@@ -38,6 +38,7 @@ import { isEventPast } from "../../services/api";
 import CategoryChip from "../../components/events/CategoryChip";
 import FeaturedEventCard from "../../components/events/FeaturedEventCard";
 import EventCard from "../../components/events/EventCard";
+import { navigate } from "../../navigation/navigationRef";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import AppBottomTab, {
   AppTabKey,
@@ -230,6 +231,61 @@ export default function HomeScreen() {
   // Header Component của danh sách
   const renderListHeader = () => (
     <>
+      {/* Banner chuyển đổi về Admin nếu đang xem dưới quyền Quản trị viên */}
+      {user?.role === "admin" && (
+        <TouchableOpacity
+          style={[
+            styles.adminSwitchBanner,
+            {
+              backgroundColor: isDark ? "rgba(99, 102, 241, 0.2)" : "#EEF2FF",
+              borderColor: isDark ? "#818CF8" : "#C7D2FE",
+            },
+          ]}
+          onPress={() => {
+            try {
+              const mainTabsNav = navigation.getParent(); // Tab.Navigator
+              const mainStackNav = mainTabsNav?.getParent(); // NativeStack (MainStack)
+              const adminStackNav = mainStackNav?.getParent(); // NativeStack (AdminStack)
+
+              if (adminStackNav && adminStackNav.canGoBack()) {
+                adminStackNav.goBack();
+                return;
+              }
+              if (mainStackNav && mainStackNav.canGoBack()) {
+                mainStackNav.goBack();
+                return;
+              }
+              if (navigation.canGoBack()) {
+                navigation.goBack();
+                return;
+              }
+              navigate("AdminTabs");
+            } catch {
+              navigate("AdminTabs");
+            }
+          }}
+          activeOpacity={0.8}
+        >
+          <Ionicons
+            name="shield-checkmark"
+            size={16}
+            color={isDark ? "#A5B4FC" : "#4338CA"}
+            style={{ marginRight: 6 }}
+          />
+          <Text
+            style={[
+              styles.adminSwitchBannerText,
+              { color: isDark ? "#A5B4FC" : "#4338CA" },
+            ]}
+          >
+            Chế độ Xem Sinh viên •{" "}
+            <Text style={{ fontWeight: "800", textDecorationLine: "underline" }}>
+              Quay lại Quản trị (Admin)
+            </Text>
+          </Text>
+        </TouchableOpacity>
+      )}
+
       {/* Header với Left Navbar Menu (☰) và Avatar */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
@@ -597,6 +653,20 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: 16,
+  },
+  adminSwitchBanner: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: 10,
+    borderWidth: 1,
+    marginBottom: 12,
+  },
+  adminSwitchBannerText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   headerLeft: {
     flexDirection: "row",

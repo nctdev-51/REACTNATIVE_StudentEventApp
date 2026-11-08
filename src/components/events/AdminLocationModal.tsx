@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigation } from '@react-navigation/native';
+import { navigate } from '../../navigation/navigationRef';
 import {
   Modal,
   StyleSheet,
@@ -373,10 +374,18 @@ export default function AdminLocationModal({
                 ]}
                 onPress={() => {
                   onClose();
-                  navigation.navigate('AdminQRDisplay', {
-                    eventId: event._id || (event as any).id,
-                    eventTitle: event.title,
-                  });
+                  const targetId = event._id || (event as any).id;
+                  try {
+                    navigation.navigate('AdminQRDisplay', {
+                      eventId: targetId,
+                      eventTitle: event.title,
+                    });
+                  } catch {
+                    navigate('AdminQRDisplay', {
+                      eventId: targetId,
+                      eventTitle: event.title,
+                    });
+                  }
                 }}
                 activeOpacity={0.8}
               >
