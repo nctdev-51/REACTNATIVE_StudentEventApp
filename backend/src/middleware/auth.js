@@ -19,7 +19,7 @@ const protect = async (req, res, next) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"));
 
     const user = await User.findById(decoded.id);
     if (!user) {

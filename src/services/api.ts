@@ -269,9 +269,9 @@ let inMemoryRegistrations: Registration[] = [
     eventId: "66f1e2010000000000000001",
     userId: "66f1a1010000000000000001",
     participantRole: "attendee",
-    status: "checked_in",
+    status: "registered",
     qrCode: "EVENTMATE:66f1b3010000000000000001",
-    checkInTime: "2026-10-15T08:30:00.000Z",
+    checkInTime: null,
     createdAt: "2026-09-20T10:00:00.000Z",
   },
   {
