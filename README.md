@@ -6,29 +6,28 @@
 
 ## 1. Cấu trúc dự án
 
-Dự án gồm 2 phần được tích hợp gọn gàng trong cùng thư mục:
+Dự án gồm hai phần độc lập:
 
-- `src/`: Ứng dụng di động (React Native 0.88, Expo SDK 58, Tamagui, Redux Toolkit).
-- `server/`: Máy chủ Mock API (Node.js + JSON-Server + JWT) hoạt động độc lập, không yêu cầu cài đặt MongoDB, lưu dữ liệu trực tiếp vào `server/db.json`.
+- `mobile-app` (thư mục hiện tại): ứng dụng React Native, Expo SDK 58.
+- `backend/`: REST API Node.js, Express và MongoDB.
+
+Thư mục `server/` chỉ là dữ liệu/tiện ích mock cũ; ứng dụng di động không còn khởi chạy hoặc phụ thuộc vào nó. Các thư viện backend như `jsonwebtoken` và `json-server` cũng không còn nằm trong dependencies của ứng dụng Expo.
 
 ---
 
 ## 2. Hướng dẫn cài đặt và chạy ứng dụng
 
-### Bước 1: Khởi động Mock Backend (JSON-Server)
+### Bước 1: Khởi động Backend
 
-Không cần cài đặt MongoDB! Chỉ cần mở 1 terminal tại thư mục gốc và chạy:
+Mở terminal ở thư mục `backend`, cài dependencies rồi chạy API:
 
 ```bash
-npm run server
+cd backend
+npm ci
+npm run dev
 ```
 
-- Server sẽ chạy tại: `http://localhost:5000` (hoặc `http://10.0.2.2:5000` cho Android Emulator).
-- Dữ liệu lưu tại: `server/db.json`.
-- Khi cần khôi phục lại dữ liệu mẫu gốc ban đầu:
-  ```bash
-  npm run server:reset
-  ```
+API sẽ lắng nghe tại cổng `5000` trên `0.0.0.0`; kiểm tra bằng `http://localhost:5000/api/health`.
 
 ---
 
@@ -40,19 +39,24 @@ npm run server
    npm ci
    ```
 2. Cấu hình kết nối Backend:
-   - Chạy trên Web hoặc iOS Simulator: Giữ nguyên mặc định `http://localhost:5000/api`.
-   - Chạy trên Android Emulator: Giữ nguyên mặc định `http://10.0.2.2:5000/api`.
-   - Chạy trên điện thoại thật (Expo Go qua Wi-Fi):
-     - Expo tự nhận IP của máy đang chạy Metro. Đảm bảo điện thoại và máy tính cùng Wi-Fi, sau đó chạy `npm run server`.
-   - Dùng backend đã deploy: tạo file `.env.local` ở thư mục gốc và cấu hình URL ổn định (không dùng Localtunnel tạm thời):
-     ```env
-     EXPO_PUBLIC_API_URL=https://your-api.example.com/api
+   - Android Emulator: ứng dụng tự dùng `http://10.0.2.2:5000/api`.
+   - Điện thoại thật cùng Wi-Fi: Expo tự nhận IP LAN của máy; máy tính và điện thoại phải cùng mạng.
+   - Điện thoại dùng 4G/khác Wi-Fi: cần public HTTPS URL cho **backend**. Mở terminal thứ hai trong `backend` và chạy:
+     ```bash
+     npx cloudflared tunnel --url http://127.0.0.1:5000
      ```
-     Sau khi đổi biến môi trường, reload hoàn toàn ứng dụng hoặc chạy `npx expo start --clear`.
+     Sao chép URL `https://...trycloudflare.com` được in ra, tạo/sửa `.env.local` tại thư mục gốc:
+     ```env
+     EXPO_PUBLIC_API_URL=https://your-subdomain.trycloudflare.com/api
+     ```
+     Không dán token Cloudflare Access hoặc một chuỗi bất kỳ vào biến này: giá trị phải bắt đầu bằng `https://`.
+     Kiểm tra URL trước bằng trình duyệt điện thoại: `https://your-subdomain.trycloudflare.com/api/health` phải trả JSON `success: true`.
 3. Chạy ứng dụng:
    ```bash
-   npm start
+   npx expo start --tunnel
    ```
+
+   Expo SDK 58 nạp biến `EXPO_PUBLIC_*` từ `.env`/`.env.local`; sau khi đổi URL, reload hoàn toàn Expo Go. `--tunnel` ở đây chỉ làm Expo Go truy cập Metro qua 4G; nó không tự public API Express, nên Cloudflare Tunnel vẫn cần chạy.
 
    - Nhấn `a` để chạy trên Android Emulator.
    - Nhấn `w` để chạy trên Web.

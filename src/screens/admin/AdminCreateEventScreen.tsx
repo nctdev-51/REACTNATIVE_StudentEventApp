@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
+import { navigate } from '../../navigation/navigationRef';
 import { createEvent } from '../../services/api';
 import { EventCoordinates } from '../../types';
 import SemesterPicker from '../../components/events/SemesterPicker';
@@ -28,6 +29,7 @@ import {
 } from '../../utils/permissionHandler';
 import { Colors } from '../../theme';
 import { useAppTheme } from '../../theme/ThemeContext';
+import { useAppSelector } from '../../hooks/redux';
 
 type AdminCreateNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminCreateEvent'>;
 
@@ -36,12 +38,15 @@ const CATEGORIES = ['Học thuật', 'Phong trào', 'Tình nguyện', 'Thể tha
 export default function AdminCreateEventScreen() {
   const { theme, isDark } = useAppTheme();
   const navigation = useNavigation<AdminCreateNavProp>();
+  const currentUser = useAppSelector((state) => state.auth.user);
 
   const [title, setTitle] = useState('');
   const [faculty, setFaculty] = useState('Khoa Công nghệ thông tin');
   const [category, setCategory] = useState('Học thuật');
   const [location, setLocation] = useState('Hội trường E4, Trường Đại học Công nghiệp TP.HCM');
   const [trainingPoints, setTrainingPoints] = useState('5');
+  const [maxSlots, setMaxSlots] = useState('100');
+  const [waitlistSlots, setWaitlistSlots] = useState('20');
   const [semesterId, setSemesterId] = useState<string | null>(getCurrentSemesterId());
   const [description, setDescription] = useState('');
 
@@ -102,6 +107,13 @@ export default function AdminCreateEventScreen() {
   };
 
   const handleCreate = async () => {
+    if (currentUser?.role !== 'admin') {
+      Alert.alert(
+        'Phiên quản trị không hợp lệ',
+        'Tài khoản hiện tại không có quyền tạo sự kiện. Vui lòng đăng xuất rồi đăng nhập lại bằng admin.doan@iuh.edu.vn.',
+      );
+      return;
+    }
     if (!title.trim()) {
       Alert.alert('Thiếu tiêu đề', 'Vui lòng nhập tiêu đề sự kiện.');
       return;
@@ -121,6 +133,8 @@ export default function AdminCreateEventScreen() {
         coordinates: coords || undefined,
         semesterId: semesterId || undefined,
         trainingPoints: parseInt(trainingPoints, 10) || 5,
+        maxSlots: parseInt(maxSlots, 10) || 100,
+        waitlistSlots: parseInt(waitlistSlots, 10) || 20,
         description: description.trim() || 'Sự kiện do Ban Chấp hành Đoàn trường tổ chức.',
         time: {
           start: new Date(Date.now() + 86400000).toISOString(),
@@ -131,11 +145,24 @@ export default function AdminCreateEventScreen() {
       Alert.alert('Thành công! 🎉', 'Sự kiện mới đã được tạo và kích hoạt mã QR Anti-Fake GPS.', [
         {
           text: 'Xem danh sách',
-          onPress: () => navigation.navigate('AdminEvents'),
+          onPress: () => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            }
+            try {
+              navigation.navigate('AdminTabs', { screen: 'AdminEvents' } as any);
+            } catch {
+              navigate('AdminEvents');
+            }
+          },
         },
       ]);
     } catch (e: any) {
-      Alert.alert('Lỗi tạo sự kiện', e?.message || 'Không thể tạo sự kiện.');
+      const status = e?.response?.status;
+      const message = status === 401 || status === 403
+        ? 'Máy chủ từ chối phiên đăng nhập. Hãy đăng xuất, đăng nhập lại tài khoản admin rồi thử lại.'
+        : e?.response?.data?.message || e?.message || 'Không thể tạo sự kiện.';
+      Alert.alert('Lỗi tạo sự kiện', message);
     } finally {
       setSubmitting(false);
     }
@@ -254,6 +281,53 @@ export default function AdminCreateEventScreen() {
                 value={trainingPoints}
                 onChangeText={setTrainingPoints}
               />
+            </View>
+
+            {/* Quota & Waitlist Capacity */}
+            <View style={[styles.fieldGroup, { backgroundColor: isDark ? 'rgba(30, 41, 59, 0.5)' : '#F8FAFC', padding: 12, borderRadius: 12, borderWidth: 1, borderColor: theme.border }]}>
+              <Text style={[styles.label, { color: theme.primary, fontWeight: '700' }]}>👥 Giới Hạn Số Lượng Tham Gia (Quota)</Text>
+              
+              <View style={{ flexDirection: 'row', marginTop: 8 }}>
+                <View style={{ flex: 1, marginRight: 8 }}>
+                  <Text style={[styles.label, { color: theme.textSecondary, fontSize: 12 }]}>Số lượng chính thức *</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.inputBackground,
+                        borderColor: theme.inputBorder,
+                        color: theme.textPrimary,
+                      },
+                    ]}
+                    placeholder="100"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    value={maxSlots}
+                    onChangeText={setMaxSlots}
+                  />
+                </View>
+                <View style={{ flex: 1, marginLeft: 8 }}>
+                  <Text style={[styles.label, { color: theme.textSecondary, fontSize: 12 }]}>Danh sách chờ (Waitlist)</Text>
+                  <TextInput
+                    style={[
+                      styles.input,
+                      {
+                        backgroundColor: theme.inputBackground,
+                        borderColor: theme.inputBorder,
+                        color: theme.textPrimary,
+                      },
+                    ]}
+                    placeholder="20"
+                    placeholderTextColor={theme.textTertiary}
+                    keyboardType="numeric"
+                    value={waitlistSlots}
+                    onChangeText={setWaitlistSlots}
+                  />
+                </View>
+              </View>
+              <Text style={{ fontSize: 11, color: theme.textTertiary, marginTop: 6, lineHeight: 15 }}>
+                💡 Khi sự kiện đạt đủ số lượng chính thức ({maxSlots || 100}), các sinh viên đăng ký sau sẽ tự động vào Danh sách chờ. Khi có sinh viên hủy đăng ký hoặc bị Admin xóa, hệ thống sẽ tự động đôn người chờ lên.
+              </Text>
             </View>
 
             {/* Địa điểm & Geocoding */}

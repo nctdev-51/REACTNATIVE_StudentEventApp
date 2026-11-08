@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AuthStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { loginUser, clearError } from '../../features/auth/authSlice';
+import { loginUser, clearError, switchTestAccount } from '../../features/auth/authSlice';
 import { Colors, Spacing, BorderRadius, Typography, Shadow } from '../../theme';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
@@ -48,14 +48,12 @@ export default function LoginScreen() {
     // Nếu thành công, RootNavigator sẽ tự chuyển sang MainStack (Sinh viên) hoặc AdminStack (Admin)
   };
 
-  const fillStudent = () => {
-    setEmail('sv01@iuh.edu.vn');
-    setPassword('123456');
-  };
-
-  const fillAdmin = () => {
-    setEmail('admin.doan@iuh.edu.vn');
-    setPassword('admin123');
+  const handleQuickLogin = async (role: 'admin' | 'student') => {
+    dispatch(clearError());
+    const result = await dispatch(switchTestAccount(role));
+    if (switchTestAccount.rejected.match(result)) {
+      Alert.alert('Không thể đăng nhập nhanh', result.payload as string);
+    }
   };
 
   return (
@@ -178,7 +176,7 @@ export default function LoginScreen() {
                     { backgroundColor: theme.surfaceSecondary, borderColor: theme.border },
                     email === 'sv01@iuh.edu.vn' && { borderColor: theme.primary, backgroundColor: isDark ? 'rgba(37,99,235,0.15)' : '#EFF6FF' },
                   ]}
-                  onPress={fillStudent}
+                  onPress={() => void handleQuickLogin('student')}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="school-outline" size={24} color={theme.primary} />
@@ -195,7 +193,7 @@ export default function LoginScreen() {
                     { backgroundColor: isDark ? 'rgba(126,34,206,0.1)' : '#FDF4FF', borderColor: isDark ? '#7C3AED' : '#E9D5FF' },
                     email === 'admin.doan@iuh.edu.vn' && { borderColor: '#9333EA', backgroundColor: isDark ? 'rgba(147,51,234,0.2)' : '#FAF5FF' },
                   ]}
-                  onPress={fillAdmin}
+                  onPress={() => void handleQuickLogin('admin')}
                   activeOpacity={0.7}
                 >
                   <Ionicons name="shield-checkmark-outline" size={24} color="#7E22CE" />

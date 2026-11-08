@@ -15,6 +15,7 @@ export interface Registration {
   checkInMethod?: 'qr_scan' | 'admin_manual' | 'passcode' | 'appeal';
   note?: string;
   certificateCode?: string;
+  registeredAt?: string;
   createdAt?: string;
 }
 

@@ -19,6 +19,7 @@ import { useAppTheme } from '../../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 import { useAppSelector } from '../../hooks/redux';
 import { submitCheckInAppeal } from '../../services/api';
+import { navigate } from '../../navigation/navigationRef';
 
 export default function CheckInFailedScreen({ route, navigation }: CheckInFailedScreenProps) {
   const { theme, isDark } = useAppTheme();
@@ -35,11 +36,12 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
   };
 
   const handleGoHome = () => {
-    const parent = navigation.getParent();
-    if (parent) {
-      (parent as any).navigate('Home');
-    } else {
-      (navigation as any).navigate('Home');
+    try {
+      navigate('Home');
+    } catch {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
     }
   };
 
@@ -80,6 +82,13 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
         reason.toLowerCase().includes('bán kính') ||
         reason.toLowerCase().includes('gps') ||
         reason.toLowerCase().includes('khoảng cách')));
+
+  const isRegistrationIssue =
+    reason &&
+    (reason.toLowerCase().includes('chưa đăng ký') ||
+      reason.toLowerCase().includes('danh sách chờ') ||
+      reason.toLowerCase().includes('hủy đăng ký') ||
+      reason.toLowerCase().includes('waitlist'));
 
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
@@ -130,6 +139,39 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
                   ]}
                 >
                   Hệ thống yêu cầu sinh viên phải có mặt trong bán kính ≤ 500m quanh sự kiện để điểm danh.
+                </Text>
+              </View>
+            </View>
+          )}
+
+          {/* Cảnh báo chưa đăng ký */}
+          {isRegistrationIssue && (
+            <View
+              style={[
+                styles.antiFakeAlertBox,
+                {
+                  backgroundColor: isDark ? 'rgba(59, 130, 246, 0.15)' : '#EFF6FF',
+                  borderColor: isDark ? '#60A5FA' : '#BFDBFE',
+                },
+              ]}
+            >
+              <Ionicons name="information-circle-outline" size={24} color={isDark ? '#93C5FD' : '#1D4ED8'} style={{ marginRight: 10 }} />
+              <View style={styles.antiFakeAlertContent}>
+                <Text
+                  style={[
+                    styles.antiFakeAlertTitle,
+                    { color: isDark ? '#93C5FD' : '#1D4ED8' },
+                  ]}
+                >
+                  Yêu Cầu Đăng Ký Trước Khi Điểm Danh
+                </Text>
+                <Text
+                  style={[
+                    styles.antiFakeAlertDesc,
+                    { color: isDark ? '#BFDBFE' : '#1E40AF' },
+                  ]}
+                >
+                  Chỉ sinh viên có tên trong danh sách đăng ký chính thức mới được quét QR check-in. Vui lòng đăng ký tham gia sự kiện trước.
                 </Text>
               </View>
             </View>
@@ -209,6 +251,16 @@ export default function CheckInFailedScreen({ route, navigation }: CheckInFailed
 
         {/* Nút bấm bên dưới: "Thử lại", "Gửi khiếu nại" và "Về trang chủ" */}
         <View style={styles.footer}>
+          {isRegistrationIssue && data && (
+            <TouchableOpacity
+              style={[styles.primaryButton, { backgroundColor: '#2563EB', marginBottom: 12 }]}
+              activeOpacity={0.8}
+              onPress={() => navigate('EventDetail', { eventId: data })}
+            >
+              <Text style={styles.primaryButtonText}>👉 Xem & Đăng Ký Sự Kiện</Text>
+            </TouchableOpacity>
+          )}
+
           <TouchableOpacity
             style={styles.primaryButton}
             activeOpacity={0.8}

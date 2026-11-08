@@ -37,9 +37,19 @@ export type MainStackParamList = {
   RegistrationSuccess: { eventId?: string; eventTitle?: string } | undefined;
 };
 
+// ─── Admin Tabs (Thanh điều hướng dưới cho Quản trị viên) ────────────────────
+
+export type AdminTabParamList = {
+  AdminDashboard: undefined;
+  AdminEvents: undefined;
+  AdminCheckInReports: { eventId?: string } | undefined;
+  AdminUsers: undefined;
+};
+
 // ─── Admin Stack (Quản trị viên) ──────────────────────────────────────────────
 
 export type AdminStackParamList = {
+  AdminTabs: NavigatorScreenParams<AdminTabParamList> | undefined;
   AdminDashboard: undefined;
   AdminEvents: undefined;
   AdminCreateEvent: undefined;

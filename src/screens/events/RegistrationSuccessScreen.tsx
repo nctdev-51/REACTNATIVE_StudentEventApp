@@ -12,6 +12,7 @@ import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppTheme } from "../../theme";
+import { navigate } from "../../navigation/navigationRef";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -98,16 +99,24 @@ export default function RegistrationSuccessScreen({
   const handleViewSchedule = () => {
     if (onViewSchedule) {
       onViewSchedule();
-    } else {
-      navigation.navigate("MySchedule");
+      return;
+    }
+    try {
+      (navigation as any).navigate("MainTabs", { screen: "MySchedule" });
+    } catch {
+      navigate("MainTabs", { screen: "MySchedule" });
     }
   };
 
   const handleGoHome = () => {
     if (onGoHome) {
       onGoHome();
-    } else {
-      navigation.navigate("Home");
+      return;
+    }
+    try {
+      (navigation as any).navigate("MainTabs", { screen: "Home" });
+    } catch {
+      navigate("MainTabs", { screen: "Home" });
     }
   };
 
