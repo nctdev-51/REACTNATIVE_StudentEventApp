@@ -78,7 +78,7 @@
         "start": "2026-10-15T08:00:00.000Z",
         "end": "2026-10-15T11:30:00.000Z"
       },
-      "location": "Khu vực thực tế: 14/1, Tổ 60 Âp Trung Đông, Thành phố Hồ Chí Minh",
+      "location": "Địa điểm cách xa ~3km (Chế độ Test Anti-Fake)",
       "organizer": "Khoa Công nghệ thông tin và Đoàn Thanh niên IUH",
       "description": "Hội thảo chuyên sâu về các tiến bộ mới nhất trong lĩnh vực GenAI, Machine Learning và định hướng nghề nghiệp kỹ sư AI cho sinh viên.",
       "images": [
@@ -116,8 +116,8 @@
         }
       ],
       "coordinates": {
-        "latitude": 10.8933769,
-        "longitude": 106.6158053
+        "latitude": 10.9183441,
+        "longitude": 106.6407696
       }
     },
     {

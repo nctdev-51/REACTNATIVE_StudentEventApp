@@ -721,11 +721,50 @@ export const checkIn = async (
   return unwrapOne<Registration>(res.data);
 };
 
+export interface DynamicQrTokenResponse {
+  eventId: string;
+  eventTitle: string;
+  token: string;
+  expiresAt: number;
+  ttlSeconds: number;
+  schemeUrl: string;
+  universalUrl: string;
+  qrPayload: string;
+}
+
+export const getEventQrToken = async (
+  eventId: string
+): Promise<DynamicQrTokenResponse> => {
+  try {
+    const res = await apiClient.get(`/events/${eventId}/qr-token`);
+    if (res.data?.data) return res.data.data;
+    if (res.data?.token) return res.data;
+  } catch (err) {
+    console.warn('[API] getEventQrToken offline fallback:', err);
+  }
+
+  // Offline fallback token
+  const now = Math.floor(Date.now() / 1000);
+  const ttl = 45;
+  const mockToken = `mock_jwt_${eventId}_${now}`;
+  return {
+    eventId,
+    eventTitle: 'Sự kiện sinh viên',
+    token: mockToken,
+    expiresAt: now + ttl,
+    ttlSeconds: ttl,
+    schemeUrl: `studentevent://checkin?eventId=${eventId}&token=${mockToken}&exp=${now + ttl}`,
+    universalUrl: `https://studentevent.iuh.edu.vn/checkin?eventId=${eventId}&token=${mockToken}&exp=${now + ttl}`,
+    qrPayload: `studentevent://checkin?eventId=${eventId}&token=${mockToken}&exp=${now + ttl}`,
+  };
+};
+
 export const qrCheckIn = async (payload: {
   eventId: string;
   userId?: string;
   studentId?: string;
-  method?: 'qr_scan' | 'passcode';
+  token?: string;
+  method?: 'qr_scan' | 'passcode' | 'dynamic_qr';
   passcode?: string;
   userLocation?: {
     latitude: number;
@@ -1194,6 +1233,7 @@ export default {
   setAuthToken,
   setBaseUrl,
   submitCheckInAppeal,
+  getEventQrToken,
   getNotificationPreferences,
   updateNotificationPreferences,
   getCalendarIcsUrl,
