@@ -47,10 +47,17 @@ import {
   CHECK_IN_RADIUS_METERS,
 } from '../../utils/locationUtils';
 
-const { width } = Dimensions.get('window');
+const { width, height: SCREEN_HEIGHT } = Dimensions.get('window');
 
 // Kích thước của khung quét QR hình vuông ở giữa màn hình (tối ưu gọn gàng cho mọi kích thước máy)
-const SCANNER_SIZE = Math.min(width * 0.62, 220);
+const SCANNER_SIZE = Math.min(width * 0.58, 200);
+
+// Tab bar cao khoảng 60px trên Android, 80px trên iOS (safe area)
+// overlayTop + SCANNER_SIZE + overlayBottom = SCREEN_HEIGHT
+// Ta cấp phát cố định: overlayTop = 185, overlayBottom = phần còn lại
+const TAB_BAR_HEIGHT = 70; // Buffer an toàn tránh bị Tab Bar che
+const OVERLAY_TOP_HEIGHT = Math.round(SCREEN_HEIGHT * 0.26);
+const OVERLAY_BOTTOM_HEIGHT = SCREEN_HEIGHT - OVERLAY_TOP_HEIGHT - SCANNER_SIZE - TAB_BAR_HEIGHT;
 const MOCK_EVENT_ID = '66f1e2010000000000000001';
 
 function parseEventId(rawData: string): string | null {
@@ -738,6 +745,8 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
             </TouchableOpacity>
           </View>
 
+          <Text style={styles.demoHintText}>Chạm để đổi địa điểm kiểm thử Anti-Fake GPS</Text>
+
           {/* Nút Fallback: Nhập mã PIN dự phòng */}
           <TouchableOpacity
             style={styles.passcodeFallbackBtn}
@@ -904,7 +913,7 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
   },
   overlayTop: {
-    flex: 0.85,
+    height: OVERLAY_TOP_HEIGHT,
     backgroundColor: OVERLAY_COLOR,
     justifyContent: 'flex-start',
     alignItems: 'center',
@@ -1048,35 +1057,36 @@ const styles = StyleSheet.create({
 
   // Phần đáy dưới khung quét
   overlayBottom: {
-    flex: 1.25,
+    height: OVERLAY_BOTTOM_HEIGHT,
     backgroundColor: OVERLAY_COLOR,
     paddingTop: 10,
     paddingHorizontal: 20,
   },
   overlayBottomContent: {
     alignItems: 'center',
-    paddingBottom: 24,
+    flexGrow: 1,
+    paddingBottom: 8,
   },
   instructionText: {
     color: '#FFFFFF',
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 4,
+    marginBottom: 2,
   },
   subInstructionText: {
     color: '#CBD5E1',
-    fontSize: 12,
+    fontSize: 11,
     textAlign: 'center',
-    lineHeight: 16,
-    marginBottom: 10,
+    lineHeight: 15,
+    marginBottom: 8,
   },
 
   // Demo Controls
   demoButtonsRow: {
     flexDirection: 'row',
     width: '100%',
-    marginBottom: 8,
+    marginBottom: 6,
   },
   demoButtonTitle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   demoSuccessBtn: {
@@ -1084,8 +1094,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(34, 197, 94, 0.2)',
     borderWidth: 1.5,
     borderColor: '#22C55E',
-    paddingVertical: 7,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1102,8 +1112,8 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(239, 68, 68, 0.2)',
     borderWidth: 1.5,
     borderColor: '#EF4444',
-    paddingVertical: 7,
-    paddingHorizontal: 8,
+    paddingVertical: 6,
+    paddingHorizontal: 6,
     borderRadius: 10,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1113,6 +1123,12 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '700',
     textAlign: 'center',
+  },
+  demoHintText: {
+    color: '#94A3B8',
+    fontSize: 10,
+    textAlign: 'center',
+    marginBottom: 6,
   },
   mockScanButton: {
     marginTop: 10,
@@ -1161,10 +1177,11 @@ const styles = StyleSheet.create({
     backgroundColor: 'rgba(245, 158, 11, 0.2)',
     borderWidth: 1.5,
     borderColor: '#F59E0B',
-    paddingVertical: 10,
+    paddingVertical: 9,
     paddingHorizontal: 20,
     borderRadius: 20,
-    marginTop: 4,
+    marginTop: 2,
+    width: '100%',
   },
   passcodeFallbackBtnText: {
     color: '#FBBF24',
