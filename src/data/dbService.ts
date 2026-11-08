@@ -271,28 +271,16 @@ export const loadFeedbacksFromStorage = async (): Promise<EnrichedFeedback[]> =>
 };
 
 /**
- * Hợp nhất danh sách feedbacks (từ API hoặc storage) vào dbState và lưu xuống AsyncStorage
+ * Đồng bộ danh sách feedbacks từ MongoDB API vào dbState và lưu xuống AsyncStorage
  */
 export const mergeFeedbacksIntoDb = (incoming: any[]): EnrichedFeedback[] => {
-  if (!Array.isArray(incoming) || incoming.length === 0) {
+  if (!Array.isArray(incoming)) {
     return getEnrichedFeedbacksFromDb();
   }
 
-  const existingKeys = new Set(dbState.feedbacks.map((f) => f.id || f._id));
-  const newItems: any[] = [];
-
-  for (const item of incoming) {
-    const key = item.id || item._id;
-    if (key && !existingKeys.has(key)) {
-      newItems.push(item);
-      existingKeys.add(key);
-    }
-  }
-
-  if (newItems.length > 0) {
-    dbState.feedbacks = [...newItems, ...dbState.feedbacks];
-    saveFeedbacksToStorage(dbState.feedbacks).catch(() => {});
-  }
+  // Đồng bộ trực tiếp với danh sách feedbacks từ Backend MongoDB
+  dbState.feedbacks = incoming;
+  saveFeedbacksToStorage(dbState.feedbacks).catch(() => {});
 
   return getEnrichedFeedbacksFromDb();
 };

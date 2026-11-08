@@ -89,4 +89,16 @@ test('Simulating POST /api/feedbacks writes to MongoDB backend and persists', as
   const savedId = savedReview._id || savedReview.id;
   assert(savedId, 'Saved review must have an id');
   assert.strictEqual(savedReview.comment, newReview.comment);
+
+  // Clean up test document from MongoDB so it does not pollute user database
+  try {
+    const mongoose = require('D:/mobile/btl/Backend_v2/Backend/node_modules/mongoose');
+    if (mongoose.connection.readyState === 0) {
+      await mongoose.connect('mongodb://localhost:27017/studenteventapp');
+    }
+    await mongoose.connection.db.collection('feedbacks').deleteOne({ _id: new mongoose.Types.ObjectId(savedId) });
+    await mongoose.disconnect();
+  } catch (e) {
+    // ignore
+  }
 });

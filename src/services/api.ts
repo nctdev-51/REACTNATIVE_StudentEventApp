@@ -27,7 +27,7 @@ const isTunnel =
 const autoDevIp = !isTunnel && debuggerHost ? debuggerHost.split(":")[0] : null;
 
 export const DEV_LAN_IP =
-  autoDevIp || (Platform.OS === "android" ? "192.168.1.11" : "localhost");
+  autoDevIp || (Platform.OS === "android" ? "192.168.1.3" : "localhost");
 export const USE_DEV_LAN_IP = !!autoDevIp;
 
 /**
