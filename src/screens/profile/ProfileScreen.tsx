@@ -132,10 +132,9 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
     currentUser?.phone || profile?.phone || "";
 
   // 5. TÍNH TOÁN CÁC CHỈ SỐ HOẠT ĐỘNG THỰC TẾ
-  // - Chỉ số 1: Số sự kiện đã tham gia (những đăng ký có status là checked_in hoặc completed)
+  // - Chỉ số 1: Số sự kiện đã tham gia (chỉ những đăng ký có trạng thái checked_in mới được tính là đã tham gia thành công)
   const attendedRegistrations = myRegistrations.filter(
-    (r) => r.status === "checked_in" || (r.status as string) === "completed",
-  );
+    (r) => r.status === "checked_in",  );
   const eventsAttendedCount = attendedRegistrations.length;
 
   // - Chỉ số 2: Điểm rèn luyện tích lũy từ các sự kiện đã tham gia hoặc điểm lưu trên MongoDB
