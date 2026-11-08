@@ -47,8 +47,13 @@ export default function RootNavigator() {
       try {
         const serverUser = await api.getCurrentUser();
         if (!disposed) dispatch(updateUser(serverUser));
-      } catch {
-        if (!disposed) dispatch(logout());
+      } catch (error: any) {
+        // Do not log a demo user out merely because 4G briefly drops. Only an
+        // explicit authentication rejection invalidates the saved session.
+        const status = error?.response?.status;
+        if (!disposed && (status === 401 || status === 403)) {
+          dispatch(logout());
+        }
       }
     };
 

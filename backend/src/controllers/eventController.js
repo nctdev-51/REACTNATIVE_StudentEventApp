@@ -72,7 +72,10 @@ const getEventById = async (req, res) => {
 // @access  Private (Admin / Organizer)
 const createEvent = async (req, res) => {
   try {
-    const event = await Event.create(req.body);
+    // Never trust a client-created `_id`; Mongoose must generate the ObjectId.
+    // This keeps old Expo bundles from crashing the API with `evt_<timestamp>`.
+    const { _id, id, createdAt, updatedAt, ...payload } = req.body;
+    const event = await Event.create(payload);
     res.status(201).json({
       success: true,
       data: event,
