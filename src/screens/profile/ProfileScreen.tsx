@@ -1,8 +1,12 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React, { useState, useEffect, useCallback } from 'react';
 =======
 import React, { useState, useEffect, useCallback } from "react";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+>>>>>>> 9b1bdab (fix: chi dem su kien checked_in va tach biet danh gia dung theo tung sinh vien)
 import {
   Image,
   ScrollView,
@@ -767,31 +771,72 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 
-  // 3. ĐẾM SỐ LƯỢNG ĐÁNH GIÁ CỦA USER TRỰC TIẾP TỪ BACKEND MONGODB
+  // 3. TÍNH TOÁN CHỈ SỐ SỰ KIỆN ĐÃ THAM GIA THÀNH CÔNG (CỦA ĐÚNG SINH VIÊN ĐANG ĐĂNG NHẬP)
+  // Chỉ lấy đăng ký của đúng sinh viên hiện tại có trạng thái checked_in
+  const attendedRegistrations = useMemo(() => {
+    return myRegistrations.filter((r) => {
+      const regUserId = typeof r.userId === "object" && r.userId !== null
+        ? (r.userId as any)._id || (r.userId as any).id
+        : r.userId;
+      const isOwner = !regUserId || !currentUserId || String(regUserId) === String(currentUserId);
+      return isOwner && r.status === "checked_in";
+    });
+  }, [myRegistrations, currentUserId]);
+
+  const eventsAttendedCount = attendedRegistrations.length;
+
+  // Tập hợp ID các sự kiện sinh viên này đã tham gia thành công
+  const attendedEventIdSet = useMemo(() => {
+    return new Set(
+      attendedRegistrations
+        .map((r) => {
+          const e = r.eventId;
+          return String(typeof e === "object" && e !== null ? (e as any)._id || (e as any).id : e);
+        })
+        .filter(Boolean),
+    );
+  }, [attendedRegistrations]);
+
+  // 4. ĐẾM SỐ LƯỢNG ĐÁNH GIÁ CỦA CHÍNH SINH VIÊN NÀY CHO CÁC SỰ KIỆN ĐÃ THAM GIA (checked_in)
   const [personalReviewsCount, setPersonalReviewsCount] = useState<number>(0);
 
   const loadPersonalReviews = useCallback(async () => {
-    if (!currentUserId) return;
+    if (!currentUserId) {
+      setPersonalReviewsCount(0);
+      return;
+    }
     try {
-      // Gọi API lấy các đánh giá của chính sinh viên này từ MongoDB
+      // Chỉ lấy đúng đánh giá của sinh viên này
       const userFeedbacks = await api.getFeedbacksByUser(currentUserId);
       if (Array.isArray(userFeedbacks)) {
-        // Đếm số lượng sự kiện duy nhất mà sinh viên đã đánh giá
+        // CHỈ ĐẾM những đánh giá thuộc sự kiện sinh viên này ĐÃ THAM GIA THÀNH CÔNG (checked_in)
+        const validAttendedReviews = userFeedbacks.filter((f: any) => {
+          const fUser = f.userId;
+          const fUserId = typeof fUser === "object" && fUser !== null ? fUser._id || fUser.id : fUser;
+          if (fUserId && String(fUserId) !== String(currentUserId)) return false;
+
+          const e = f.eventId;
+          const fEventId = String(typeof e === "object" && e !== null ? e._id || e.id : e);
+          return attendedEventIdSet.has(fEventId);
+        });
+
         const reviewedEventIds = new Set(
-          userFeedbacks
+          validAttendedReviews
             .map((f: any) => {
               const e = f.eventId;
-              return typeof e === "object" && e !== null ? e._id || e.id : e;
+              return String(typeof e === "object" && e !== null ? e._id || e.id : e);
             })
             .filter(Boolean),
         );
-        setPersonalReviewsCount(
-          reviewedEventIds.size > 0 ? reviewedEventIds.size : userFeedbacks.length,
-        );
+        setPersonalReviewsCount(reviewedEventIds.size);
+      } else {
+        setPersonalReviewsCount(0);
       }
     } catch (err) {
       console.warn("[ProfileScreen] Không thể tải số lượt đánh giá:", err);
+      setPersonalReviewsCount(0);
     }
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -805,6 +850,9 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
   }, [currentUserId]);
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+  }, [currentUserId, attendedEventIdSet]);
+>>>>>>> 9b1bdab (fix: chi dem su kien checked_in va tach biet danh gia dung theo tung sinh vien)
 
   // Đồng bộ lại danh sách đăng ký và số lượt đánh giá khi vào màn hình
   useEffect(() => {
@@ -821,7 +869,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
   );
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
-  // 4. THÔNG TIN CÁ NHÂN LẤY TRỰC TIẾP TỪ MONGODB (state.auth.user)
+  // 5. THÔNG TIN CÁ NHÂN LẤY TRỰC TIẾP TỪ MONGODB (state.auth.user)
   const displayName =
     currentUser?.fullName || profile?.displayName || "Sinh viên IUH";
   const studentId =
@@ -835,6 +883,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
   const phone =
     currentUser?.phone || profile?.phone || "";
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -873,6 +922,8 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
   const eventsAttendedCount = attendedRegistrations.length;
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
 
+=======
+>>>>>>> 9b1bdab (fix: chi dem su kien checked_in va tach biet danh gia dung theo tung sinh vien)
   // - Chỉ số 2: Điểm rèn luyện tích lũy từ các sự kiện đã tham gia hoặc điểm lưu trên MongoDB
   const calculatedPointsFromEvents = attendedRegistrations.reduce((sum, r) => {
     const eventObj: any = r.eventId;

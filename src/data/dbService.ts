@@ -114,14 +114,22 @@ export const getUserStatsFromDb = (userId?: string): UserStats => {
   const uId = targetUser?._id || targetUser?.id;
 
   const attendedRegs = dbState.registrations.filter((r) => {
-    const isUser = r.userId === uId;
+    const isUser = String(r.userId) === String(uId);
     const isAttended = r.status === 'checked_in';
     return isUser && isAttended;
   });
 
-  const reviewsCount = dbState.feedbacks.filter(
-    (f) => f.userId === uId
-  ).length;
+  const attendedEventIds = new Set(
+    attendedRegs.map((r) =>
+      String(typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId._id || r.eventId.id) : r.eventId)
+    )
+  );
+
+  const reviewsCount = dbState.feedbacks.filter((f) => {
+    const fUserId = typeof f.userId === 'object' && f.userId !== null ? f.userId._id || f.userId.id : f.userId;
+    const fEventId = typeof f.eventId === 'object' && f.eventId !== null ? f.eventId._id || f.eventId.id : f.eventId;
+    return String(fUserId) === String(uId) && attendedEventIds.has(String(fEventId));
+  }).length;
 
   // Tính tổng điểm rèn luyện từ các sự kiện đã tham gia
   const pointsSum = attendedRegs.reduce((sum, r) => {

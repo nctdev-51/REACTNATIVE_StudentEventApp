@@ -59,7 +59,7 @@ const registrations = [
     status: "registered",
     qrCode: "EVENTMATE:66f1b3010000000000000001",
     registeredAt: new Date("2026-09-20T10:00:00.000Z"),
-    checkInTime: null,
+    checkInTime: new Date("2026-10-15T08:30:00.000Z"),
     checkOutTime: null,
   },
   {
@@ -90,7 +90,7 @@ const feedbacks = [
   {
     _id: "66f1f4010000000000000001",
     eventId: "66f1e2040000000000000004",
-    userId: "66f1a1010000000000000001",
+    userId: "66f1a1020000000000000002",
     rating: 5,
     comment:
       "Cuộc thi tổ chức rất chuyên nghiệp, ban giám khảo góp ý rất chi tiết cho sản phẩm nghiên cứu của nhóm mình!",
@@ -136,7 +136,8 @@ const notifications = [
 
 const seedData = async () => {
   try {
-    await mongoose.connect(process.env.MONGO_URI);
+    const mongoUri = process.env.MONGO_URI || "mongodb://localhost:27017/studenteventapp";
+    await mongoose.connect(mongoUri);
     console.log("Connected to MongoDB for seeding...");
 
     // Clear existing

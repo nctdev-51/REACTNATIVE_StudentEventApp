@@ -286,7 +286,7 @@ export default function FeedbackScreen() {
 
   // 1. LẤY USER HIỆN TẠI TỪ REDUX (ĐỒNG BỘ TRỰC TIẾP TỪ MONGODB)
   const authUser = useAppSelector((s) => s.auth.user);
-  const currentUserId = authUser?._id || "66f1a1010000000000000001";
+  const currentUserId = authUser?._id;
 
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -372,17 +372,23 @@ export default function FeedbackScreen() {
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
   const loadPersistedData = useCallback(async () => {
     try {
-      // Gọi song song API: lấy danh sách đăng ký của sinh viên, danh sách sự kiện và danh sách đánh giá
+      // Gọi song song API: lấy danh sách đăng ký của ĐÚNG sinh viên này, danh sách sự kiện và đánh giá của sinh viên này
       const [regList, allEvents, apiFeedbacks] = await Promise.all([
-        api.getRegistrationsByUser(currentUserId),
+        currentUserId ? api.getRegistrationsByUser(currentUserId) : Promise.resolve([]),
         api.getEvents(),
-        api.getAllFeedbacks(),
+        currentUserId ? api.getFeedbacksByUser(currentUserId) : Promise.resolve([]),
       ]);
 
       // Bước A: Lọc ra các sự kiện người dùng ĐÃ THAM DỰ (chỉ tính status: 'checked_in', loại bỏ complete/completed)
       if (Array.isArray(regList) && regList.length > 0) {
         const eventsMap = new Map<string, any>();
         for (const r of regList) {
+          const regUserId = typeof r.userId === "object" && r.userId !== null
+            ? (r.userId as any)._id || (r.userId as any).id
+            : r.userId;
+          if (regUserId && currentUserId && String(regUserId) !== String(currentUserId)) {
+            continue;
+          }
           if (r.status !== "checked_in") {
             continue;
           }
@@ -539,7 +545,7 @@ export default function FeedbackScreen() {
           typeof fUser === "object" && fUser !== null
             ? fUser._id || fUser.id
             : fUser;
-        return fEvtId === eventId && fUserId === currentUserId;
+        return String(fEvtId) === String(eventId) && String(fUserId) === String(currentUserId);
       });
     },
     [feedbacks, currentUserId],
@@ -628,7 +634,7 @@ export default function FeedbackScreen() {
   // 8. GỬI ĐÁNH GIÁ TRỰC TIẾP VÀO CƠ SỞ DỮ LIỆU MONGODB
   const handleSubmitReview = async (evt: any) => {
     const eventId = evt.id || evt._id;
-    if (submittingEventId) return;
+    if (submittingEventId || !currentUserId) return;
 
     // Kiểm tra: Mỗi sự kiện chỉ được phép đánh giá 1 lần
     const existing = getMyReview(eventId);
