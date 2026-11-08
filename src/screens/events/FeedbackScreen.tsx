@@ -23,17 +23,8 @@ import type { MainStackParamList } from "../../navigation/types";
 import { useAppSelector } from "../../hooks/redux";
 import { useAppTheme } from "../../theme";
 import api from "../../services/api";
-import {
-  findDbEvent,
-  findDbUser,
-  getDefaultDbUser,
-  getOnlyAttendedEventsFromDb,
-  getEnrichedFeedbacksFromDb,
-  loadFeedbacksFromStorage,
-  mergeFeedbacksIntoDb,
-  enrichFeedback,
-  EnrichedFeedback,
-} from "../../data/dbService";
+import { Feedback } from "../../types";
+import { getOnlyAttendedEventsFromDb } from "../../data/dbService";
 
 import FeedbackEventCard from "../../components/feedback/FeedbackEventCard";
 
@@ -50,12 +41,11 @@ export default function FeedbackScreen() {
   const route = useRoute<FeedbackRouteProp>();
   const { theme, isDark } = useAppTheme();
 
+  // 1. LẤY USER HIỆN TẠI TỪ REDUX (ĐỒNG BỘ TRỰC TIẾP TỪ MONGODB)
   const authUser = useAppSelector((s) => s.auth.user);
-  const defaultStudent = getDefaultDbUser();
-  const currentUser = authUser?._id ? authUser : findDbUser(defaultStudent._id);
-  const currentUserId = currentUser?._id || (currentUser as any)?.id || defaultStudent._id;
+  const currentUserId = authUser?._id || "66f1a1010000000000000001";
 
-  // Danh sách sự kiện đã tham dự (khởi tạo từ dbService và cập nhật trực tiếp từ Backend_v2)
+  // 2. KHỞI TẠO STATE SỰ KIỆN ĐÃ THAM DỰ (Dùng fallback khi chưa có kết nối mạng)
   const [attendedEvents, setAttendedEvents] = useState<any[]>(() => {
     return getOnlyAttendedEventsFromDb(currentUserId);
   });
@@ -73,19 +63,20 @@ export default function FeedbackScreen() {
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
-  // Danh sách toàn bộ đánh giá (được lưu bền vững trong AsyncStorage & backend API)
-  const [feedbacks, setFeedbacks] = useState<EnrichedFeedback[]>(() => {
-    return getEnrichedFeedbacksFromDb();
-  });
+  // 3. DANH SÁCH TOÀN BỘ FEEDBACK LẤY TRỰC TIẾP TỪ BACKEND MONGODB
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
 
-  // Tải dữ liệu bền vững từ AsyncStorage và đồng bộ trực tiếp từ Backend_v2
+  // 4. HÀM TẢI DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ MONGODB QUA API
   const loadPersistedData = useCallback(async () => {
     try {
-      const [regList, allEvents] = await Promise.all([
+      // Gọi song song API: lấy danh sách đăng ký của sinh viên, danh sách sự kiện và danh sách đánh giá
+      const [regList, allEvents, apiFeedbacks] = await Promise.all([
         api.getRegistrationsByUser(currentUserId),
         api.getEvents(),
+        api.getAllFeedbacks(),
       ]);
 
+      // Bước A: Lọc ra các sự kiện người dùng ĐÃ THAM DỰ (status: 'checked_in' hoặc 'completed')
       if (Array.isArray(regList) && regList.length > 0) {
         const eventsMap = new Map<string, any>();
         for (const r of regList) {
@@ -102,15 +93,13 @@ export default function FeedbackScreen() {
               : null;
             if (found) {
               eventsMap.set(eventObj, found);
-            } else {
-              const dbEvt = findDbEvent(eventObj);
-              if (dbEvt) eventsMap.set(eventObj, dbEvt);
             }
           }
         }
 
         const userEvents = Array.from(eventsMap.values());
         if (userEvents.length > 0) {
+          // Sắp xếp sự kiện mới nhất lên đầu
           const sorted = [...userEvents].sort((a, b) => {
             const timeA = new Date(a.time?.start || a.createdAt || 0).getTime();
             const timeB = new Date(b.time?.start || b.createdAt || 0).getTime();
@@ -119,27 +108,15 @@ export default function FeedbackScreen() {
           setAttendedEvents(sorted);
         }
       }
-    } catch {
-      setAttendedEvents(getOnlyAttendedEventsFromDb(currentUserId));
-    }
 
-    // 2. Lấy trực tiếp danh sách feedbacks từ Backend MongoDB
-    try {
-      const apiFeedbacks = await api.getAllFeedbacks();
+      // Bước B: Cập nhật danh sách feedbacks trực tiếp từ MongoDB
       if (Array.isArray(apiFeedbacks)) {
-        const merged = mergeFeedbacksIntoDb(apiFeedbacks);
-        setFeedbacks(merged);
+        setFeedbacks(apiFeedbacks);
       }
-    } catch {
-      // Offline fallback an toàn nếu không kết nối được backend
-      try {
-        const stored = await loadFeedbacksFromStorage();
-        if (stored && stored.length > 0) {
-          setFeedbacks(stored);
-        }
-      } catch {
-        // ignore
-      }
+    } catch (err) {
+      console.warn("[FeedbackScreen] Lỗi khi kết nối máy chủ MongoDB:", err);
+      // Fallback an toàn nếu mất mạng
+      setAttendedEvents(getOnlyAttendedEventsFromDb(currentUserId));
     }
   }, [currentUserId]);
 
@@ -147,6 +124,7 @@ export default function FeedbackScreen() {
     loadPersistedData();
   }, [loadPersistedData]);
 
+  // Nếu chuyển từ trang chi tiết sự kiện sang và có eventId -> Tự động mở rộng sự kiện đó
   useEffect(() => {
     if (route.params?.eventId) {
       setExpandedEventId(route.params.eventId);
@@ -165,7 +143,7 @@ export default function FeedbackScreen() {
     setRefreshing(false);
   };
 
-  // Helper tìm "Đánh giá của bạn" (Mỗi sự kiện chỉ được đánh giá 1 lần)
+  // 5. HELPER TÌM "ĐÁNH GIÁ CỦA BẠN" (Mỗi sự kiện chỉ được đánh giá 1 lần)
   const getMyReview = useCallback(
     (eventId: string) => {
       return feedbacks.find((f) => {
@@ -179,18 +157,13 @@ export default function FeedbackScreen() {
           typeof fUser === "object" && fUser !== null
             ? fUser._id || fUser.id
             : fUser;
-        return (
-          fEvtId === eventId &&
-          (fUserId === currentUserId ||
-            fUserId === defaultStudent._id ||
-            (authUser?._id && fUserId === authUser._id))
-        );
+        return fEvtId === eventId && fUserId === currentUserId;
       });
     },
-    [feedbacks, currentUserId, defaultStudent._id, authUser?._id],
+    [feedbacks, currentUserId],
   );
 
-  // Đếm số lượng cho 3 tab
+  // 6. ĐẾM SỐ LƯỢNG CHO 3 TAB BỘ LỌC
   const { allCount, reviewedCount, notReviewedCount } = useMemo(() => {
     let rev = 0;
     let notRev = 0;
@@ -209,7 +182,7 @@ export default function FeedbackScreen() {
     };
   }, [attendedEvents, getMyReview]);
 
-  // Lọc danh sách theo tab
+  // 7. LỌC DANH SÁCH THEO TAB (Tất cả, Đã đánh giá, Chưa đánh giá)
   const filteredEvents = useMemo(() => {
     return attendedEvents.filter((evt) => {
       const id = evt.id || evt._id;
@@ -220,6 +193,7 @@ export default function FeedbackScreen() {
     });
   }, [attendedEvents, filterTab, getMyReview]);
 
+  // Phân trang danh sách hiển thị
   const displayedEvents = useMemo(() => {
     return filteredEvents.slice(0, visibleLimit);
   }, [filteredEvents, visibleLimit]);
@@ -269,11 +243,12 @@ export default function FeedbackScreen() {
     }
   };
 
-  // Gửi đánh giá cho sự kiện
+  // 8. GỬI ĐÁNH GIÁ TRỰC TIẾP VÀO CƠ SỞ DỮ LIỆU MONGODB
   const handleSubmitReview = async (evt: any) => {
     const eventId = evt.id || evt._id;
     if (submittingEventId) return;
 
+    // Kiểm tra: Mỗi sự kiện chỉ được phép đánh giá 1 lần
     const existing = getMyReview(eventId);
     if (existing) {
       Alert.alert(
@@ -301,31 +276,26 @@ export default function FeedbackScreen() {
 
     setSubmittingEventId(eventId);
     try {
-      let serverRes: any = null;
-      try {
-        serverRes = await api.createFeedback(payload);
-      } catch (apiErr: any) {
-        const errMsg = apiErr?.response?.data?.message || apiErr?.message || "Không thể kết nối đến máy chủ MongoDB.";
-        const fullMsg = `Lỗi máy chủ MongoDB: ${errMsg}\nVui lòng kiểm tra server Backend.`;
-        if (Platform.OS === "web") alert(fullMsg);
-        else Alert.alert("Không thể lưu đánh giá", fullMsg);
-        return;
-      }
+      // Gửi trực tiếp lên Backend MongoDB qua API
+      const serverRes: any = await api.createFeedback(payload);
 
       if (serverRes && (serverRes.id || serverRes._id)) {
-        const enrichedServer = enrichFeedback(serverRes);
-        setFeedbacks((prev) => {
-          const sKey = serverRes.id || serverRes._id;
-          const filtered = prev.filter((f) => (f.id || f._id) !== sKey);
-          return [enrichedServer, ...filtered];
-        });
-        mergeFeedbacksIntoDb([serverRes]);
+        // Cập nhật ngay đánh giá mới vào danh sách feedbacks hiển thị
+        setFeedbacks((prev) => [serverRes, ...prev]);
       }
 
       setDraftComments((prev) => ({ ...prev, [eventId]: "" }));
       const successMsg = `Đánh giá cho sự kiện "${evt.title}" (${ratingVal} sao) đã được lưu trực tiếp vào cơ sở dữ liệu MongoDB.`;
       if (Platform.OS === "web") alert(`Đánh giá thành công!\n${successMsg}`);
       else Alert.alert("Đánh giá thành công!", successMsg);
+    } catch (apiErr: any) {
+      const errMsg =
+        apiErr?.response?.data?.message ||
+        apiErr?.message ||
+        "Không thể kết nối đến máy chủ MongoDB.";
+      const fullMsg = `Lỗi máy chủ MongoDB: ${errMsg}\nVui lòng kiểm tra server Backend.`;
+      if (Platform.OS === "web") alert(fullMsg);
+      else Alert.alert("Không thể lưu đánh giá", fullMsg);
     } finally {
       setSubmittingEventId(null);
     }
@@ -353,10 +323,10 @@ export default function FeedbackScreen() {
     },
   ];
 
-  // Render Header của danh sách (gồm nút Quay lại, Tiêu đề, 3 Tab, và Số lượng hiển thị)
+  // Render Header của danh sách
   const renderListHeader = () => (
     <View style={styles.headerContainer}>
-      {/* Top Header Bar */}
+      {/* Nút quay lại */}
       <View style={styles.navBarRow}>
         <TouchableOpacity
           style={[
@@ -389,7 +359,7 @@ export default function FeedbackScreen() {
         Danh sách sự kiện bạn đã tham dự. Mỗi sự kiện chỉ được phép đánh giá 1 lần. Đánh giá của bạn giúp nâng cao chất lượng các chương trình.
       </Text>
 
-      {/* 3 Ô Bộ Lọc (Tất cả, Đã đánh giá, Chưa đánh giá) */}
+      {/* 3 Tab bộ lọc: Tất cả, Đã đánh giá, Chưa đánh giá */}
       <View style={styles.tabsRow}>
         {filterTabsConfig.map((tab) => {
           const isSelected = filterTab === tab.key;
@@ -424,7 +394,7 @@ export default function FeedbackScreen() {
         })}
       </View>
 
-      {/* Thông tin số lượng hiển thị */}
+      {/* Thống kê số lượng hiển thị */}
       <View style={styles.countRow}>
         <Text style={[styles.countText, { color: theme.textTertiary }]}>
           Hiển thị {displayedEvents.length} / {filteredEvents.length} sự kiện gần nhất
@@ -471,7 +441,7 @@ export default function FeedbackScreen() {
     </View>
   );
 
-  // Render Footer (tải thêm sự kiện hoặc thông báo đã hết)
+  // Render Footer: tải thêm sự kiện
   const renderListFooter = () => {
     if (isLoadingMore) {
       return (
