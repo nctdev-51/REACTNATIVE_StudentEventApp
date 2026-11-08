@@ -379,11 +379,11 @@ export default function FeedbackScreen() {
         api.getAllFeedbacks(),
       ]);
 
-      // Bước A: Lọc ra các sự kiện người dùng ĐÃ THAM DỰ (status: 'checked_in' hoặc 'completed')
+      // Bước A: Lọc ra các sự kiện người dùng ĐÃ THAM DỰ (chỉ tính status: 'checked_in', loại bỏ complete/completed)
       if (Array.isArray(regList) && regList.length > 0) {
         const eventsMap = new Map<string, any>();
         for (const r of regList) {
-          if (r.status !== "checked_in" && (r.status as string) !== "completed") {
+          if (r.status !== "checked_in") {
             continue;
           }
           const eventObj: any = (r as any).eventId;

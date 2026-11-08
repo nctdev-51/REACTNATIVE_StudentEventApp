@@ -105,7 +105,7 @@ export const findDbEvent = (eventId?: string) => {
 
 /**
  * Tính toán thống kê hoạt động chính xác từ db.json:
- * - eventsAttended: số sự kiện sinh viên đã tham gia (status: checked_in hoặc completed)
+ * - eventsAttended: số sự kiện sinh viên đã tham gia (chỉ tính status: checked_in, loại bỏ complete/completed)
  * - pointsAccumulated: điểm rèn luyện trong db.json
  * - reviews: số lượt đánh giá do sinh viên này gửi trong feedbacks
  */
@@ -115,7 +115,7 @@ export const getUserStatsFromDb = (userId?: string): UserStats => {
 
   const attendedRegs = dbState.registrations.filter((r) => {
     const isUser = r.userId === uId;
-    const isAttended = r.status === 'checked_in' || (r.status as string) === 'completed';
+    const isAttended = r.status === 'checked_in';
     return isUser && isAttended;
   });
 
@@ -156,7 +156,7 @@ export const getAttendedEventsFromDb = (userId?: string) => {
   const uId = targetUser?._id || targetUser?.id;
 
   const userRegs = dbState.registrations.filter(
-    (r) => r.userId === uId && (r.status === 'checked_in' || (r.status as string) === 'completed')
+    (r) => r.userId === uId && r.status === 'checked_in'
   );
 
   const registeredEventIds = new Set(
@@ -184,7 +184,7 @@ export const getOnlyAttendedEventsFromDb = (userId?: string): any[] => {
   const uId = targetUser?._id || targetUser?.id;
 
   const userRegs = dbState.registrations.filter(
-    (r) => r.userId === uId && (r.status === 'checked_in' || (r.status as string) === 'completed')
+    (r) => r.userId === uId && r.status === 'checked_in'
   );
 
   const registeredEventIds = new Set(
@@ -192,7 +192,7 @@ export const getOnlyAttendedEventsFromDb = (userId?: string): any[] => {
   );
   const attendedList = dbState.events.filter((e) => registeredEventIds.has(e.id || e._id));
 
-  const list = attendedList.length > 0 ? attendedList : dbState.events;
+  const list = attendedList;
 
   // Sắp xếp sự kiện gần nhất lên đầu (thời gian mới nhất trước)
   return [...list].sort((a, b) => {

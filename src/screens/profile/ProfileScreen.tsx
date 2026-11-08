@@ -867,10 +867,9 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
       : getUserStatsFromDb(targetUserId).eventsAttended;
 =======
   // 5. TÍNH TOÁN CÁC CHỈ SỐ HOẠT ĐỘNG THỰC TẾ
-  // - Chỉ số 1: Số sự kiện đã tham gia (những đăng ký có status là checked_in hoặc completed)
+  // - Chỉ số 1: Số sự kiện đã tham gia (chỉ những đăng ký có trạng thái checked_in mới được tính là đã tham gia thành công)
   const attendedRegistrations = myRegistrations.filter(
-    (r) => r.status === "checked_in" || (r.status as string) === "completed",
-  );
+    (r) => r.status === "checked_in",  );
   const eventsAttendedCount = attendedRegistrations.length;
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
 
