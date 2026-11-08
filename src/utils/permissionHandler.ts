@@ -95,6 +95,58 @@ export async function checkLocationPermission(): Promise<PermissionResult> {
 
 // ─── Get Current Location (Google Play Services / High Accuracy) ──────────────
 
+export interface LocationIntegrityReport {
+  isValid: boolean;
+  accuracy: number;
+  isMocked: boolean;
+  riskReason?: string;
+}
+
+/**
+ * Kiểm tra tính toàn vẹn và chống gian lận vị trí (Anti-Mock GPS & Accuracy check)
+ */
+export function inspectLocationIntegrity(
+  location: Location.LocationObject | null,
+  maxAccuracyMeters: number = 150
+): LocationIntegrityReport {
+  if (!location || !location.coords) {
+    return {
+      isValid: false,
+      accuracy: 0,
+      isMocked: false,
+      riskReason: 'Không thể nhận được tín hiệu GPS từ cảm biến vị trí.',
+    };
+  }
+
+  const { coords } = location;
+  // @ts-ignore - Expo Location v58 coords includes mocked flag on Android
+  const isMocked = coords.mocked === true;
+  if (isMocked) {
+    return {
+      isValid: false,
+      accuracy: coords.accuracy || 0,
+      isMocked: true,
+      riskReason: 'Phát hiện ứng dụng giả lập toạ độ (Mock GPS / Fake Location) trên thiết bị!',
+    };
+  }
+
+  const accuracy = coords.accuracy || 0;
+  if (accuracy <= 0 || accuracy > maxAccuracyMeters) {
+    return {
+      isValid: false,
+      accuracy,
+      isMocked: false,
+      riskReason: `Độ chính xác GPS không đủ tin cậy (sai số ${Math.round(accuracy)}m > ${maxAccuracyMeters}m). Vui lòng di chuyển ra nơi thoáng hoặc dùng mã PIN dự phòng.`,
+    };
+  }
+
+  return {
+    isValid: true,
+    accuracy,
+    isMocked: false,
+  };
+}
+
 /**
  * Lấy vị trí GPS hiện tại của thiết bị với độ chính xác cao (Accuracy.High).
  * Trên Android: Tận dụng Google Play Services Fused Location Provider.

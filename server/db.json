@@ -81,10 +81,30 @@
         "where": "Hội trường E4, cơ sở chính IUH.",
         "benefits": "Cộng 10 điểm rèn luyện, cấp giấy chứng nhận tham gia, cơ hội nhận học bổng và kết nối doanh nghiệp."
       },
-      "status": "upcoming",
+      "status": "published",
       "createdAt": "2026-11-06T17:45:43.729Z",
       "updatedAt": "2026-11-06T17:45:43.729Z",
-      "id": "66f1e2010000000000000001"
+      "id": "66f1e2010000000000000001",
+      "maxSlots": 50,
+      "waitlistSlots": 10,
+      "checkInPasscode": "111111",
+      "targetFaculties": [
+        "Khoa Công nghệ thông tin"
+      ],
+      "targetCohorts": [
+        "K19",
+        "K20",
+        "K21",
+        "K22"
+      ],
+      "cancellationDeadline": "2026-10-15T08:00:00.000Z",
+      "livestreamUrl": "https://www.youtube.com/watch?v=live_demo",
+      "attachments": [
+        {
+          "name": "Tai_lieu_huong_dan_su_kien.pdf",
+          "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }
+      ]
     },
     {
       "_id": "66f1e2020000000000000002",
@@ -111,7 +131,27 @@
       "status": "ongoing",
       "createdAt": "2026-11-06T17:45:43.729Z",
       "updatedAt": "2026-11-06T17:45:43.729Z",
-      "id": "66f1e2020000000000000002"
+      "id": "66f1e2020000000000000002",
+      "maxSlots": 100,
+      "waitlistSlots": 20,
+      "checkInPasscode": "122222",
+      "targetFaculties": [
+        "Khoa Quản trị kinh doanh"
+      ],
+      "targetCohorts": [
+        "K19",
+        "K20",
+        "K21",
+        "K22"
+      ],
+      "cancellationDeadline": "2026-09-25T13:30:00.000Z",
+      "livestreamUrl": null,
+      "attachments": [
+        {
+          "name": "Tai_lieu_huong_dan_su_kien.pdf",
+          "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }
+      ]
     },
     {
       "_id": "66f1e2030000000000000003",
@@ -135,10 +175,30 @@
         "where": "Sân bóng đá trường ĐH Công nghiệp TP.HCM.",
         "benefits": "Cộng 15 điểm rèn luyện cho VĐV/Cổ động viên tích cực, huy chương và cúp vô địch."
       },
-      "status": "upcoming",
+      "status": "published",
       "createdAt": "2026-11-06T17:45:43.729Z",
       "updatedAt": "2026-11-06T17:45:43.729Z",
-      "id": "66f1e2030000000000000003"
+      "id": "66f1e2030000000000000003",
+      "maxSlots": 100,
+      "waitlistSlots": 20,
+      "checkInPasscode": "133333",
+      "targetFaculties": [
+        "Toàn trường"
+      ],
+      "targetCohorts": [
+        "K19",
+        "K20",
+        "K21",
+        "K22"
+      ],
+      "cancellationDeadline": "2026-11-01T07:00:00.000Z",
+      "livestreamUrl": null,
+      "attachments": [
+        {
+          "name": "Tai_lieu_huong_dan_su_kien.pdf",
+          "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }
+      ]
     },
     {
       "_id": "66f1e2040000000000000004",
@@ -165,7 +225,27 @@
       "status": "completed",
       "createdAt": "2026-11-06T17:45:43.729Z",
       "updatedAt": "2026-11-06T17:45:43.729Z",
-      "id": "66f1e2040000000000000004"
+      "id": "66f1e2040000000000000004",
+      "maxSlots": 100,
+      "waitlistSlots": 20,
+      "checkInPasscode": "144444",
+      "targetFaculties": [
+        "Toàn trường"
+      ],
+      "targetCohorts": [
+        "K19",
+        "K20",
+        "K21",
+        "K22"
+      ],
+      "cancellationDeadline": "2026-08-10T08:00:00.000Z",
+      "livestreamUrl": null,
+      "attachments": [
+        {
+          "name": "Tai_lieu_huong_dan_su_kien.pdf",
+          "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }
+      ]
     },
     {
       "_id": "66f1e2050000000000000005",
@@ -192,7 +272,27 @@
       "status": "completed",
       "createdAt": "2026-11-06T17:45:43.729Z",
       "updatedAt": "2026-11-06T17:45:43.729Z",
-      "id": "66f1e2050000000000000005"
+      "id": "66f1e2050000000000000005",
+      "maxSlots": 100,
+      "waitlistSlots": 20,
+      "checkInPasscode": "155555",
+      "targetFaculties": [
+        "Toàn trường"
+      ],
+      "targetCohorts": [
+        "K19",
+        "K20",
+        "K21",
+        "K22"
+      ],
+      "cancellationDeadline": "2026-07-05T07:00:00.000Z",
+      "livestreamUrl": null,
+      "attachments": [
+        {
+          "name": "Tai_lieu_huong_dan_su_kien.pdf",
+          "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }
+      ]
     },
     {
       "_id": "66f1e2060000000000000006",
@@ -216,10 +316,30 @@
         "where": "Sân A, IUH.",
         "benefits": "Tiếp cận doanh nghiệp, phỏng vấn nhanh, tìm vị trí thực tập và cộng điểm rèn luyện."
       },
-      "status": "upcoming",
+      "status": "published",
       "createdAt": "2026-11-06T17:45:43.729Z",
       "updatedAt": "2026-11-06T17:45:43.729Z",
-      "id": "66f1e2060000000000000006"
+      "id": "66f1e2060000000000000006",
+      "maxSlots": 100,
+      "waitlistSlots": 20,
+      "checkInPasscode": "166666",
+      "targetFaculties": [
+        "Toàn trường"
+      ],
+      "targetCohorts": [
+        "K19",
+        "K20",
+        "K21",
+        "K22"
+      ],
+      "cancellationDeadline": "2026-10-25T07:30:00.000Z",
+      "livestreamUrl": null,
+      "attachments": [
+        {
+          "name": "Tai_lieu_huong_dan_su_kien.pdf",
+          "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+        }
+      ]
     }
   ],
   "registrations": [
@@ -327,6 +447,77 @@
       "createdAt": "2026-07-06T09:00:00.000Z",
       "updatedAt": "2026-11-06T17:45:43.741Z",
       "id": "66f1c5030000000000000003"
+    }
+  ],
+  "appeals": [
+    {
+      "id": "appeal_001",
+      "_id": "appeal_001",
+      "eventId": "66f1e2010000000000000001",
+      "eventTitle": "Hội thảo Trí tuệ Nhân tạo và Ứng dụng trong Kỹ thuật 2026",
+      "userId": "66f1a1010000000000000001",
+      "studentId": "SV01",
+      "studentName": "Nguyễn Văn A",
+      "reason": "GPS trong hội trường E4 bị chập chờn do tầng hầm không bắt được sóng vệ tinh.",
+      "proofImageUrl": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
+      "status": "pending",
+      "createdAt": "2026-11-07T18:21:51.486Z"
+    }
+  ],
+  "auditLogs": [
+    {
+      "id": "audit_001",
+      "_id": "audit_001",
+      "adminId": "66f1a1030000000000000003",
+      "adminName": "Ban Quản Trị Đoàn Hội",
+      "action": "SYSTEM_INITIALIZATION",
+      "targetType": "SYSTEM",
+      "targetId": "root",
+      "details": "Khởi tạo hệ thống Event State Machine và Anti-Fraud GPS",
+      "timestamp": "2026-11-07T18:21:51.488Z"
+    }
+  ],
+  "certificates": [
+    {
+      "id": "cert_001",
+      "_id": "cert_001",
+      "certificateCode": "IUH-CERT-2026-IT001",
+      "eventId": "66f1e2010000000000000001",
+      "eventTitle": "Hội thảo Trí tuệ Nhân tạo và Ứng dụng trong Kỹ thuật 2026",
+      "studentId": "SV01",
+      "studentName": "Nguyễn Văn A",
+      "issueDate": "2026-10-15T12:00:00.000Z",
+      "pdfUrl": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
+    }
+  ],
+  "preferences": [
+    {
+      "id": "pref_sv01",
+      "_id": "pref_sv01",
+      "userId": "66f1a1010000000000000001",
+      "enablePush": true,
+      "enableEmail": true,
+      "notifyScheduleChange": true,
+      "notifyUrgent": true,
+      "notifyReminders": true,
+      "quietHoursEnabled": true,
+      "quietHoursStart": "22:00",
+      "quietHoursEnd": "06:00",
+      "reminderMinutesBefore": 60
+    }
+  ],
+  "trainingPointApprovals": [
+    {
+      "id": "tp_001",
+      "_id": "tp_001",
+      "eventId": "66f1e2010000000000000001",
+      "eventTitle": "Hội thảo Trí tuệ Nhân tạo và Ứng dụng trong Kỹ thuật 2026",
+      "studentId": "SV01",
+      "studentName": "Nguyễn Văn A",
+      "points": 10,
+      "semester": "HK1_2026_2027",
+      "status": "pending",
+      "submittedAt": "2026-11-07T18:21:51.488Z"
     }
   ]
 }

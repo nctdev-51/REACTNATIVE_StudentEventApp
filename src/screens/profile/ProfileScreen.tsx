@@ -39,6 +39,7 @@ import {
   getUserStatsFromDb,
   findDbEvent,
 } from "../../data/dbService";
+import NotificationPreferencesModal from "../../components/notifications/NotificationPreferencesModal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -190,6 +191,7 @@ export default function ProfileScreen({
   const [editPhone, setEditPhone] = useState("");
   const [editFaculty, setEditFaculty] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
 
   const targetUserId = currentUser?._id || defaultStudent?._id;
 
@@ -588,6 +590,24 @@ export default function ProfileScreen({
           <MenuItem
             icon={
               <Ionicons
+                name="notifications-outline"
+                size={20}
+                color="#2563EB"
+              />
+            }
+            label="Tùy chọn thông báo & Giờ yên lặng"
+            badge="Mới"
+            badgeBg="#EFF6FF"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => setNotifModalVisible(true)}
+          />
+
+          <MenuItem
+            icon={
+              <Ionicons
                 name="settings-outline"
                 size={20}
                 color={theme.textSecondary}
@@ -965,6 +985,12 @@ export default function ProfileScreen({
           </Card>
         </YStack>
       </Modal>
+
+      <NotificationPreferencesModal
+        visible={notifModalVisible}
+        onClose={() => setNotifModalVisible(false)}
+        userId={targetUserId}
+      />
     </SafeAreaView>
   );
 }

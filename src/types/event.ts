@@ -20,6 +20,22 @@ export interface EventCoordinates {
   radiusMeters?: number; // Bán kính cho phép check-in tính bằng mét (mặc định 500m)
 }
 
+export type EventStatus =
+  | "draft"
+  | "pending_approval"
+  | "published"
+  | "registration_closed"
+  | "ongoing"
+  | "completed"
+  | "cancelled"
+  | "upcoming"
+  | "past";
+
+export interface EventAttachment {
+  name: string;
+  url: string;
+}
+
 export interface Event {
   _id: string;
   id?: string;
@@ -50,12 +66,33 @@ export interface Event {
   /** Học kỳ mà sự kiện thuộc về (admin gán); không có thì suy ra từ thời gian */
   semesterId?: string;
 
-  status: "upcoming" | "ongoing" | "completed" | "past";
+  status: EventStatus;
 
   /** Trạng thái ẩn bởi admin (khi ẩn, sinh viên sẽ không nhìn thấy trên trang chủ) */
   isHidden?: boolean;
 
   qrCode?: string;
 
+  /** Quản lý Quota và Waitlist */
+  maxSlots?: number;
+  waitlistSlots?: number;
+  registeredCount?: number;
+  waitlistCount?: number;
+
+  /** Mã PIN dự phòng khi GPS/Camera lỗi (Fallback) */
+  checkInPasscode?: string;
+
+  /** Phân loại đối tượng tham gia */
+  targetFaculties?: string[];
+  targetCohorts?: string[];
+
+  /** Hạn chót hủy vé */
+  cancellationDeadline?: string;
+
+  /** Tiện ích: Livestream & Tài liệu đính kèm */
+  livestreamUrl?: string | null;
+  attachments?: EventAttachment[];
+
   createdAt?: string;
+  updatedAt?: string;
 }
