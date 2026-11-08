@@ -51,7 +51,7 @@ app.get("/", (req, res) => {
   });
 });
 
-app.get("/api/health", (req, res) => {
+app.get(["/api", "/api/health"], (req, res) => {
   const database = isDatabaseConnected();
   res.status(database ? 200 : 503).json({
     success: database,
@@ -63,13 +63,27 @@ app.get("/api/health", (req, res) => {
 });
 
 // ─── API Routes ───────────────────────────────────────────────────────────────
+// Hỗ trợ cả /api/* và root /* để tránh 404 cho mọi loại client
 app.use("/api/auth", authRoutes);
+app.use("/auth", authRoutes);
+
 app.use("/api/events", eventRoutes);
+app.use("/events", eventRoutes);
+
 app.use("/api/registrations", registrationRoutes);
+app.use("/registrations", registrationRoutes);
+
 app.use("/api/feedbacks", feedbackRoutes);
+app.use("/feedbacks", feedbackRoutes);
+
 app.use("/api/notifications", notificationRoutes);
+app.use("/notifications", notificationRoutes);
+
 app.use("/api/users", userRoutes);
+app.use("/users", userRoutes);
+
 app.use("/api/admin", adminRoutes);
+app.use("/admin", adminRoutes);
 
 // ─── 404 Handler ─────────────────────────────────────────────────────────────
 app.use((req, res) => {

@@ -3,14 +3,14 @@ const User = require("../models/User");
 
 // Helper: Generate Access Token
 const generateAccessToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  return jwt.sign({ id }, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"), {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 };
 
 // Helper: Generate Refresh Token
 const generateRefreshToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET, {
+  return jwt.sign({ id }, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"), {
     expiresIn: "30d",
   });
 };
@@ -174,7 +174,7 @@ const refreshToken = async (req, res) => {
       });
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = jwt.verify(token, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"));
     const user = await User.findById(decoded.id).select("+refreshToken");
 
     if (!user || user.refreshToken !== token) {
