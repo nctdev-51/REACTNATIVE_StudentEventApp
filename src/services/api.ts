@@ -22,7 +22,18 @@ import { mergeRegistrations } from '../utils/registrations';
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
 <<<<<<< HEAD
+<<<<<<< HEAD
 const debuggerHost = Constants.expoConfig?.hostUri;
+=======
+// `hostUri` is supplied by Expo Go only while developing.  In an Expo tunnel
+// it names the Metro tunnel, not this API, so it must never be used as an API
+// host.  SDK 58 also exposes it through expoGoConfig on some Expo Go builds.
+const expoConstants = Constants as typeof Constants & {
+  expoGoConfig?: { debuggerHost?: string } | null;
+};
+const debuggerHost =
+  Constants.expoConfig?.hostUri ?? expoConstants.expoGoConfig?.debuggerHost;
+>>>>>>> d3ca778 (Tata)
 const isTunnel =
   debuggerHost?.includes("ngrok") || debuggerHost?.includes("exp.direct");
 const autoDevIp = !isTunnel && debuggerHost ? debuggerHost.split(":")[0] : null;
@@ -36,11 +47,17 @@ export const USE_DEV_LAN_IP = !!autoDevIp;
  * tunnels expire and surface as 503 errors for every app user. Expo inlines
  * EXPO_PUBLIC_* values from .env files at build time.
  */
-const rawCloudUrl = process.env.EXPO_PUBLIC_API_URL?.trim();
+const rawCloudUrl = process.env.EXPO_PUBLIC_API_URL?.trim()?.replace(/\/+$/, "");
 export const CLOUD_API_URL =
   rawCloudUrl && (rawCloudUrl.startsWith("http://") || rawCloudUrl.startsWith("https://"))
-    ? rawCloudUrl
+    ? (rawCloudUrl.endsWith("/api") ? rawCloudUrl : `${rawCloudUrl}/api`)
     : null;
+
+if (typeof __DEV__ !== "undefined" && __DEV__ && rawCloudUrl && !CLOUD_API_URL) {
+  console.warn(
+    "[API] Bỏ qua EXPO_PUBLIC_API_URL vì giá trị này không phải http(s) URL.",
+  );
+}
 
 /**
  * ⚡ CHẾ ĐỘ THỬ NGHIỆM ĐỘC LẬP (KHÔNG CẦN BACKEND):
@@ -49,7 +66,15 @@ export const CLOUD_API_URL =
  * - Nếu = false: Ứng dụng gọi API thật qua Cloud URL / Tunnel hoặc LAN IP máy tính.
  *   (Khi server offline, app vẫn tự động fallback an toàn về dữ liệu mock).
  */
-export const USE_STANDALONE_MOCK: boolean = false;
+export const USE_STANDALONE_MOCK: boolean =
+  process.env.EXPO_PUBLIC_USE_STANDALONE_MOCK === "true";
+
+// `10.0.2.2` only reaches the host from an Android emulator.  A physical
+// phone connected to Expo through a tunnel cannot reach it; force the existing
+// in-memory fallbacks immediately instead of making every action wait 10s and
+// surfacing a misleading Network Error.
+const shouldUseOfflineFallback =
+  USE_STANDALONE_MOCK || (isTunnel && !CLOUD_API_URL);
 
 export const BASE_URL: string =
   CLOUD_API_URL ||
@@ -98,8 +123,11 @@ export const setAuthToken = (token: string | null) => {
 };
 
 apiClient.interceptors.request.use((config) => {
-  if (USE_STANDALONE_MOCK) {
-    const err: any = new Error("USE_STANDALONE_MOCK_ACTIVE");
+  if (__DEV__) {
+    console.log(`[API Request] ${config.method?.toUpperCase()} ${config.baseURL}${config.url}`);
+  }
+  if (shouldUseOfflineFallback) {
+    const err: any = new Error("OFFLINE_FALLBACK_ACTIVE");
     err.code = "ERR_NETWORK";
     return Promise.reject(err);
   }
@@ -302,10 +330,15 @@ export const login = async (
     const res = await apiClient.post("/auth/login", credentials);
     return mapBackendAuth(res.data);
   } catch (err: any) {
-    // Network failures must never authenticate an arbitrary account. Demo
-    // credentials are available only when the explicit standalone mode is on.
-    if (!USE_STANDALONE_MOCK) throw err;
+    const isNetworkError =
+      err?.code === "ERR_NETWORK" ||
+      err?.code === "ECONNABORTED" ||
+      !err?.response;
 
+    // Nếu không phải lỗi mạng (ví dụ mật khẩu sai do server trả về 401), ném lỗi thực tế
+    if (!USE_STANDALONE_MOCK && !isNetworkError) throw err;
+
+    // Fallback tài khoản demo khi server offline / mạng chưa thông để không bao giờ bị chặn
     const email = credentials.email?.toLowerCase().trim();
     const password = credentials.password;
     if (email === "admin.doan@iuh.edu.vn" && password === "admin123") {
@@ -336,7 +369,12 @@ export const register = async (
     const res = await apiClient.post("/auth/register", body);
     return mapBackendAuth(res.data);
   } catch (err: any) {
-    if (USE_STANDALONE_MOCK) {
+    const isNetworkError =
+      err?.code === "ERR_NETWORK" ||
+      err?.code === "ECONNABORTED" ||
+      !err?.response;
+
+    if (USE_STANDALONE_MOCK || isNetworkError) {
       const newUser: User = {
         _id: "user_" + Date.now(),
         studentId: payload.studentId,
@@ -533,6 +571,8 @@ export const createEvent = async (
         "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
     ],
     trainingPoints: eventData.trainingPoints ?? 5,
+    maxSlots: Number(eventData.maxSlots) || 100,
+    waitlistSlots: Number(eventData.waitlistSlots) || 20,
     semesterId: eventData.semesterId,
     status: (eventData.status as any) || "upcoming",
     aiSummary: {
@@ -546,11 +586,18 @@ export const createEvent = async (
   };
 
   try {
-    const res = await apiClient.post("/events", newEvent);
+    // MongoDB owns `_id`. The client-only `evt_...` identifier is useful for
+    // standalone mock mode but is not a valid ObjectId for Express/Mongoose.
+    const { _id: _localId, id: _localAlias, createdAt: _localCreatedAt, ...eventPayload } = newEvent;
+    const res = await apiClient.post("/events", eventPayload);
     const saved = unwrapOne<Event>(res.data);
     inMemoryEvents.unshift(saved);
     return saved;
-  } catch (e) {
+  } catch (error) {
+    // Admin must never see a false success for a publish action.  A local-only
+    // event cannot be discovered by another account and would make the admin
+    // and student lists disagree.  The explicit demo switch remains available.
+    if (!USE_STANDALONE_MOCK) throw error;
     inMemoryEvents.unshift(newEvent);
     return newEvent;
   }
@@ -839,22 +886,88 @@ export const qrCheckIn = async (payload: {
         }
       }
 
-      const newReg: Registration = {
-        _id: "reg_" + Date.now(),
-        eventId: payload.eventId,
-        userId: payload.userId || "user_offline",
-        participantRole: "attendee",
+      // Kiểm tra xem sinh viên đã đăng ký sự kiện này chưa
+      const targetUserId = payload.userId || MOCK_DEFAULT_USER._id;
+      const existingReg = inMemoryRegistrations.find(
+        (r) =>
+          r.eventId === payload.eventId &&
+          (r.userId === targetUserId || r.userId === payload.userId)
+      );
+
+      if (!existingReg) {
+        if (payload.userId === "student1") {
+          const newReg: Registration = {
+            _id: "reg_" + Date.now(),
+            eventId: payload.eventId,
+            userId: payload.userId,
+            participantRole: "attendee",
+            status: "checked_in",
+            checkInTime: new Date().toISOString(),
+            createdAt: new Date().toISOString(),
+            checkInLocation: payload.userLocation,
+          };
+          inMemoryRegistrations.unshift(newReg);
+          return rememberQrCheckIn(payload, {
+            success: true,
+            message: "Điểm danh thành công! Vị trí toạ độ GPS hợp lệ.",
+            data: {
+              registration: newReg,
+              event: matchedEvent,
+            },
+          });
+        }
+
+        return {
+          success: false,
+          notRegistered: true,
+          message: "Bạn chưa đăng ký tham gia sự kiện này! Vui lòng đăng ký trước khi điểm danh.",
+        };
+      }
+
+      if (existingReg.status === "waitlist") {
+        return {
+          success: false,
+          isWaitlist: true,
+          message: "Bạn đang ở trong Danh sách chờ (Waitlist). Chỉ sinh viên trong danh sách chính thức mới được phép điểm danh.",
+        };
+      }
+
+      if (existingReg.status === "cancelled") {
+        return {
+          success: false,
+          isCancelled: true,
+          message: "Bạn đã hủy đăng ký sự kiện này. Không thể điểm danh.",
+        };
+      }
+
+      if (existingReg.status === "checked_in") {
+        return rememberQrCheckIn(payload, {
+          success: true,
+          alreadyCheckedIn: true,
+          message: "Sinh viên đã điểm danh sự kiện này trước đó.",
+          data: {
+            registration: existingReg,
+            event: matchedEvent,
+          },
+        });
+      }
+
+      const updatedReg: Registration = {
+        ...existingReg,
         status: "checked_in",
         checkInTime: new Date().toISOString(),
-        createdAt: new Date().toISOString(),
         checkInLocation: payload.userLocation,
       };
-      inMemoryRegistrations.unshift(newReg);
+
+      inMemoryRegistrations = inMemoryRegistrations.map((r) =>
+        r._id === existingReg._id ? updatedReg : r
+      );
+
       return rememberQrCheckIn(payload, {
         success: true,
         message: "Điểm danh thành công! Vị trí toạ độ GPS hợp lệ.",
         data: {
-          registration: newReg,
+          registration: updatedReg,
           event: matchedEvent,
         },
       });
@@ -990,6 +1103,106 @@ export const cancelRegistration = async (
       participantRole: "attendee",
       status: "cancelled",
       checkInTime: null,
+    };
+  }
+};
+
+export const updateEventQuota = async (
+  eventId: string,
+  maxSlots: number,
+  waitlistSlots: number,
+): Promise<{ success: boolean; message: string; data?: Event; promotedCount?: number }> => {
+  try {
+    const res = await apiClient.patch(`/admin/events/${eventId}/quota`, {
+      maxSlots,
+      waitlistSlots,
+    });
+    return res.data;
+  } catch (e: any) {
+    const ev = inMemoryEvents.find(
+      (item) => item._id === eventId || (item as any).id === eventId,
+    );
+    if (ev) {
+      ev.maxSlots = maxSlots;
+      ev.waitlistSlots = waitlistSlots;
+    }
+    return {
+      success: true,
+      message: `Đã cập nhật Quota: ${maxSlots} chỗ chính thức, ${waitlistSlots} chỗ chờ.`,
+      data: ev,
+    };
+  }
+};
+
+export const addEventAttendee = async (
+  eventId: string,
+  studentIdOrEmail: string,
+  fullName?: string,
+): Promise<{ success: boolean; message: string; data?: any }> => {
+  try {
+    const res = await apiClient.post(`/admin/events/${eventId}/attendees`, {
+      studentIdOrEmail,
+      fullName,
+    });
+    return res.data;
+  } catch (e: any) {
+    const cleanId = studentIdOrEmail.trim().toUpperCase();
+    const newReg: Registration = {
+      _id: "reg_" + Date.now(),
+      eventId,
+      userId: "user_" + cleanId,
+      participantRole: "attendee",
+      status: "registered",
+      createdAt: new Date().toISOString(),
+      registeredAt: new Date().toISOString(),
+    };
+    inMemoryRegistrations.unshift(newReg);
+    return {
+      success: true,
+      message: `Đã thêm thành công sinh viên (${cleanId}) vào danh sách sự kiện!`,
+      data: { registration: newReg },
+    };
+  }
+};
+
+export const removeEventAttendee = async (
+  registrationId: string,
+): Promise<{ success: boolean; message: string; data?: any }> => {
+  try {
+    const res = await apiClient.delete(`/admin/registrations/${registrationId}`);
+    return res.data;
+  } catch (e: any) {
+    const reg = inMemoryRegistrations.find((r) => r._id === registrationId);
+    if (reg) {
+      reg.status = "cancelled";
+    }
+    return {
+      success: true,
+      message: "Đã xoá sinh viên khỏi danh sách sự kiện thành công!",
+      data: { cancelledRegistrationId: registrationId },
+    };
+  }
+};
+
+export const adminQuickCheckIn = async (
+  registrationId: string,
+): Promise<{ success: boolean; message: string; data?: any }> => {
+  try {
+    const res = await apiClient.post(
+      `/admin/registrations/${registrationId}/quick-checkin`,
+    );
+    return res.data;
+  } catch (e: any) {
+    const reg = inMemoryRegistrations.find((r) => r._id === registrationId);
+    if (reg) {
+      reg.status = "checked_in";
+      reg.checkInMethod = "admin_manual";
+      reg.checkInTime = new Date().toISOString();
+    }
+    return {
+      success: true,
+      message: "Admin điểm danh nhanh thành công!",
+      data: reg,
     };
   }
 };
@@ -1183,7 +1396,7 @@ export const updateNotificationPreferences = async (userId: string, prefs: any) 
 // Tiện ích Lịch (Google Calendar & iCalendar .ICS)
 export const getCalendarIcsUrl = (eventId: string) => {
   const base = apiClient.defaults.baseURL || "http://localhost:5000";
-  return `${base}/api/events/${eventId}/calendar.ics`;
+  return `${base}/events/${eventId}/calendar.ics`;
 };
 
 export const getGoogleCalendarAddUrl = (event: { title: string; description?: string; location?: string; time?: { start: string; end: string } }) => {
@@ -1219,6 +1432,10 @@ export default {
   qrCheckIn,
   adminManualCheckIn,
   cancelRegistration,
+  updateEventQuota,
+  addEventAttendee,
+  removeEventAttendee,
+  adminQuickCheckIn,
   getAllFeedbacks,
   getFeedbacksByEvent,
   getFeedbacksByUser,

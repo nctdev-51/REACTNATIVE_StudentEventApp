@@ -55,6 +55,23 @@ export const loginUser = createAsyncThunk(
   }
 );
 
+/** One-tap real login for the two seeded test accounts. */
+export const switchTestAccount = createAsyncThunk(
+  'auth/switchTestAccount',
+  async (role: 'admin' | 'student', { rejectWithValue }) => {
+    const credentials: AuthCredentials = role === 'admin'
+      ? { email: 'admin.doan@iuh.edu.vn', password: 'admin123' }
+      : { email: 'sv01@iuh.edu.vn', password: '123456' };
+    try {
+      return await api.login(credentials);
+    } catch (err: any) {
+      return rejectWithValue(
+        err?.response?.data?.message ?? err?.message ?? 'Không thể chuyển tài khoản'
+      );
+    }
+  },
+);
+
 /**
  * Đăng ký tài khoản: POST /auth/register → { token, user }
  */
@@ -126,7 +143,11 @@ const authSlice = createSlice({
     builder
       .addCase(hydrateSession.fulfilled, (state, action) => {
         state.isHydrating = false;
-        if (action.payload) {
+        // Tokens issued by the old offline fallback cannot authenticate with
+        // Express.  Do not silently restore one, otherwise admin writes are
+        // rejected by the server and used to be displayed as local-only data.
+        const isOfflineToken = action.payload?.token.startsWith('offline-');
+        if (action.payload && !isOfflineToken) {
           state.token = action.payload.token;
           state.user = action.payload.user;
           state.isAuthenticated = true;
@@ -147,6 +168,20 @@ const authSlice = createSlice({
         state.isAuthenticated = true;
       })
       .addCase(loginUser.rejected, (state, action) => {
+        state.loading = false;
+        state.error = action.payload as string;
+      })
+      .addCase(switchTestAccount.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(switchTestAccount.fulfilled, (state, action) => {
+        state.loading = false;
+        state.token = action.payload.token;
+        state.user = action.payload.user;
+        state.isAuthenticated = true;
+      })
+      .addCase(switchTestAccount.rejected, (state, action) => {
         state.loading = false;
         state.error = action.payload as string;
       });

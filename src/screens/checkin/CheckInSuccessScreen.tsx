@@ -11,6 +11,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckInSuccessScreenProps } from '../../navigation/CheckInStack';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
+import { navigate } from '../../navigation/navigationRef';
 
 export default function CheckInSuccessScreen({ route, navigation }: CheckInSuccessScreenProps) {
   const { theme, isDark } = useAppTheme();
@@ -26,11 +27,12 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
   } = route.params || {};
 
   const handleGoHome = () => {
-    const parent = navigation.getParent();
-    if (parent) {
-      (parent as any).navigate('Home');
-    } else {
-      (navigation as any).navigate('Home');
+    try {
+      navigate('Home');
+    } catch {
+      if (navigation.canGoBack()) {
+        navigation.goBack();
+      }
     }
   };
 

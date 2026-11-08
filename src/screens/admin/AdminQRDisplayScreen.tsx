@@ -37,6 +37,7 @@ import { useRoute, useNavigation, RouteProp } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { Ionicons } from '@expo/vector-icons';
 import type { AdminStackParamList } from '../../navigation/types';
+import { navigate } from '../../navigation/navigationRef';
 import { getEventById, getEventQrToken, DynamicQrTokenResponse } from '../../services/api';
 import { Event } from '../../types';
 import { openInGoogleMaps } from '../../utils/permissionHandler';
@@ -165,7 +166,7 @@ export default function AdminQRDisplayScreen() {
       <View style={[styles.headerBar, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={styles.headerBackBtn}
-          onPress={() => navigation.goBack()}
+          onPress={() => (navigation.canGoBack() ? navigation.goBack() : navigate('AdminEvents'))}
           hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
         >
           <Ionicons name="arrow-back" size={22} color={theme.textPrimary} />

@@ -126,6 +126,16 @@ export default function MainStack() {
         }}
       />
 
+      {/* Luồng Check-in QR Điểm danh trực tiếp */}
+      <Stack.Screen
+        name="CheckIn"
+        component={CheckInStack}
+        options={{
+          headerShown: false,
+          animation: "slide_from_bottom",
+        }}
+      />
+
       {/* Chi tiết sự kiện */}
       <Stack.Screen
         name="EventDetail"

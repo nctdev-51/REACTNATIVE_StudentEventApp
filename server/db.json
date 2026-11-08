@@ -33,7 +33,7 @@
       "_id": "66f1a1020000000000000002",
       "name": "Trần Thị Bích",
       "email": "sv02@iuh.edu.vn",
-      "password": "$2a$12$s2IJvil4jTvLdIYJnV07L.Ob6890m6Go.tscqyuW1dSEwa3Z8he2W",
+      "password": "123",
       "role": "student",
       "studentId": "SV02",
       "faculty": "Khoa Kinh tế",
@@ -354,6 +354,42 @@
           "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
         }
       ]
+    },
+    {
+      "_id": "evt_1794148384806",
+      "id": "evt_1794148384806",
+      "title": "A",
+      "description": "Sự kiện do Ban Chấp hành Đoàn trường tổ chức.",
+      "category": "Học thuật",
+      "location": "Hội trường E4 (Tầng 4 Nhà E)",
+      "coordinates": {
+        "latitude": 10.82245,
+        "longitude": 106.68785,
+        "formattedAddress": "Hội trường E4 (Tầng 4 Nhà E)",
+        "radiusMeters": 200
+      },
+      "time": {
+        "start": "2026-11-09T14:33:04.803Z",
+        "end": "2026-11-09T16:33:04.803Z"
+      },
+      "organizer": "Ban Chấp hành Đoàn trường",
+      "faculty": "Khoa Công nghệ thông tin",
+      "images": [
+        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800"
+      ],
+      "trainingPoints": 5,
+      "maxSlots": 1,
+      "waitlistSlots": 20,
+      "semesterId": "2026-2027-HK1",
+      "status": "upcoming",
+      "aiSummary": {
+        "what": "A",
+        "when": "Theo lịch thông báo",
+        "where": "Hội trường E4 (Tầng 4 Nhà E)",
+        "benefits": "Nhận +5 điểm rèn luyện"
+      },
+      "qrCode": "EVENTMATE:evt_1794148384806",
+      "createdAt": "2026-11-08T14:33:04.806Z"
     }
   ],
   "registrations": [
@@ -442,6 +478,7 @@
       "createdAt": "2026-11-06T17:45:43.736Z",
       "updatedAt": "2026-11-06T17:45:43.736Z",
       "id": "66f1b3030000000000000003"
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
     },
@@ -466,6 +503,27 @@
       "_id": "6aee03b35cfe34d0b0ce685d",
       "createdAt": "2026-11-06T16:43:31.375Z"
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
+=======
+    },
+    {
+      "eventId": "evt_1794148384806",
+      "userId": "66f1a1010000000000000001",
+      "participantRole": "attendee",
+      "status": "registered",
+      "id": "6af08843d9f7ff3b27d510b6",
+      "_id": "6af08843d9f7ff3b27d510b6",
+      "createdAt": "2026-11-08T14:33:39.426Z"
+    },
+    {
+      "eventId": "evt_1794148384806",
+      "userId": "66f1a1020000000000000002",
+      "participantRole": "attendee",
+      "status": "waitlist",
+      "waitlistPosition": 1,
+      "id": "6af0892592604a208de2cf56",
+      "_id": "6af0892592604a208de2cf56",
+      "createdAt": "2026-11-08T14:37:25.521Z"
+>>>>>>> d3ca778 (Tata)
     }
   ],
   "feedbacks": [
@@ -545,6 +603,19 @@
       "proofImageUrl": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
       "status": "pending",
       "createdAt": "2026-11-07T18:21:51.486Z"
+    },
+    {
+      "id": "6af08770e699a2a7457f1c89",
+      "_id": "6af08770006a068b156fcc21",
+      "eventId": "66f1e2010000000000000001",
+      "eventTitle": "Hội thảo Trí tuệ Nhân tạo và Ứng dụng trong Kỹ thuật 2026",
+      "userId": "66f1a1010000000000000001",
+      "studentId": "SV01",
+      "studentName": "Nguyễn Văn A",
+      "reason": "Em ngoi hang ghe dau",
+      "proofImageUrl": "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
+      "status": "pending",
+      "createdAt": "2026-11-08T14:30:08.356Z"
     }
   ],
   "auditLogs": [
@@ -558,6 +629,17 @@
       "targetId": "root",
       "details": "Khởi tạo hệ thống Event State Machine và Anti-Fraud GPS",
       "timestamp": "2026-11-07T18:21:51.488Z"
+    },
+    {
+      "id": "6af087709c8e906910488d03",
+      "_id": "6af08770b39165cecc12a5f4",
+      "adminId": "66f1a1010000000000000001",
+      "adminName": "Nguyễn Văn A",
+      "action": "CREATE_APPEAL",
+      "targetType": "APPEAL",
+      "targetId": "6af08770e699a2a7457f1c89",
+      "details": "Em ngoi hang ghe dau",
+      "timestamp": "2026-11-08T14:30:08.357Z"
     }
   ],
   "certificates": [

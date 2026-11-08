@@ -39,10 +39,14 @@ import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import type { MainStackParamList } from "../../navigation/types";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { submitFeedback } from "../../features/events/feedbacksSlice";
 import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice";
 =======
+=======
+import { navigate } from "../../navigation/navigationRef";
+>>>>>>> d3ca778 (Tata)
 import { useAppSelector } from "../../hooks/redux";
 >>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
 import { useAppTheme } from "../../theme";
@@ -720,9 +724,13 @@ export default function FeedbackScreen() {
               borderColor: theme.border,
             },
           ]}
-          onPress={() =>
-            navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Home")
-          }
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigate("Home");
+            }
+          }}
           activeOpacity={0.7}
           accessibilityRole="button"
           accessibilityLabel="Quay lại"

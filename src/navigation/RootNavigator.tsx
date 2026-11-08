@@ -1,9 +1,9 @@
 import React, { useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
-import { setAuthToken } from '../services/api';
+import api, { setAuthToken } from '../services/api';
 import { clearAuthSession, saveAuthSession } from '../services/authSession';
-import { hydrateSession } from '../features/auth/authSlice';
+import { hydrateSession, logout, updateUser } from '../features/auth/authSlice';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
 import AdminStack from './AdminStack';
@@ -30,6 +30,33 @@ export default function RootNavigator() {
   useEffect(() => {
     setAuthToken(token);
   }, [token]);
+
+  // A stored session can outlive a tunnel restart or an earlier offline-demo
+  // login. Validate its identity with Express before letting it access admin
+  // screens; otherwise the UI may look like Admin while the server correctly
+  // returns 403 for a student token.
+  useEffect(() => {
+    if (isHydrating || !isAuthenticated || !token) return;
+
+    let disposed = false;
+    const validateRemoteSession = async () => {
+      if (token.startsWith('offline-')) {
+        if (!disposed) dispatch(logout());
+        return;
+      }
+      try {
+        const serverUser = await api.getCurrentUser();
+        if (!disposed) dispatch(updateUser(serverUser));
+      } catch {
+        if (!disposed) dispatch(logout());
+      }
+    };
+
+    void validateRemoteSession();
+    return () => {
+      disposed = true;
+    };
+  }, [dispatch, isAuthenticated, isHydrating, token]);
 
   // Keep the persisted session in sync with Redux. This also handles profile
   // updates and role switches without scattering storage calls across screens.

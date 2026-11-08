@@ -22,6 +22,7 @@
     "expo-modules-core": "^58.0.26",
     "expo-notifications": "~58.1.6",
     "expo-status-bar": "~58.0.4",
+<<<<<<< HEAD
 =======
     "expo": "~57.0.26",
     "expo-camera": "~57.0.6",
@@ -33,6 +34,8 @@
 >>>>>>> 8d9ed42 (Update Event)
     "json-server": "^0.17.4",
     "jsonwebtoken": "^9.0.3",
+=======
+>>>>>>> d3ca778 (Tata)
     "react": "19.3.0",
     "react-dom": "19.3.0",
     "react-native": "0.88.0",
@@ -56,12 +59,10 @@
     "android": "expo start --android",
     "ios": "expo start --ios",
     "web": "expo start --web",
-    "server": "node server/server.js",
-    "server:reset": "node server/reset-db.js",
     "start:tunnel": "expo start --tunnel",
     "postinstall": "node scripts/patch-notifications.js",
-    "server:tunnel": "npx localtunnel --port 5000",
-    "server:ngrok": "npx ngrok http 5000",
+    "backend": "npm --prefix backend start",
+    "backend:dev": "npm --prefix backend run dev",
     "test": "node --test --test-force-exit tests/*.test.cjs"
   },
   "private": true

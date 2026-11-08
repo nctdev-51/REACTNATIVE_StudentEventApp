@@ -29,6 +29,7 @@ import Animated, {
 } from 'react-native-reanimated';
 
 import { QRScannerScreenProps } from '../../navigation/CheckInStack';
+import { navigate } from '../../navigation/navigationRef';
 import { qrCheckIn, getEventById, updateEventCoordinates } from '../../services/api';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
@@ -131,6 +132,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
   const isFocused = useIsFocused();
   const dispatch = useAppDispatch();
   const currentUser = useAppSelector((state) => state.auth.user);
+  const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
 
   // Nhận tham số Deep Link khi mở từ Camera ngoài (iOS / Android / Zalo)
   const { eventId: deepEventId, token: deepToken, autoCheckIn } = route?.params || {};
@@ -144,7 +146,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       if (parent && parent.canGoBack()) {
         parent.goBack();
       } else {
-        (navigation as any).navigate('Home');
+        navigate('Home');
       }
     }
   };
@@ -465,6 +467,40 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
         // Fallback nếu không tải được chi tiết
       }
 
+      // Bước 1.5: Kiểm tra trạng thái đăng ký của sinh viên (Chỉ người ĐÃ ĐĂNG KÝ mới được check-in)
+      let userRegs = myRegistrations;
+      if (currentUser?._id && userRegs.length === 0) {
+        try {
+          const fetched = await dispatch(fetchMyRegistrations(currentUser._id)).unwrap();
+          if (Array.isArray(fetched)) userRegs = fetched;
+        } catch (e) {}
+      }
+
+      const existingReg = userRegs.find(
+        (r) => r.eventId === eventId || (r as any).eventId === (eventData?._id || eventId)
+      );
+
+      if (existingReg) {
+        if (existingReg.status === 'waitlist') {
+          Vibration.vibrate([100, 80, 100]);
+          navigation.navigate('CheckInFailed', {
+            reason: 'Bạn đang ở trong Danh sách chờ (Waitlist). Chỉ sinh viên trong danh sách chính thức mới được phép điểm danh.',
+            data: eventId,
+            isLocationError: false,
+          });
+          return;
+        }
+        if (existingReg.status === 'cancelled') {
+          Vibration.vibrate([100, 80, 100]);
+          navigation.navigate('CheckInFailed', {
+            reason: 'Bạn đã hủy đăng ký sự kiện này. Không thể điểm danh.',
+            data: eventId,
+            isLocationError: false,
+          });
+          return;
+        }
+      }
+
       // Bước 2: Kiểm tra Anti-Fake qua toạ độ GPS nếu sự kiện có toạ độ
       let verifiedLocation: { latitude: number; longitude: number; accuracy?: number; isMockLocation?: boolean } | undefined;
       let calculatedDistance: number | undefined;
@@ -608,10 +644,18 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
         error?.message ||
         'Không thể kết nối đến máy chủ backend. Vui lòng kiểm tra mạng.';
 
+      const isNotRegistered =
+        error?.response?.data?.notRegistered ||
+        errMsg.toLowerCase().includes('chưa đăng ký') ||
+        errMsg.toLowerCase().includes('waitlist') ||
+        errMsg.toLowerCase().includes('danh sách chờ');
+
       const isLocErr =
-        error?.response?.status === 403 ||
-        errMsg.toLowerCase().includes('vị trí') ||
-        errMsg.toLowerCase().includes('bán kính');
+        !isNotRegistered &&
+        (errMsg.toLowerCase().includes('vị trí') ||
+          errMsg.toLowerCase().includes('bán kính') ||
+          errMsg.toLowerCase().includes('gps') ||
+          errMsg.toLowerCase().includes('khoảng cách'));
 
       navigation.navigate('CheckInFailed', {
         reason: errMsg,

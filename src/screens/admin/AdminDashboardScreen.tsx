@@ -15,7 +15,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
-import { logout } from '../../features/auth/authSlice';
+import { logout, switchTestAccount } from '../../features/auth/authSlice';
 import { getEvents, getAllRegistrations } from '../../services/api';
 import { Event, Registration } from '../../types';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
@@ -65,6 +65,13 @@ export default function AdminDashboardScreen() {
     ]);
   };
 
+  const switchToStudent = async () => {
+    const result = await dispatch(switchTestAccount('student'));
+    if (switchTestAccount.rejected.match(result)) {
+      Alert.alert('Không thể chuyển tài khoản', result.payload as string);
+    }
+  };
+
   // Tính toán số liệu thống kê
   const totalEvents = events.length;
   const eventsWithGPS = events.filter((e) => e.coordinates?.latitude && e.coordinates?.longitude).length;
@@ -109,6 +116,15 @@ export default function AdminDashboardScreen() {
             <Text style={[styles.logoutText, { color: theme.danger }]}>Thoát</Text>
           </TouchableOpacity>
         </View>
+
+        <TouchableOpacity
+          style={[styles.refreshBtn, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB', borderColor: '#FCD34D' }]}
+          onPress={() => void switchToStudent()}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="school-outline" size={18} color="#B45309" />
+          <Text style={[styles.refreshBtnText, { color: '#B45309' }]}>Chuyển nhanh sang Sinh viên (demo)</Text>
+        </TouchableOpacity>
 
         {/* Title banner */}
         <View style={[styles.banner, { backgroundColor: isDark ? theme.surfaceSecondary : '#1E293B' }]}>
@@ -234,7 +250,12 @@ export default function AdminDashboardScreen() {
           {/* 4. Xem giao diện sinh viên */}
           <TouchableOpacity
             style={[styles.actionCard, { backgroundColor: theme.surface, borderColor: theme.border }]}
-            onPress={() => navigation.navigate('StudentPreview', { screen: 'Home' } as any)}
+            onPress={() =>
+              navigation.navigate('StudentPreview', {
+                screen: 'MainTabs',
+                params: { screen: 'Home' },
+              } as any)
+            }
             activeOpacity={0.85}
           >
             <View style={[styles.actionIconBox, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB' }]}>

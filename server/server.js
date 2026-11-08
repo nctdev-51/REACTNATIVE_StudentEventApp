@@ -502,38 +502,44 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
   const now = new Date().toISOString();
 
   if (!registration) {
-    const newRegId = generateId();
-    registration = {
-      id: newRegId,
-      _id: newRegId,
-      eventId: event.id,
-      userId: user.id,
-      participantRole: "attendee",
-      status: "checked_in",
-      checkInMethod: finalMethod,
-      qrCode: `EVENTMATE:${newRegId}`,
-      registeredAt: now,
-      checkInTime: now,
-      checkOutTime: null,
-      checkInLocation: userLocation || null,
-    };
-    router.db.get("registrations").push(registration).write();
-  } else {
-    if (registration.status === "checked_in") {
-      return res.status(200).json({
-        success: true,
-        message: "Sinh viên đã điểm danh sự kiện này trước đó",
-        alreadyCheckedIn: true,
-        data: { registration, event, user },
-      });
-    }
-    router.db
-      .get("registrations")
-      .find({ id: registration.id })
-      .assign({ status: "checked_in", checkInMethod: finalMethod, checkInTime: now, checkInLocation: userLocation || null })
-      .write();
-    registration = router.db.get("registrations").find({ id: registration.id }).value();
+    return res.status(403).json({
+      success: false,
+      notRegistered: true,
+      message: "Bạn chưa đăng ký tham gia sự kiện này! Vui lòng đăng ký trước khi điểm danh.",
+    });
   }
+
+  if (registration.status === "waitlist") {
+    return res.status(403).json({
+      success: false,
+      isWaitlist: true,
+      message: "Bạn đang ở trong Danh sách chờ (Waitlist). Chỉ sinh viên trong danh sách chính thức mới được phép điểm danh.",
+    });
+  }
+
+  if (registration.status === "cancelled") {
+    return res.status(403).json({
+      success: false,
+      isCancelled: true,
+      message: "Bạn đã hủy đăng ký sự kiện này. Không thể điểm danh.",
+    });
+  }
+
+  if (registration.status === "checked_in") {
+    return res.status(200).json({
+      success: true,
+      message: "Sinh viên đã điểm danh sự kiện này trước đó",
+      alreadyCheckedIn: true,
+      data: { registration, event, user },
+    });
+  }
+
+  router.db
+    .get("registrations")
+    .find({ id: registration.id })
+    .assign({ status: "checked_in", checkInMethod: finalMethod, checkInTime: now, checkInLocation: userLocation || null })
+    .write();
+  registration = router.db.get("registrations").find({ id: registration.id }).value();
 
   // Cộng điểm rèn luyện
   const pointsToAdd = Number(event.trainingPoints) || 0;
@@ -1027,6 +1033,303 @@ server.post("/api/admin/events/:id/import-attendees", (req, res) => {
     success: true,
     message: `Đã import thành công ${imported} sinh viên vào sự kiện.`,
     importedCount: imported,
+  });
+});
+
+// POST /api/admin/events/:id/attendees (Thêm sinh viên tham gia đơn lẻ)
+server.post(["/api/admin/events/:id/attendees", "/admin/events/:id/attendees"], (req, res) => {
+  const { id } = req.params;
+  const { studentIdOrEmail, fullName, note } = req.body;
+
+  if (!studentIdOrEmail || !String(studentIdOrEmail).trim()) {
+    return res.status(400).json({ success: false, message: "Vui lòng nhập MSSV hoặc Email của sinh viên." });
+  }
+
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+  if (!event) {
+    return res.status(404).json({ success: false, message: "Không tìm thấy sự kiện." });
+  }
+
+  const cleanQuery = String(studentIdOrEmail).trim().toLowerCase();
+  let user = router.db.get("users").find((u) =>
+    (u.studentId && u.studentId.toLowerCase() === cleanQuery) ||
+    (u.email && u.email.toLowerCase() === cleanQuery)
+  ).value();
+
+  const now = new Date().toISOString();
+
+  if (!user) {
+    const newUserId = generateId();
+    const isEmail = cleanQuery.includes("@");
+    const generatedStudentId = isEmail ? cleanQuery.split("@")[0].toUpperCase() : cleanQuery.toUpperCase();
+    const generatedEmail = isEmail ? cleanQuery : `${cleanQuery}@iuh.edu.vn`;
+
+    user = {
+      id: newUserId,
+      _id: newUserId,
+      studentId: generatedStudentId,
+      name: fullName || `Sinh viên ${generatedStudentId}`,
+      fullName: fullName || `Sinh viên ${generatedStudentId}`,
+      email: generatedEmail,
+      password: "changeme",
+      role: "student",
+      point: 100,
+      faculty: event.faculty || "Khoa Công nghệ thông tin",
+      status: "active",
+      isActive: true,
+      createdAt: now,
+    };
+    router.db.get("users").push(user).write();
+  }
+
+  const existingReg = router.db.get("registrations").find((r) =>
+    (r.eventId === id || r.eventId === event._id) &&
+    (r.userId === user.id || r.userId === user._id)
+  ).value();
+
+  if (existingReg && existingReg.status !== "cancelled") {
+    return res.status(400).json({
+      success: false,
+      message: `Sinh viên ${user.fullName || user.name} (${user.studentId}) đã có trong danh sách (trạng thái: ${existingReg.status}).`,
+    });
+  }
+
+  // Quota check
+  const activeRegs = router.db.get("registrations").filter((r) =>
+    (r.eventId === id || r.eventId === event._id) &&
+    r.status !== "cancelled" &&
+    r.status !== "waitlist"
+  ).value() || [];
+
+  const maxSlots = Number(event.maxSlots) || 100;
+  let targetStatus = "registered";
+  let waitlistPos = null;
+
+  if (activeRegs.length >= maxSlots) {
+    // Nếu hết chỗ chính thức -> vào waitlist
+    const waitlistRegs = router.db.get("registrations").filter((r) =>
+      (r.eventId === id || r.eventId === event._id) && r.status === "waitlist"
+    ).value() || [];
+    targetStatus = "waitlist";
+    waitlistPos = waitlistRegs.length + 1;
+  }
+
+  let finalReg;
+  if (existingReg && existingReg.status === "cancelled") {
+    router.db.get("registrations").find({ id: existingReg.id }).assign({
+      status: targetStatus,
+      waitlistPosition: waitlistPos,
+      registeredAt: now,
+      note: note || "Admin thêm lại vào danh sách",
+    }).write();
+    finalReg = router.db.get("registrations").find({ id: existingReg.id }).value();
+  } else {
+    const newRegId = generateId();
+    finalReg = {
+      id: newRegId,
+      _id: newRegId,
+      eventId: id,
+      userId: user.id,
+      participantRole: "attendee",
+      status: targetStatus,
+      waitlistPosition: waitlistPos,
+      qrCode: `EVENTMATE:${newRegId}`,
+      registeredAt: now,
+      note: note || "Admin thêm trực tiếp vào danh sách",
+    };
+    router.db.get("registrations").push(finalReg).write();
+  }
+
+  recordAuditLog("ADMIN", "Ban Quản Trị", "ADD_ATTENDEE", "REGISTRATION", finalReg.id, `Thêm ${user.studentId} vào sự kiện ${event.title} (${targetStatus})`);
+
+  res.status(201).json({
+    success: true,
+    message: targetStatus === "registered"
+      ? `Đã thêm thành công sinh viên ${user.fullName || user.name} (${user.studentId}) vào danh sách chính thức!`
+      : `Đã thêm sinh viên ${user.fullName || user.name} vào Danh sách chờ (vị trí #${waitlistPos}) do sự kiện đã đủ quota.`,
+    data: {
+      registration: finalReg,
+      user,
+      event,
+    },
+  });
+});
+
+// DELETE /api/admin/registrations/:id (Xoá / Hủy người tham gia sự kiện và tự động đôn Waitlist)
+server.delete(["/api/admin/registrations/:id", "/admin/registrations/:id"], (req, res) => {
+  const { id } = req.params;
+  const reg = router.db.get("registrations").find((r) => r.id === id || r._id === id).value();
+
+  if (!reg) {
+    return res.status(404).json({ success: false, message: "Không tìm thấy thông tin đăng ký." });
+  }
+
+  const now = new Date().toISOString();
+  const wasOfficial = reg.status === "registered" || reg.status === "checked_in";
+
+  // Cập nhật trạng thái thành cancelled
+  router.db.get("registrations").find({ id: reg.id }).assign({
+    status: "cancelled",
+    cancelledAt: now,
+    cancelledBy: "ADMIN",
+  }).write();
+
+  let promotedStudent = null;
+
+  // Nếu người bị xoá là chính thức -> Tự động đôn người đầu tiên trong Waitlist lên
+  if (wasOfficial) {
+    const nextInWaitlist = router.db.get("registrations")
+      .filter((r) => r.eventId === reg.eventId && r.status === "waitlist")
+      .sortBy("waitlistPosition")
+      .value()[0];
+
+    if (nextInWaitlist) {
+      router.db.get("registrations").find({ id: nextInWaitlist.id }).assign({
+        status: "registered",
+        waitlistPosition: null,
+        promotedAt: now,
+      }).write();
+
+      promotedStudent = router.db.get("registrations").find({ id: nextInWaitlist.id }).value();
+
+      // Gửi thông báo đến sinh viên được đôn lên
+      const notif = {
+        id: generateId(),
+        _id: generateId(),
+        userId: nextInWaitlist.userId,
+        eventId: reg.eventId,
+        title: "🎉 Bạn đã được đôn lên Danh sách chính thức!",
+        body: "Một chỗ trống vừa xuất hiện tại sự kiện bạn đang chờ. Bạn đã chính thức có vé tham gia và có thể check-in khi sự kiện diễn ra!",
+        isRead: false,
+        createdAt: now,
+      };
+      router.db.get("notifications").push(notif).write();
+    }
+  }
+
+  recordAuditLog("ADMIN", "Ban Quản Trị", "REMOVE_ATTENDEE", "REGISTRATION", id, `Xoá sinh viên khỏi sự kiện ${reg.eventId}. Đôn waitlist: ${promotedStudent ? promotedStudent.userId : 'Không có'}`);
+
+  res.status(200).json({
+    success: true,
+    message: promotedStudent
+      ? "Đã xoá sinh viên khỏi sự kiện! Hệ thống đã tự động đôn 01 sinh viên từ Danh sách chờ lên chính thức."
+      : "Đã xoá sinh viên khỏi sự kiện thành công!",
+    data: {
+      cancelledRegistrationId: id,
+      promotedStudent,
+    },
+  });
+});
+
+// PATCH /api/admin/events/:id/quota (Cập nhật số lượng tham gia Quota & Waitlist)
+server.patch(["/api/admin/events/:id/quota", "/admin/events/:id/quota"], (req, res) => {
+  const { id } = req.params;
+  const { maxSlots, waitlistSlots } = req.body;
+
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+  if (!event) {
+    return res.status(404).json({ success: false, message: "Không tìm thấy sự kiện." });
+  }
+
+  const newMax = maxSlots !== undefined ? Math.max(1, Number(maxSlots)) : (event.maxSlots || 100);
+  const newWaitlist = waitlistSlots !== undefined ? Math.max(0, Number(waitlistSlots)) : (event.waitlistSlots || 20);
+
+  router.db.get("events").find({ id: event.id }).assign({
+    maxSlots: newMax,
+    waitlistSlots: newWaitlist,
+    updatedAt: new Date().toISOString(),
+  }).write();
+
+  // Nếu tăng quota, kiểm tra xem có thể đôn sinh viên từ waitlist lên không
+  const activeCount = router.db.get("registrations").filter((r) =>
+    (r.eventId === event.id || r.eventId === event._id) &&
+    r.status !== "cancelled" &&
+    r.status !== "waitlist"
+  ).value().length;
+
+  let promotedCount = 0;
+  const availableSlots = newMax - activeCount;
+
+  if (availableSlots > 0) {
+    const waitlisted = router.db.get("registrations")
+      .filter((r) => (r.eventId === event.id || r.eventId === event._id) && r.status === "waitlist")
+      .sortBy("waitlistPosition")
+      .take(availableSlots)
+      .value() || [];
+
+    const now = new Date().toISOString();
+    waitlisted.forEach((w) => {
+      router.db.get("registrations").find({ id: w.id }).assign({
+        status: "registered",
+        waitlistPosition: null,
+        promotedAt: now,
+      }).write();
+      promotedCount++;
+
+      router.db.get("notifications").push({
+        id: generateId(),
+        _id: generateId(),
+        userId: w.userId,
+        eventId: event.id,
+        title: "🎉 Quota sự kiện mở rộng - Bạn đã có vé chính thức!",
+        body: `Ban Tổ chức vừa tăng số lượng chỗ cho sự kiện "${event.title}". Bạn đã được chuyển từ Waitlist sang danh sách chính thức!`,
+        isRead: false,
+        createdAt: now,
+      }).write();
+    });
+  }
+
+  const updatedEvent = router.db.get("events").find({ id: event.id }).value();
+  recordAuditLog("ADMIN", "Ban Quản Trị", "UPDATE_QUOTA", "EVENT", id, `Cập nhật quota: ${newMax} slots (Waitlist: ${newWaitlist}). Đôn ${promotedCount} sinh viên.`);
+
+  res.status(200).json({
+    success: true,
+    message: promotedCount > 0
+      ? `Đã cập nhật Quota thành ${newMax} chỗ. Đã tự động đôn ${promotedCount} sinh viên từ Danh sách chờ lên chính thức!`
+      : `Đã cập nhật Quota: ${newMax} chỗ chính thức, ${newWaitlist} chỗ chờ.`,
+    data: updatedEvent,
+    promotedCount,
+  });
+});
+
+// POST /api/admin/registrations/:id/quick-checkin (1-Tap Check-In bởi Admin)
+server.post(["/api/admin/registrations/:id/quick-checkin", "/admin/registrations/:id/quick-checkin"], (req, res) => {
+  const { id } = req.params;
+  const reg = router.db.get("registrations").find((r) => r.id === id || r._id === id).value();
+
+  if (!reg) {
+    return res.status(404).json({ success: false, message: "Không tìm thấy thông tin đăng ký." });
+  }
+
+  if (reg.status === "checked_in") {
+    return res.status(200).json({ success: true, message: "Sinh viên này đã được điểm danh trước đó rồi." });
+  }
+
+  const now = new Date().toISOString();
+  router.db.get("registrations").find({ id: reg.id }).assign({
+    status: "checked_in",
+    checkInMethod: "admin_manual",
+    checkInTime: now,
+  }).write();
+
+  // Cộng điểm rèn luyện
+  const event = router.db.get("events").find((e) => e.id === reg.eventId || e._id === reg.eventId).value();
+  const user = router.db.get("users").find((u) => u.id === reg.userId || u._id === reg.userId).value();
+
+  if (event && user && event.trainingPoints) {
+    router.db.get("users").find({ id: user.id }).assign({
+      point: (Number(user.point) || 0) + Number(event.trainingPoints),
+    }).write();
+  }
+
+  const updatedReg = router.db.get("registrations").find({ id: reg.id }).value();
+  broadcastSSE("checkin", { registration: updatedReg, event, user, timestamp: now });
+  recordAuditLog("ADMIN", "Ban Quản Trị", "QUICK_CHECK_IN", "REGISTRATION", id, `Admin điểm danh nhanh cho ${user ? user.studentId : reg.userId}`);
+
+  res.status(200).json({
+    success: true,
+    message: `Điểm danh thành công cho sinh viên ${user?.fullName || user?.name || ''}! (+${event?.trainingPoints || 5} điểm rèn luyện)`,
+    data: updatedReg,
   });
 });
 
