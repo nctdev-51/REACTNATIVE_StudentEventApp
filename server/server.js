@@ -26,6 +26,39 @@ const generateId = () => {
   return (timestamp + random).substring(0, 24);
 };
 
+// ─── Real-time SSE Manager (Web Admin Dashboard) ──────────────────────────────
+const sseClients = new Set();
+const broadcastSSE = (eventType, payload) => {
+  const message = `event: ${eventType}\ndata: ${JSON.stringify(payload)}\n\n`;
+  for (const client of sseClients) {
+    try {
+      client.write(message);
+    } catch (e) {
+      sseClients.delete(client);
+    }
+  }
+};
+
+// Helper: Record Admin Audit Log
+const recordAuditLog = (adminId, adminName, action, targetType, targetId, details) => {
+  try {
+    const logEntry = {
+      id: generateId(),
+      _id: generateId(),
+      adminId: adminId || "66f1a1030000000000000003",
+      adminName: adminName || "Ban Quản Trị Đoàn Hội",
+      action,
+      targetType,
+      targetId,
+      details: typeof details === "object" ? JSON.stringify(details) : details,
+      timestamp: new Date().toISOString(),
+    };
+    router.db.get("auditLogs").push(logEntry).write();
+  } catch (err) {
+    console.error("Audit log write error:", err);
+  }
+};
+
 // Helper: Get user from Authorization header
 const getAuthUser = (req) => {
   const authHeader = req.headers.authorization;
@@ -265,10 +298,86 @@ const calculateDistanceMeters = (lat1, lon1, lat2, lon2) => {
   return Math.round(R * c);
 };
 
-// ─── Custom Check-In Endpoint ─────────────────────────────────────────────────
+// ─── Web Admin Portal & Real-time SSE ─────────────────────────────────────────
+server.get(["/admin", "/dashboard"], (req, res) => {
+  const htmlPath = path.join(__dirname, "adminPortal.html");
+  if (fs.existsSync(htmlPath)) {
+    return res.sendFile(htmlPath);
+  }
+  res.send("Admin Portal HTML not found");
+});
+
+// Trình chiếu mã QR cho Máy Chiếu Hội Trường & Laptop (Demo Quét QR)
+server.get(["/qr", "/projector"], (req, res) => {
+  const htmlPath = path.join(__dirname, "qrProjector.html");
+  if (fs.existsSync(htmlPath)) {
+    return res.sendFile(htmlPath);
+  }
+  res.send("QR Projector HTML not found");
+});
+
+server.get("/api/admin/stream", (req, res) => {
+  res.setHeader("Content-Type", "text/event-stream");
+  res.setHeader("Cache-Control", "no-cache");
+  res.setHeader("Connection", "keep-alive");
+  if (res.flushHeaders) res.flushHeaders();
+
+  sseClients.add(res);
+  res.write(`data: ${JSON.stringify({ type: "CONNECTED", time: new Date() })}\n\n`);
+
+  req.on("close", () => {
+    sseClients.delete(res);
+  });
+});
+
+// ─── Dynamic QR Token Generation (Anti-Replay / Anti-Screensharing) ──────────
+// GET /api/events/:id/qr-token & /events/:id/qr-token
+server.get(["/api/events/:id/qr-token", "/events/:id/qr-token"], (req, res) => {
+  const { id } = req.params;
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+  if (!event) {
+    return res.status(404).json({ success: false, message: "Sự kiện không tồn tại" });
+  }
+
+  const TTL_SECONDS = 45; // Đổi mới mỗi 45 giây chống chụp màn hình
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + TTL_SECONDS;
+
+  // Tạo chữ ký JWT với thời hạn 45 giây
+  const token = jwt.sign(
+    {
+      eventId: event.id || event._id,
+      title: event.title,
+      type: "dynamic_qr",
+      iat: now,
+    },
+    JWT_SECRET,
+    { expiresIn: `${TTL_SECONDS}s` }
+  );
+
+  const eventIdentifier = event.id || event._id;
+  const schemeUrl = `studentevent://checkin?eventId=${eventIdentifier}&token=${token}&exp=${expiresAt}`;
+  const universalUrl = `https://studentevent.iuh.edu.vn/checkin?eventId=${eventIdentifier}&token=${token}&exp=${expiresAt}`;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      eventId: eventIdentifier,
+      eventTitle: event.title,
+      token,
+      expiresAt,
+      ttlSeconds: TTL_SECONDS,
+      schemeUrl,
+      universalUrl,
+      qrPayload: schemeUrl,
+    },
+  });
+});
+
+// ─── Custom Check-In Endpoint (GPS Anti-Fraud & Passcode Fallback) ────────────
 // POST /api/registrations/check-in & /registrations/check-in
 server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, res) => {
-  const { eventId, userId, studentId, userLocation } = req.body;
+  const { eventId, userId, studentId, userLocation, method, passcode, token } = req.body;
 
   if (!eventId) {
     return res.status(400).json({
@@ -289,30 +398,91 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
     });
   }
 
-  // Anti-Fake Check-in: Kiểm tra toạ độ GPS nếu sự kiện có toạ độ
-  if (event.coordinates && event.coordinates.latitude && event.coordinates.longitude) {
-    if (!userLocation || userLocation.latitude === undefined || userLocation.longitude === undefined) {
+  let finalMethod = method || "qr_scan";
+
+  // Bảo mật 1: Xác thực Dynamic QR Token (Chữ ký JWT có hạn 45s)
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.eventId !== event.id && decoded.eventId !== event._id) {
+        return res.status(400).json({
+          success: false,
+          message: "Mã QR bảo mật không khớp với sự kiện này!",
+        });
+      }
+      finalMethod = "dynamic_qr";
+    } catch (tokenErr) {
+      if (tokenErr.name === "TokenExpiredError") {
+        return res.status(403).json({
+          success: false,
+          isExpired: true,
+          message: "Mã QR bảo mật đã hết hạn! Vui lòng quét mã QR mới đang chiếu trên màn hình (mã đổi mới mỗi 45s để chống chụp ảnh gửi người khác).",
+        });
+      }
       return res.status(400).json({
         success: false,
-        message: "Sự kiện này yêu cầu xác thực vị trí (GPS) để chống check-in giả mạo. Vui lòng cấp quyền vị trí trên thiết bị.",
+        message: "Chữ ký mã QR không hợp lệ hoặc đã bị can thiệp trái phép!",
       });
     }
+  }
 
-    const distance = calculateDistanceMeters(
-      userLocation.latitude,
-      userLocation.longitude,
-      event.coordinates.latitude,
-      event.coordinates.longitude
-    );
-
-    const MAX_ALLOWED_DISTANCE_METERS = event.coordinates.radiusMeters || 500;
-    if (distance > MAX_ALLOWED_DISTANCE_METERS) {
-      const distText = distance < 1000 ? distance + "m" : (distance / 1000).toFixed(1) + "km";
-      return res.status(403).json({
+  // Fallback 1: Check-in bằng Passcode dự phòng do BTC công bố tại hội trường
+  if (method === "passcode" || passcode) {
+    const expectedPasscode = event.checkInPasscode || "889900";
+    if (String(passcode).trim() !== String(expectedPasscode).trim()) {
+      return res.status(400).json({
         success: false,
-        message: "Vị trí không hợp lệ! Bạn đang cách địa điểm sự kiện " + distText + " (vượt quá bán kính cho phép " + MAX_ALLOWED_DISTANCE_METERS + "m). Vui lòng có mặt tại địa điểm để điểm danh.",
-        distanceMeters: distance,
+        message: "Mã PIN dự phòng (Passcode) không chính xác. Vui lòng kiểm tra lại trên màn chiếu hội trường.",
       });
+    }
+    finalMethod = "passcode";
+  } else {
+    // Luồng GPS Anti-Fraud
+    if (event.coordinates && event.coordinates.latitude && event.coordinates.longitude) {
+      if (!userLocation || userLocation.latitude === undefined || userLocation.longitude === undefined) {
+        return res.status(400).json({
+          success: false,
+          message: "Sự kiện này yêu cầu xác thực vị trí (GPS) để chống check-in giả mạo. Vui lòng cấp quyền vị trí trên thiết bị hoặc dùng mã Passcode dự phòng.",
+        });
+      }
+
+      // 1. Kiểm tra Mock Location (Fake GPS)
+      if (userLocation.isMockLocation === true || userLocation.mocked === true) {
+        return res.status(403).json({
+          success: false,
+          message: "Gian lận vị trí (Mock GPS) bị phát hiện! Hệ thống từ chối điểm danh tự động.",
+          isLocationError: true,
+          antiFraudTriggered: true,
+        });
+      }
+
+      // 2. Kiểm tra độ chính xác GPS (Accuracy)
+      if (typeof userLocation.accuracy === "number" && userLocation.accuracy > 150) {
+        return res.status(403).json({
+          success: false,
+          message: `Độ chính xác GPS không đủ tin cậy (sai số ${Math.round(userLocation.accuracy)}m > 150m). Vui lòng di chuyển ra nơi thoáng hoặc sử dụng mã Passcode dự phòng.`,
+          isLocationError: true,
+        });
+      }
+
+      // 3. Tính khoảng cách Haversine
+      const distance = calculateDistanceMeters(
+        userLocation.latitude,
+        userLocation.longitude,
+        event.coordinates.latitude,
+        event.coordinates.longitude
+      );
+
+      const MAX_ALLOWED_DISTANCE_METERS = event.coordinates.radiusMeters || 500;
+      if (distance > MAX_ALLOWED_DISTANCE_METERS) {
+        const distText = distance < 1000 ? distance + "m" : (distance / 1000).toFixed(1) + "km";
+        return res.status(403).json({
+          success: false,
+          message: "Vị trí không hợp lệ! Bạn đang cách địa điểm sự kiện " + distText + " (vượt quá bán kính cho phép " + MAX_ALLOWED_DISTANCE_METERS + "m). Vui lòng có mặt tại địa điểm hoặc liên hệ BTC.",
+          distanceMeters: distance,
+          isLocationError: true,
+        });
+      }
     }
   }
 
@@ -348,6 +518,7 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
       userId: user.id,
       participantRole: "attendee",
       status: "checked_in",
+      checkInMethod: finalMethod,
       qrCode: `EVENTMATE:${newRegId}`,
       registeredAt: now,
       checkInTime: now,
@@ -367,7 +538,7 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
     router.db
       .get("registrations")
       .find({ id: registration.id })
-      .assign({ status: "checked_in", checkInTime: now, checkInLocation: userLocation || null })
+      .assign({ status: "checked_in", checkInMethod: finalMethod, checkInTime: now, checkInLocation: userLocation || null })
       .write();
     registration = router.db.get("registrations").find({ id: registration.id }).value();
   }
@@ -384,6 +555,23 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
     user = router.db.get("users").find({ id: user.id }).value();
   }
 
+  // Phát tín hiệu Real-time cho Web Admin Dashboard
+  broadcastSSE("checkin", {
+    registration,
+    event,
+    user,
+    timestamp: now,
+  });
+
+  recordAuditLog(
+    "SYSTEM",
+    "Check-in Engine",
+    "CHECK_IN_SUCCESS",
+    "REGISTRATION",
+    registration.id,
+    `Sinh viên ${user.name || user.studentId} check-in thành công qua ${finalMethod}`
+  );
+
   res.status(200).json({
     success: true,
     message: "Điểm danh thành công!",
@@ -392,6 +580,534 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
       event,
       user,
     },
+  });
+});
+
+// ─── Check-In Appeal Endpoints (Fallback & Dispute Flow) ──────────────────────
+// POST /api/registrations/appeal
+server.post(["/api/registrations/appeal", "/registrations/appeal"], (req, res) => {
+  const { eventId, userId, studentId, studentName, reason, proofImageUrl } = req.body;
+
+  if (!eventId || !reason) {
+    return res.status(400).json({
+      success: false,
+      message: "Vui lòng cung cấp mã sự kiện và lý do khiếu nại",
+    });
+  }
+
+  const event = router.db.get("events").find((e) => e.id === eventId || e._id === eventId).value();
+  const user = userId ? router.db.get("users").find((u) => u.id === userId || u._id === userId).value() : null;
+
+  const newAppeal = {
+    id: generateId(),
+    _id: generateId(),
+    eventId,
+    eventTitle: event?.title || "Sự kiện",
+    userId: userId || user?.id || "anonymous",
+    studentId: studentId || user?.studentId || "SV",
+    studentName: studentName || user?.name || "Sinh viên",
+    reason: reason.trim(),
+    proofImageUrl: proofImageUrl || null,
+    status: "pending",
+    createdAt: new Date().toISOString(),
+  };
+
+  if (!router.db.has("appeals").value()) {
+    router.db.set("appeals", []).write();
+  }
+  router.db.get("appeals").push(newAppeal).write();
+
+  broadcastSSE("appeal", { appeal: newAppeal, timestamp: new Date() });
+  recordAuditLog(user?.id, studentName || "Sinh viên", "CREATE_APPEAL", "APPEAL", newAppeal.id, reason);
+
+  res.status(201).json({
+    success: true,
+    message: "Gửi khiếu nại thành công! Ban Tổ chức sẽ xem xét và phản hồi sớm.",
+    data: newAppeal,
+  });
+});
+
+// GET /api/admin/appeals
+server.get("/api/admin/appeals", (req, res) => {
+  const appeals = router.db.get("appeals").value() || [];
+  res.status(200).json({ success: true, data: appeals });
+});
+
+// POST /api/admin/appeals/:id/review
+server.post("/api/admin/appeals/:id/review", (req, res) => {
+  const { id } = req.params;
+  const { action, reviewerNote } = req.body; // action: 'approve' | 'reject'
+
+  const appeal = router.db.get("appeals").find((a) => a.id === id || a._id === id).value();
+  if (!appeal) {
+    return res.status(404).json({ success: false, message: "Không tìm thấy đơn khiếu nại" });
+  }
+
+  const now = new Date().toISOString();
+  const newStatus = action === "approve" ? "approved" : "rejected";
+
+  router.db.get("appeals").find({ id: appeal.id }).assign({
+    status: newStatus,
+    reviewerNote: reviewerNote || null,
+    reviewedAt: now,
+  }).write();
+
+  if (action === "approve") {
+    // Duyệt khiếu nại: Đổi registration thành checked_in và cộng điểm rèn luyện
+    let reg = router.db.get("registrations").find((r) =>
+      r.eventId === appeal.eventId && (r.userId === appeal.userId || r.studentId === appeal.studentId)
+    ).value();
+
+    if (!reg) {
+      const regId = generateId();
+      reg = {
+        id: regId,
+        _id: regId,
+        eventId: appeal.eventId,
+        userId: appeal.userId,
+        participantRole: "attendee",
+        status: "checked_in",
+        checkInMethod: "appeal",
+        registeredAt: now,
+        checkInTime: now,
+      };
+      router.db.get("registrations").push(reg).write();
+    } else {
+      router.db.get("registrations").find({ id: reg.id }).assign({
+        status: "checked_in",
+        checkInMethod: "appeal",
+        checkInTime: now,
+      }).write();
+    }
+
+    // Cộng điểm
+    const event = router.db.get("events").find((e) => e.id === appeal.eventId || e._id === appeal.eventId).value();
+    const user = router.db.get("users").find((u) => u.id === appeal.userId || u._id === appeal.userId).value();
+    if (event && user && event.trainingPoints) {
+      router.db.get("users").find({ id: user.id }).assign({
+        point: (Number(user.point) || 0) + Number(event.trainingPoints),
+      }).write();
+    }
+
+    // Gửi thông báo cho sinh viên
+    const notif = {
+      id: generateId(),
+      _id: generateId(),
+      userId: appeal.userId,
+      title: "✅ Khiếu nại điểm danh đã được phê duyệt!",
+      body: `Đơn khiếu nại điểm danh sự kiện "${appeal.eventTitle}" của bạn đã được Ban Tổ chức chấp thuận. Điểm rèn luyện đã được cộng.`,
+      isRead: false,
+      createdAt: now,
+    };
+    router.db.get("notifications").push(notif).write();
+    broadcastSSE("checkin", { registration: reg, event, user, timestamp: now });
+  }
+
+  recordAuditLog("ADMIN", "Ban Quản Trị", action === "approve" ? "APPROVE_APPEAL" : "REJECT_APPEAL", "APPEAL", id, reviewerNote || "");
+
+  res.status(200).json({
+    success: true,
+    message: action === "approve" ? "Đã duyệt khiếu nại và điểm danh cho sinh viên!" : "Đã từ chối khiếu nại.",
+  });
+});
+
+// ─── Registration Cancellation with Waitlist Promotion ────────────────────────
+// POST /api/registrations/:id/cancel
+server.post(["/api/registrations/:id/cancel", "/registrations/:id/cancel"], (req, res) => {
+  const { id } = req.params;
+  const reg = router.db.get("registrations").find((r) => r.id === id || r._id === id).value();
+
+  if (!reg) {
+    return res.status(404).json({ success: false, message: "Không tìm thấy thông tin đăng ký" });
+  }
+
+  const now = new Date().toISOString();
+  router.db.get("registrations").find({ id: reg.id }).assign({
+    status: "cancelled",
+    cancelledAt: now,
+  }).write();
+
+  // Đôn người đầu tiên trong Waitlist lên CONFIRMED
+  const nextInWaitlist = router.db.get("registrations").find((r) =>
+    r.eventId === reg.eventId && r.status === "waitlist" && r.waitlistPosition === 1
+  ).value();
+
+  if (nextInWaitlist) {
+    router.db.get("registrations").find({ id: nextInWaitlist.id }).assign({
+      status: "registered",
+      waitlistPosition: null,
+      promotedAt: now,
+    }).write();
+
+    // Giảm waitlistPosition của các bạn còn lại
+    const remainingWaitlist = router.db.get("registrations").filter((r) =>
+      r.eventId === reg.eventId && r.status === "waitlist"
+    ).value();
+
+    remainingWaitlist.forEach((w) => {
+      if (w.waitlistPosition && w.waitlistPosition > 1) {
+        router.db.get("registrations").find({ id: w.id }).assign({
+          waitlistPosition: w.waitlistPosition - 1,
+        }).write();
+      }
+    });
+
+    const event = router.db.get("events").find((e) => e.id === reg.eventId || e._id === reg.eventId).value();
+    // Bắn thông báo cho bạn được đôn lên
+    const notif = {
+      id: generateId(),
+      _id: generateId(),
+      userId: nextInWaitlist.userId,
+      title: "🎉 Bạn đã nhận được vé chính thức!",
+      body: `Có một slot trống tại sự kiện "${event?.title || "Sự kiện"}" và bạn đã được tự động đôn lên danh sách tham gia chính thức.`,
+      isRead: false,
+      createdAt: now,
+    };
+    router.db.get("notifications").push(notif).write();
+  }
+
+  recordAuditLog(reg.userId, "Student", "CANCEL_REGISTRATION", "REGISTRATION", reg.id, "Sinh viên chủ động hủy vé");
+
+  res.status(200).json({
+    success: true,
+    message: "Hủy vé thành công. Vị trí trống đã được tự động chuyển cho người tiếp theo trong Waitlist.",
+  });
+});
+
+// ─── Event State Machine Endpoints ───────────────────────────────────────────
+// PUT /api/admin/events/:id/status
+server.put("/api/admin/events/:id/status", (req, res) => {
+  const { id } = req.params;
+  const { status } = req.body;
+
+  const validStatuses = ["draft", "pending_approval", "published", "registration_closed", "ongoing", "completed", "cancelled"];
+  if (!validStatuses.includes(status)) {
+    return res.status(400).json({ success: false, message: `Trạng thái không hợp lệ. Cho phép: ${validStatuses.join(", ")}` });
+  }
+
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+  if (!event) {
+    return res.status(404).json({ success: false, message: "Không tìm thấy sự kiện" });
+  }
+
+  router.db.get("events").find({ id: event.id }).assign({
+    status,
+    updatedAt: new Date().toISOString(),
+  }).write();
+
+  recordAuditLog("ADMIN", "Ban Quản Trị", "EVENT_STATE_CHANGE", "EVENT", event.id, `Chuyển trạng thái từ ${event.status} sang ${status}`);
+  broadcastSSE("event_status_change", { eventId: event.id, status, timestamp: new Date() });
+
+  res.status(200).json({
+    success: true,
+    message: `Đã cập nhật trạng thái sự kiện sang "${status}" thành công`,
+    data: { id: event.id, status },
+  });
+});
+
+// ─── iCalendar (.ICS) Endpoint for Calendar Integration ───────────────────────
+// GET /api/events/:id/calendar.ics
+server.get("/api/events/:id/calendar.ics", (req, res) => {
+  const { id } = req.params;
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+
+  if (!event) {
+    return res.status(404).send("Event not found");
+  }
+
+  const formatIcsDate = (dateStr) => {
+    const d = new Date(dateStr);
+    return isNaN(d.getTime()) ? "20261015T080000Z" : d.toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
+  };
+
+  const startIcs = formatIcsDate(event.time?.start || new Date());
+  const endIcs = formatIcsDate(event.time?.end || new Date(Date.now() + 3 * 3600 * 1000));
+  const nowIcs = formatIcsDate(new Date());
+
+  const icsData = [
+    "BEGIN:VCALENDAR",
+    "VERSION:2.0",
+    "PRODID:-//IUH//StudentEventApp//VI",
+    "CALSCALE:GREGORIAN",
+    "METHOD:PUBLISH",
+    "BEGIN:VEVENT",
+    `UID:${event.id || event._id}@iuh.edu.vn`,
+    `DTSTAMP:${nowIcs}`,
+    `DTSTART:${startIcs}`,
+    `DTEND:${endIcs}`,
+    `SUMMARY:${(event.title || "Sự kiện sinh viên IUH").replace(/\n/g, " ")}`,
+    `DESCRIPTION:${(event.description || "").replace(/\n/g, "\\n")}`,
+    `LOCATION:${(event.location || "Đại học Công nghiệp TP.HCM").replace(/\n/g, " ")}`,
+    "STATUS:CONFIRMED",
+    "END:VEVENT",
+    "END:VCALENDAR",
+  ].join("\r\n");
+
+  res.setHeader("Content-Type", "text/calendar; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="event-${id}.ics"`);
+  res.send(icsData);
+});
+
+// ─── Notification Preferences & Push Dispatcher ──────────────────────────────
+// GET /api/users/:id/preferences
+server.get("/api/users/:id/preferences", (req, res) => {
+  const { id } = req.params;
+  if (!router.db.has("preferences").value()) {
+    router.db.set("preferences", []).write();
+  }
+  let pref = router.db.get("preferences").find((p) => p.userId === id).value();
+  if (!pref) {
+    pref = {
+      userId: id,
+      enablePush: true,
+      enableEmail: true,
+      notifyScheduleChange: true,
+      notifyUrgent: true,
+      notifyReminders: true,
+      quietHoursEnabled: true,
+      quietHoursStart: "22:00",
+      quietHoursEnd: "06:00",
+      reminderMinutesBefore: 60,
+    };
+  }
+  res.status(200).json({ success: true, data: pref });
+});
+
+// PUT /api/users/:id/preferences
+server.put("/api/users/:id/preferences", (req, res) => {
+  const { id } = req.params;
+  if (!router.db.has("preferences").value()) {
+    router.db.set("preferences", []).write();
+  }
+  const existing = router.db.get("preferences").find((p) => p.userId === id).value();
+  const updatedPref = {
+    userId: id,
+    ...req.body,
+    updatedAt: new Date().toISOString(),
+  };
+
+  if (existing) {
+    router.db.get("preferences").find({ userId: id }).assign(updatedPref).write();
+  } else {
+    router.db.get("preferences").push(updatedPref).write();
+  }
+
+  res.status(200).json({ success: true, message: "Cập nhật tùy chọn thông báo thành công", data: updatedPref });
+});
+
+// POST /api/notifications/broadcast
+server.post("/api/notifications/broadcast", (req, res) => {
+  const { eventId, title, body, category, isUrgent } = req.body;
+  if (!eventId || !title || !body) {
+    return res.status(400).json({ success: false, message: "Vui lòng cung cấp eventId, title và body" });
+  }
+
+  const registrations = router.db.get("registrations").filter((r) => r.eventId === eventId && r.status !== "cancelled").value() || [];
+  const now = new Date();
+  let deliveredCount = 0;
+
+  registrations.forEach((reg) => {
+    const pref = router.db.get("preferences").find((p) => p.userId === reg.userId).value() || {};
+
+    // Quiet Hours Filter
+    let skipQuiet = false;
+    if (pref.quietHoursEnabled && !isUrgent) {
+      const currentMin = now.getHours() * 60 + now.getMinutes();
+      const [sh, sm] = (pref.quietHoursStart || "22:00").split(":").map(Number);
+      const [eh, em] = (pref.quietHoursEnd || "06:00").split(":").map(Number);
+      const startMin = sh * 60 + sm;
+      const endMin = eh * 60 + em;
+
+      if (startMin > endMin) {
+        if (currentMin >= startMin || currentMin < endMin) skipQuiet = true;
+      } else {
+        if (currentMin >= startMin && currentMin < endMin) skipQuiet = true;
+      }
+    }
+
+    if (!skipQuiet) {
+      const notif = {
+        id: generateId(),
+        _id: generateId(),
+        userId: reg.userId,
+        eventId,
+        title,
+        body,
+        category: category || "general",
+        isUrgent: !!isUrgent,
+        isRead: false,
+        createdAt: now.toISOString(),
+      };
+      router.db.get("notifications").push(notif).write();
+      deliveredCount++;
+    }
+  });
+
+  recordAuditLog("ADMIN", "Notification Engine", "BROADCAST_NOTIFICATION", "EVENT", eventId, `Gửi thông báo đến ${deliveredCount} sinh viên: ${title}`);
+
+  res.status(200).json({
+    success: true,
+    message: `Đã phát thông báo thành công tới ${deliveredCount} sinh viên (áp dụng bộ lọc Giờ yên lặng)`,
+    deliveredCount,
+  });
+});
+
+// ─── Bulk Export/Import & Certificates & Training Points ───────────────────────
+// GET /api/admin/events/:id/export (CSV UTF-8 BOM)
+server.get("/api/admin/events/:id/export", (req, res) => {
+  const { id } = req.params;
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+  const regs = router.db.get("registrations").filter((r) => r.eventId === id).value() || [];
+  const users = router.db.get("users").value() || [];
+
+  let csv = "\uFEFFMSSV,Họ và tên,Khoa,Trạng thái,Thời gian check-in,Phương thức điểm danh,Ghi chú\n";
+
+  regs.forEach((r) => {
+    const u = users.find((user) => user.id === r.userId || user._id === r.userId) || {};
+    const mssv = u.studentId || "SV";
+    const name = `"${(u.name || u.fullName || "").replace(/"/g, '""')}"`;
+    const faculty = `"${(u.faculty || "").replace(/"/g, '""')}"`;
+    const status = r.status === "checked_in" ? "Đã tham gia" : r.status === "registered" ? "Đã đăng ký (chưa đến)" : r.status;
+    const checkInTime = r.checkInTime ? new Date(r.checkInTime).toLocaleString("vi-VN") : "N/A";
+    const method = r.checkInMethod || "N/A";
+    csv += `${mssv},${name},${faculty},${status},${checkInTime},${method},\n`;
+  });
+
+  res.setHeader("Content-Type", "text/csv; charset=utf-8");
+  res.setHeader("Content-Disposition", `attachment; filename="attendance-event-${id}.csv"`);
+  res.send(csv);
+});
+
+// POST /api/admin/events/:id/import-attendees
+server.post("/api/admin/events/:id/import-attendees", (req, res) => {
+  const { id } = req.params;
+  const { studentIds } = req.body;
+
+  if (!Array.isArray(studentIds) || studentIds.length === 0) {
+    return res.status(400).json({ success: false, message: "Danh sách MSSV không hợp lệ" });
+  }
+
+  let imported = 0;
+  const now = new Date().toISOString();
+
+  studentIds.forEach((sid) => {
+    const studentIdClean = String(sid).trim();
+    if (!studentIdClean) return;
+
+    let user = router.db.get("users").find((u) => u.studentId === studentIdClean).value();
+    if (!user) {
+      const newUserId = generateId();
+      user = {
+        id: newUserId,
+        _id: newUserId,
+        studentId: studentIdClean,
+        name: `Sinh viên ${studentIdClean}`,
+        email: `${studentIdClean.toLowerCase()}@iuh.edu.vn`,
+        password: "changeme",
+        role: "student",
+        point: 0,
+        status: "active",
+        isActive: true,
+        createdAt: now,
+      };
+      router.db.get("users").push(user).write();
+    }
+
+    const existingReg = router.db.get("registrations").find((r) => r.eventId === id && r.userId === user.id).value();
+    if (!existingReg) {
+      const newRegId = generateId();
+      router.db.get("registrations").push({
+        id: newRegId,
+        _id: newRegId,
+        eventId: id,
+        userId: user.id,
+        participantRole: "attendee",
+        status: "registered",
+        registeredAt: now,
+      }).write();
+      imported++;
+    }
+  });
+
+  recordAuditLog("ADMIN", "Ban Quản Trị", "IMPORT_STUDENTS", "EVENT", id, `Import thành công ${imported} sinh viên`);
+
+  res.status(200).json({
+    success: true,
+    message: `Đã import thành công ${imported} sinh viên vào sự kiện.`,
+    importedCount: imported,
+  });
+});
+
+// POST /api/events/:id/certificates (Cấp chứng nhận điện tử)
+server.post("/api/events/:id/certificates", (req, res) => {
+  const { id } = req.params;
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+  const attendees = router.db.get("registrations").filter((r) => r.eventId === id && r.status === "checked_in").value() || [];
+  const users = router.db.get("users").value() || [];
+
+  if (!router.db.has("certificates").value()) {
+    router.db.set("certificates", []).write();
+  }
+
+  let generated = 0;
+  const now = new Date().toISOString();
+
+  attendees.forEach((r, idx) => {
+    const existingCert = router.db.get("certificates").find((c) => c.registrationId === r.id || (c.eventId === id && c.userId === r.userId)).value();
+    if (!existingCert) {
+      const user = users.find((u) => u.id === r.userId || u._id === r.userId) || {};
+      const certCode = `IUH-CERT-2026-${(1000 + idx + 1)}`;
+      const cert = {
+        id: generateId(),
+        _id: generateId(),
+        registrationId: r.id,
+        eventId: id,
+        eventTitle: event?.title || "Sự kiện",
+        userId: r.userId,
+        studentId: user.studentId || "SV",
+        studentName: user.name || user.fullName || "Sinh viên",
+        certificateCode: certCode,
+        issueDate: now,
+        pdfUrl: "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf",
+      };
+      router.db.get("certificates").push(cert).write();
+      generated++;
+    }
+  });
+
+  recordAuditLog("ADMIN", "Certificate Authority", "GENERATE_CERTIFICATES", "EVENT", id, `Phát hành ${generated} chứng nhận điện tử`);
+
+  res.status(200).json({
+    success: true,
+    message: `Đã phát hành ${generated} chứng nhận điện tử có mã số xác thực!`,
+    generatedCount: generated,
+  });
+});
+
+// GET /api/certificates/:code (Xác thực chứng nhận)
+server.get("/api/certificates/:code", (req, res) => {
+  const { code } = req.params;
+  const cert = router.db.get("certificates").find((c) => c.certificateCode === code).value();
+  if (!cert) {
+    return res.status(404).json({ success: false, message: "Mã chứng nhận không tồn tại hoặc không hợp lệ" });
+  }
+  res.status(200).json({ success: true, valid: true, data: cert });
+});
+
+// POST /api/admin/training-points/batch-approve
+server.post("/api/admin/training-points/batch-approve", (req, res) => {
+  if (!router.db.has("trainingPointApprovals").value()) {
+    router.db.set("trainingPointApprovals", []).write();
+  }
+  router.db.get("trainingPointApprovals").filter({ status: "pending" }).each((item) => {
+    router.db.get("trainingPointApprovals").find({ id: item.id }).assign({ status: "approved", approvedAt: new Date().toISOString() }).write();
+  }).write();
+
+  recordAuditLog("ADMIN", "Phòng CTSV", "APPROVE_TRAINING_POINTS", "ALL", "batch", "Duyệt toàn bộ điểm rèn luyện đợt hiện tại");
+
+  res.status(200).json({
+    success: true,
+    message: "Đã 1-Click phê duyệt toàn bộ điểm rèn luyện cho sinh viên tham gia đầy đủ!",
   });
 });
 
@@ -459,6 +1175,36 @@ server.use((req, res, next) => {
       message: "Bạn đã đăng ký hoặc check-in sự kiện này rồi.",
     });
   }
+
+  // Quota & Waitlist Management
+  const event = router.db.get("events").find((e) => e.id === eventId || e._id === eventId).value();
+  if (event) {
+    const confirmedCount = router.db.get("registrations").filter((r) =>
+      (r.eventId === eventId || r.eventId?._id === eventId) &&
+      (r.status === "registered" || r.status === "checked_in")
+    ).value().length;
+
+    const maxSlots = event.maxSlots || 100;
+    const waitlistSlots = event.waitlistSlots || 20;
+
+    if (confirmedCount >= maxSlots) {
+      const currentWaitlist = router.db.get("registrations").filter((r) =>
+        (r.eventId === eventId || r.eventId?._id === eventId) &&
+        r.status === "waitlist"
+      ).value();
+
+      if (currentWaitlist.length < waitlistSlots) {
+        req.body.status = "waitlist";
+        req.body.waitlistPosition = currentWaitlist.length + 1;
+      } else {
+        return res.status(400).json({
+          success: false,
+          message: "Sự kiện đã hết toàn bộ vé chính thức và danh sách chờ (Waitlist đã đầy).",
+        });
+      }
+    }
+  }
+
   next();
 });
 
@@ -547,6 +1293,9 @@ server.listen(PORT, () => {
   console.log(`   - POST            http://localhost:${PORT}/api/auth/register`);
   console.log(`   - GET/PUT         http://localhost:${PORT}/api/auth/me`);
   console.log(`   - POST            http://localhost:${PORT}/api/registrations/check-in`);
+  console.log(`💻 Web Admin Dashboard (Đoàn - Hội):`);
+  console.log(`   - Portal URL:     http://localhost:${PORT}/admin`);
+  console.log(`   - Realtime SSE:   http://localhost:${PORT}/api/admin/stream`);
   console.log(`💡 Tip: Bạn có thể thêm ?envelope=true vào URL để nhận định dạng { success: true, data: [...] }`);
   console.log(`====================================================`);
 });

@@ -701,13 +701,57 @@ export const checkIn = async (
   return unwrapOne<Registration>(res.data);
 };
 
+export interface DynamicQrTokenResponse {
+  eventId: string;
+  eventTitle: string;
+  token: string;
+  expiresAt: number;
+  ttlSeconds: number;
+  schemeUrl: string;
+  universalUrl: string;
+  qrPayload: string;
+}
+
+export const getEventQrToken = async (
+  eventId: string
+): Promise<DynamicQrTokenResponse> => {
+  try {
+    const res = await apiClient.get(`/events/${eventId}/qr-token`);
+    if (res.data?.data) return res.data.data;
+    if (res.data?.token) return res.data;
+  } catch (err) {
+    console.warn('[API] getEventQrToken offline fallback:', err);
+  }
+
+  // Offline fallback token
+  const now = Math.floor(Date.now() / 1000);
+  const ttl = 45;
+  const mockToken = `mock_jwt_${eventId}_${now}`;
+  return {
+    eventId,
+    eventTitle: 'Sự kiện sinh viên',
+    token: mockToken,
+    expiresAt: now + ttl,
+    ttlSeconds: ttl,
+    schemeUrl: `studentevent://checkin?eventId=${eventId}&token=${mockToken}&exp=${now + ttl}`,
+    universalUrl: `https://studentevent.iuh.edu.vn/checkin?eventId=${eventId}&token=${mockToken}&exp=${now + ttl}`,
+    qrPayload: `studentevent://checkin?eventId=${eventId}&token=${mockToken}&exp=${now + ttl}`,
+  };
+};
+
 export const qrCheckIn = async (payload: {
   eventId: string;
   userId?: string;
   studentId?: string;
+  token?: string;
+  method?: 'qr_scan' | 'passcode' | 'dynamic_qr';
+  passcode?: string;
   userLocation?: {
     latitude: number;
     longitude: number;
+    accuracy?: number;
+    isMockLocation?: boolean;
+    mocked?: boolean;
   };
 }): Promise<any> => {
   try {
@@ -1088,6 +1132,49 @@ export const adminDeleteUser = async (userId: string): Promise<boolean> => {
   }
 };
 
+// Luồng khiếu nại Check-in (Fallback Dispute Flow)
+export const submitCheckInAppeal = async (payload: {
+  eventId: string;
+  userId?: string;
+  studentId?: string;
+  studentName?: string;
+  reason: string;
+  proofImageUrl?: string;
+}) => {
+  const res = await apiClient.post("/registrations/appeal", payload);
+  return res.data;
+};
+
+// Cài đặt thông báo & Giờ yên lặng (Quiet Hours)
+export const getNotificationPreferences = async (userId: string) => {
+  try {
+    const res = await apiClient.get(`/users/${userId}/preferences`);
+    return res.data?.data || res.data;
+  } catch {
+    return null;
+  }
+};
+
+export const updateNotificationPreferences = async (userId: string, prefs: any) => {
+  const res = await apiClient.put(`/users/${userId}/preferences`, prefs);
+  return res.data;
+};
+
+// Tiện ích Lịch (Google Calendar & iCalendar .ICS)
+export const getCalendarIcsUrl = (eventId: string) => {
+  const base = apiClient.defaults.baseURL || "http://localhost:5000";
+  return `${base}/api/events/${eventId}/calendar.ics`;
+};
+
+export const getGoogleCalendarAddUrl = (event: { title: string; description?: string; location?: string; time?: { start: string; end: string } }) => {
+  const title = encodeURIComponent(event.title || "Sự kiện sinh viên IUH");
+  const details = encodeURIComponent(event.description || "");
+  const location = encodeURIComponent(event.location || "");
+  const formatTime = (d?: string) => (d ? new Date(d).toISOString().replace(/-|:|\.\d\d\d/g, "") : "");
+  const dates = `${formatTime(event.time?.start)}/${formatTime(event.time?.end)}`;
+  return `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${title}&details=${details}&location=${location}&dates=${dates}`;
+};
+
 // ─── Default Export ───────────────────────────────────────────────────────────
 
 export default {
@@ -1125,6 +1212,12 @@ export default {
   adminDeleteUser,
   setAuthToken,
   setBaseUrl,
+  submitCheckInAppeal,
+  getEventQrToken,
+  getNotificationPreferences,
+  updateNotificationPreferences,
+  getCalendarIcsUrl,
+  getGoogleCalendarAddUrl,
 };
 
 // AI Summary

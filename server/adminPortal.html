@@ -1,0 +1,799 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>IUH EventMate - Cổng Quản Trị Vận Hành Sự Kiện Sinh Viên</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          colors: {
+            brand: {
+              50: '#eff6ff',
+              100: '#dbeafe',
+              500: '#3b82f6',
+              600: '#2563eb',
+              700: '#1d4ed8',
+              800: '#1e40af',
+            }
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; transform: scale(1); }
+      50% { opacity: 0.4; transform: scale(1.2); }
+    }
+    .pulse-dot { animation: pulse-dot 2s infinite ease-in-out; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; }
+  </style>
+</head>
+<body class="bg-slate-50 text-slate-800 min-h-screen flex flex-col font-sans">
+  <!-- Top Navigation Bar -->
+  <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
+    <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
+      <div class="flex items-center space-x-3">
+        <div class="w-10 h-10 rounded-xl bg-gradient-to-tr from-blue-600 to-indigo-600 flex items-center justify-center text-white shadow-md">
+          <i class="fa-solid fa-graduation-cap text-lg"></i>
+        </div>
+        <div>
+          <h1 class="font-bold text-lg text-slate-900 leading-tight">IUH EventMate Portal</h1>
+          <p class="text-xs text-slate-500 font-medium">Hệ Thống Quản Trị Vận Hành & Đoàn - Hội</p>
+        </div>
+      </div>
+
+      <div class="flex items-center space-x-4">
+        <!-- Live SSE Status Indicator -->
+        <div id="liveIndicator" class="flex items-center space-x-2 px-3 py-1.5 rounded-full bg-emerald-50 border border-emerald-200 text-xs font-semibold text-emerald-700">
+          <span class="w-2.5 h-2.5 rounded-full bg-emerald-500 pulse-dot"></span>
+          <span id="liveStatusText">Live Feed: Đã kết nối</span>
+        </div>
+
+        <!-- Trình chiếu QR cho máy chiếu / điện thoại quét -->
+        <a href="/qr" target="_blank" class="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold shadow-sm transition">
+          <i class="fa-solid fa-qrcode"></i>
+          <span>Chiếu QR (Projector)</span>
+        </a>
+
+        <div class="flex items-center space-x-2 border-l border-slate-200 pl-4">
+          <img src="https://i.pravatar.cc/300?img=12" class="w-8 h-8 rounded-full border border-slate-300" alt="Admin">
+          <div class="text-left hidden md:block">
+            <span class="text-xs font-bold block text-slate-800">Ban Quản Trị Đoàn Hội</span>
+            <span class="text-[10px] text-slate-500 uppercase tracking-wider block">Super Admin</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main Content Layout -->
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 flex-1 w-full space-y-6">
+
+    <!-- KPI Summary Cards -->
+    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Tổng Sự Kiện</p>
+          <h3 id="statEvents" class="text-2xl font-black text-slate-900 mt-1">--</h3>
+          <span class="text-xs text-blue-600 font-semibold mt-1 inline-block"><i class="fa-solid fa-calendar-check mr-1"></i>Hệ thống active</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-calendar-days"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Lượt Đăng Ký</p>
+          <h3 id="statRegistrations" class="text-2xl font-black text-slate-900 mt-1">--</h3>
+          <span class="text-xs text-indigo-600 font-semibold mt-1 inline-block"><i class="fa-solid fa-ticket mr-1"></i>Bao gồm Waitlist</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-id-card"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Đã Check-in Thực Tế</p>
+          <h3 id="statCheckins" class="text-2xl font-black text-emerald-600 mt-1">--</h3>
+          <span class="text-xs text-emerald-600 font-semibold mt-1 inline-block"><i class="fa-solid fa-satellite-dish mr-1"></i>GPS & Passcode</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-user-check"></i>
+        </div>
+      </div>
+
+      <div class="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+        <div>
+          <p class="text-xs font-medium text-slate-500 uppercase tracking-wider">Khiếu Nại Chờ Duyệt</p>
+          <h3 id="statAppeals" class="text-2xl font-black text-amber-500 mt-1">--</h3>
+          <span class="text-xs text-amber-600 font-semibold mt-1 inline-block"><i class="fa-solid fa-triangle-exclamation mr-1"></i>Cần xử lý</span>
+        </div>
+        <div class="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center text-xl">
+          <i class="fa-solid fa-hand-holding-hand"></i>
+        </div>
+      </div>
+    </div>
+
+    <!-- Navigation Tabs -->
+    <div class="border-b border-slate-200 bg-white rounded-2xl px-3 pt-2 shadow-sm">
+      <nav class="flex space-x-2 sm:space-x-4 overflow-x-auto" aria-label="Tabs">
+        <button onclick="switchTab('tab-live')" id="btn-tab-live" class="tab-btn px-4 py-3 text-sm font-semibold text-blue-600 border-b-2 border-blue-600 flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-tower-broadcast"></i>
+          <span>Real-time Live Check-in</span>
+        </button>
+        <button onclick="switchTab('tab-events')" id="btn-tab-events" class="tab-btn px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-diagram-project"></i>
+          <span>Vòng Đời Sự Kiện (State Machine)</span>
+        </button>
+        <button onclick="switchTab('tab-appeals')" id="btn-tab-appeals" class="tab-btn px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-gavel"></i>
+          <span>Khiếu Nại Check-in (Fallback)</span>
+          <span id="badgeAppeals" class="ml-1.5 px-2 py-0.5 rounded-full text-xs bg-amber-100 text-amber-800">0</span>
+        </button>
+        <button onclick="switchTab('tab-points')" id="btn-tab-points" class="tab-btn px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-award"></i>
+          <span>Đối Soát Điểm Rèn Luyện</span>
+        </button>
+        <button onclick="switchTab('tab-bulk')" id="btn-tab-bulk" class="tab-btn px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-file-excel"></i>
+          <span>Import / Export & Bulk Ops</span>
+        </button>
+        <button onclick="switchTab('tab-audit')" id="btn-tab-audit" class="tab-btn px-4 py-3 text-sm font-medium text-slate-500 hover:text-slate-700 border-b-2 border-transparent flex items-center space-x-2 whitespace-nowrap">
+          <i class="fa-solid fa-clock-rotate-left"></i>
+          <span>Audit Logs</span>
+        </button>
+      </nav>
+    </div>
+
+    <!-- TAB 1: REAL-TIME LIVE STREAM -->
+    <div id="tab-live" class="tab-content active space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900 flex items-center">
+              <span class="w-3 h-3 rounded-full bg-emerald-500 mr-2 pulse-dot"></span>
+              Luồng Điểm Danh Trực Tiếp Theo Thời Gian Thực (SSE Stream)
+            </h2>
+            <p class="text-xs text-slate-500">Mỗi khi sinh viên quét mã QR hoặc nhập Passcode thành công, dữ liệu sẽ tự động đẩy lên tức thì.</p>
+          </div>
+          <button onclick="loadLiveFeed()" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới danh sách
+          </button>
+        </div>
+
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-slate-400 uppercase bg-slate-50 rounded-lg">
+              <tr>
+                <th class="py-3 px-4">Thời gian</th>
+                <th class="py-3 px-4">Sinh viên</th>
+                <th class="py-3 px-4">Sự kiện</th>
+                <th class="py-3 px-4">Phương thức</th>
+                <th class="py-3 px-4">Độ lệch GPS / Passcode</th>
+                <th class="py-3 px-4">Trạng thái</th>
+              </tr>
+            </thead>
+            <tbody id="liveFeedTable" class="divide-y divide-slate-100">
+              <tr>
+                <td colspan="6" class="text-center py-8 text-slate-400">Đang lắng nghe luồng sự kiện real-time...</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 2: EVENT STATE MACHINE & LIFECYCLE -->
+    <div id="tab-events" class="tab-content space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Quản Lý Vòng Đời Sự Kiện (Event State Machine)</h2>
+            <p class="text-xs text-slate-500">Chuyển đổi trạng thái, kiểm soát Quota, thiết lập mã Passcode dự phòng và cấp chứng nhận số.</p>
+          </div>
+          <button onclick="openCreateModal()" class="px-4 py-2 text-sm font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-xl shadow-sm transition flex items-center">
+            <i class="fa-solid fa-plus mr-2"></i> Tạo Sự Kiện Mới
+          </button>
+        </div>
+
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-slate-400 uppercase bg-slate-50">
+              <tr>
+                <th class="py-3 px-4">Tên Sự Kiện</th>
+                <th class="py-3 px-4">Thời Gian & Địa Điểm</th>
+                <th class="py-3 px-4">Quota / Waitlist</th>
+                <th class="py-3 px-4">Mã Passcode Fallback</th>
+                <th class="py-3 px-4">Trạng Thái Hiện Tại</th>
+                <th class="py-3 px-4 text-right">Thao Tác State Machine</th>
+              </tr>
+            </thead>
+            <tbody id="eventsTable" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 3: CHECK-IN APPEALS (DISPUTE WORKFLOW) -->
+    <div id="tab-appeals" class="tab-content space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Hộp Thư Khiếu Nại Điểm Danh (Fallback Dispute Flow)</h2>
+            <p class="text-xs text-slate-500">Xem xét và giải quyết khiếu nại của sinh viên khi gặp sự cố mất sóng GPS trong hội trường hoặc camera lỗi.</p>
+          </div>
+          <button onclick="loadAppeals()" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới
+          </button>
+        </div>
+
+        <div id="appealsContainer" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+          <!-- Rendered via JS -->
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 4: TRAINING POINTS RECONCILIATION -->
+    <div id="tab-points" class="tab-content space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Đối Soát & Cấp Điểm Rèn Luyện (Rule Engine)</h2>
+            <p class="text-xs text-slate-500">Xác thực danh sách sinh viên đã tham dự đầy đủ để tự động duyệt cộng điểm rèn luyện vào hệ thống trường.</p>
+          </div>
+          <button onclick="batchApprovePoints()" class="px-4 py-2 text-sm font-semibold bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl shadow-sm transition flex items-center">
+            <i class="fa-solid fa-check-double mr-2"></i> 1-Click Duyệt Tất Cả Đủ ĐK
+          </button>
+        </div>
+
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-slate-400 uppercase bg-slate-50">
+              <tr>
+                <th class="py-3 px-4">Sinh Viên</th>
+                <th class="py-3 px-4">MSSV</th>
+                <th class="py-3 px-4">Sự Kiện Đã Tham Gia</th>
+                <th class="py-3 px-4">Điểm Đề Xuất</th>
+                <th class="py-3 px-4">Học Kỳ</th>
+                <th class="py-3 px-4">Trạng Thái Duyệt</th>
+              </tr>
+            </thead>
+            <tbody id="pointsTable" class="divide-y divide-slate-100">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 5: IMPORT / EXPORT & BULK OPS -->
+    <div id="tab-bulk" class="tab-content space-y-6">
+      <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <!-- Export Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-file-export"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-900">Xuất Danh Sách Điểm Danh (Export CSV/Excel)</h3>
+              <p class="text-xs text-slate-500">Tải file danh sách đầy đủ có mã UTF-8 BOM chuẩn cho Microsoft Excel.</p>
+            </div>
+          </div>
+          <div class="space-y-3 pt-2">
+            <label class="block text-xs font-semibold text-slate-600">Chọn sự kiện cần xuất dữ liệu:</label>
+            <select id="exportEventSelect" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm bg-slate-50"></select>
+            <button onclick="exportEventCsv()" class="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center">
+              <i class="fa-solid fa-download mr-2"></i> Tải Báo Cáo Điểm Danh (.CSV)
+            </button>
+          </div>
+        </div>
+
+        <!-- Import Card -->
+        <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm space-y-4">
+          <div class="flex items-center space-x-3">
+            <div class="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center text-lg">
+              <i class="fa-solid fa-file-import"></i>
+            </div>
+            <div>
+              <h3 class="font-bold text-slate-900">Import Sinh Viên Hàng Loạt (Bulk Registration)</h3>
+              <p class="text-xs text-slate-500">Mời danh sách đại biểu hoặc cán bộ Đoàn tham dự sự kiện.</p>
+            </div>
+          </div>
+          <div class="space-y-3 pt-2">
+            <label class="block text-xs font-semibold text-slate-600">Chọn sự kiện đích:</label>
+            <select id="importEventSelect" class="w-full border border-slate-200 rounded-xl p-2.5 text-sm bg-slate-50"></select>
+            <label class="block text-xs font-semibold text-slate-600">Nhập danh sách MSSV (phân cách bằng dấu phẩy hoặc dòng mới):</label>
+            <textarea id="importStudentIds" rows="3" placeholder="SV01, SV02, 20012345, 20054321..." class="w-full border border-slate-200 rounded-xl p-2.5 text-sm font-mono bg-slate-50"></textarea>
+            <button onclick="importStudents()" class="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-sm font-semibold transition flex items-center justify-center">
+              <i class="fa-solid fa-user-plus mr-2"></i> Tiến Hành Import Danh Sách
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- TAB 6: AUDIT LOGS -->
+    <div id="tab-audit" class="tab-content space-y-5">
+      <div class="bg-white rounded-2xl border border-slate-200 p-6 shadow-sm">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-100 gap-4">
+          <div>
+            <h2 class="text-lg font-bold text-slate-900">Nhật Ký Thao Tác Quản Trị (Admin Audit Trail)</h2>
+            <p class="text-xs text-slate-500">Lưu trữ minh bạch toàn bộ các hành động thay đổi trạng thái, phê duyệt khiếu nại và duyệt điểm rèn luyện.</p>
+          </div>
+          <button onclick="loadAuditLogs()" class="px-3 py-1.5 text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg transition">
+            <i class="fa-solid fa-arrows-rotate mr-1"></i> Làm mới
+          </button>
+        </div>
+
+        <div class="overflow-x-auto mt-4">
+          <table class="w-full text-left text-sm">
+            <thead class="text-xs text-slate-400 uppercase bg-slate-50">
+              <tr>
+                <th class="py-3 px-4">Thời Gian</th>
+                <th class="py-3 px-4">Người Thực Hiện</th>
+                <th class="py-3 px-4">Hành Động</th>
+                <th class="py-3 px-4">Đối Tượng</th>
+                <th class="py-3 px-4">Chi Tiết Thay Đổi</th>
+              </tr>
+            </thead>
+            <tbody id="auditTable" class="divide-y divide-slate-100 font-mono text-xs">
+              <!-- Rendered via JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Notification Toast Container -->
+  <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col space-y-2"></div>
+
+  <!-- JavaScript Client Core -->
+  <script>
+    let eventsData = [];
+    let registrationsData = [];
+    let appealsData = [];
+    let usersData = [];
+
+    // Switch Tabs
+    function switchTab(tabId) {
+      document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('text-blue-600', 'border-blue-600');
+        btn.classList.add('text-slate-500', 'border-transparent');
+      });
+
+      document.getElementById(tabId).classList.add('active');
+      const activeBtn = document.getElementById('btn-' + tabId);
+      if (activeBtn) {
+        activeBtn.classList.remove('text-slate-500', 'border-transparent');
+        activeBtn.classList.add('text-blue-600', 'border-blue-600');
+      }
+
+      if (tabId === 'tab-live') loadLiveFeed();
+      if (tabId === 'tab-events') loadEvents();
+      if (tabId === 'tab-appeals') loadAppeals();
+      if (tabId === 'tab-points') loadTrainingPoints();
+      if (tabId === 'tab-audit') loadAuditLogs();
+    }
+
+    function showToast(message, type = 'info') {
+      const container = document.getElementById('toastContainer');
+      const toast = document.createElement('div');
+      const colors = {
+        success: 'bg-emerald-600 text-white',
+        error: 'bg-rose-600 text-white',
+        info: 'bg-slate-900 text-white',
+      };
+      toast.className = `${colors[type] || colors.info} px-4 py-3 rounded-xl shadow-lg text-sm flex items-center space-x-2 transition transform duration-300`;
+      toast.innerHTML = `<i class="fa-solid fa-circle-info"></i><span>${message}</span>`;
+      container.appendChild(toast);
+      setTimeout(() => {
+        toast.style.opacity = '0';
+        setTimeout(() => toast.remove(), 300);
+      }, 4000);
+    }
+
+    // Connect Server-Sent Events (SSE)
+    function setupSSE() {
+      const liveStatusText = document.getElementById('liveStatusText');
+      try {
+        const es = new EventSource('/api/admin/stream');
+        es.onopen = () => {
+          liveStatusText.textContent = 'Live Feed: Đã kết nối';
+        };
+        es.addEventListener('checkin', (e) => {
+          const data = JSON.parse(e.data);
+          showToast(`🔔 ${data.user?.name || 'Sinh viên'} vừa check-in sự kiện "${data.event?.title || ''}"!`, 'success');
+          loadAllData();
+        });
+        es.addEventListener('appeal', (e) => {
+          const data = JSON.parse(e.data);
+          showToast(`⚠️ Có đơn khiếu nại mới từ ${data.appeal?.studentName || 'Sinh viên'}`, 'info');
+          loadAppeals();
+        });
+        es.onerror = () => {
+          liveStatusText.textContent = 'Live Feed: Đang kết nối lại...';
+        };
+      } catch (err) {
+        liveStatusText.textContent = 'Live Feed: Chế độ Polling';
+      }
+    }
+
+    // Load initial data
+    async function loadAllData() {
+      try {
+        const [resEv, resReg, resUsers, resAppeals] = await Promise.all([
+          fetch('/events?_limit=100').then(r => r.json()),
+          fetch('/registrations?_limit=200').then(r => r.json()),
+          fetch('/users?_limit=200').then(r => r.json()),
+          fetch('/appeals?_limit=100').then(r => r.json()).catch(() => [])
+        ]);
+
+        eventsData = Array.isArray(resEv) ? resEv : [];
+        registrationsData = Array.isArray(resReg) ? resReg : [];
+        usersData = Array.isArray(resUsers) ? resUsers : [];
+        appealsData = Array.isArray(resAppeals) ? resAppeals : [];
+
+        // Update Stats
+        document.getElementById('statEvents').textContent = eventsData.length;
+        document.getElementById('statRegistrations').textContent = registrationsData.length;
+        const checkedInCount = registrationsData.filter(r => r.status === 'checked_in').length;
+        document.getElementById('statCheckins').textContent = checkedInCount;
+        const pendingAppeals = appealsData.filter(a => a.status === 'pending').length;
+        document.getElementById('statAppeals').textContent = pendingAppeals;
+        document.getElementById('badgeAppeals').textContent = pendingAppeals;
+
+        populateDropdowns();
+        loadLiveFeed();
+        loadEvents();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    function populateDropdowns() {
+      const expSel = document.getElementById('exportEventSelect');
+      const impSel = document.getElementById('importEventSelect');
+      if (!expSel || !impSel) return;
+      const opts = eventsData.map(ev => `<option value="${ev.id || ev._id}">${ev.title}</option>`).join('');
+      expSel.innerHTML = opts;
+      impSel.innerHTML = opts;
+    }
+
+    // Render Live Feed
+    function loadLiveFeed() {
+      const tbody = document.getElementById('liveFeedTable');
+      const checkedIns = registrationsData
+        .filter(r => r.status === 'checked_in')
+        .sort((a, b) => new Date(b.checkInTime || 0) - new Date(a.checkInTime || 0));
+
+      if (checkedIns.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="6" class="text-center py-8 text-slate-400">Chưa có lượt check-in nào trong hệ thống.</td></tr>`;
+        return;
+      }
+
+      tbody.innerHTML = checkedIns.map(r => {
+        const user = usersData.find(u => u.id === r.userId || u._id === r.userId) || {};
+        const ev = eventsData.find(e => e.id === r.eventId || e._id === r.eventId) || {};
+        const methodBadge = r.checkInMethod === 'passcode' 
+          ? `<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-700 border border-amber-200">Mã Passcode</span>`
+          : r.checkInMethod === 'appeal'
+          ? `<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-purple-50 text-purple-700 border border-purple-200">Duyệt Khiếu nại</span>`
+          : `<span class="px-2 py-0.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">Quét QR + GPS</span>`;
+
+        const timeStr = r.checkInTime ? new Date(r.checkInTime).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '--:--';
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 font-mono text-xs text-slate-600">${timeStr}</td>
+            <td class="py-3 px-4">
+              <span class="font-bold text-slate-900 block">${user.name || user.fullName || r.userId}</span>
+              <span class="text-xs text-slate-500">${user.studentId || 'SV'} • ${user.faculty || 'Khoa'}</span>
+            </td>
+            <td class="py-3 px-4 font-medium text-slate-800">${ev.title || r.eventId}</td>
+            <td class="py-3 px-4">${methodBadge}</td>
+            <td class="py-3 px-4 text-xs font-mono text-slate-500">
+              ${r.checkInLocation ? `${r.checkInLocation.latitude.toFixed(4)}, ${r.checkInLocation.longitude.toFixed(4)}` : 'Hội trường (Nội bộ)'}
+            </td>
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center text-xs font-semibold text-emerald-600">
+                <i class="fa-solid fa-circle-check mr-1.5"></i> Hợp lệ
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    // Render Events List with State Machine
+    function loadEvents() {
+      const tbody = document.getElementById('eventsTable');
+      if (!tbody) return;
+
+      tbody.innerHTML = eventsData.map(ev => {
+        const id = ev.id || ev._id;
+        const statusColors = {
+          draft: 'bg-slate-100 text-slate-700 border-slate-300',
+          pending_approval: 'bg-amber-50 text-amber-800 border-amber-200',
+          published: 'bg-blue-50 text-blue-700 border-blue-200',
+          registration_closed: 'bg-slate-100 text-slate-600 border-slate-300',
+          ongoing: 'bg-emerald-50 text-emerald-700 border-emerald-200',
+          completed: 'bg-indigo-50 text-indigo-700 border-indigo-200',
+          cancelled: 'bg-rose-50 text-rose-700 border-rose-200',
+        };
+
+        const statusLabels = {
+          draft: 'Bản Nháp',
+          pending_approval: 'Chờ Duyệt',
+          published: 'Đang Công Bố',
+          registration_closed: 'Đóng Đăng Ký',
+          ongoing: 'Đang Diễn Ra',
+          completed: 'Đã Hoàn Tất',
+          cancelled: 'Đã Hủy',
+          upcoming: 'Sắp Diễn Ra'
+        };
+
+        const currentStatus = ev.status || 'published';
+        const badgeClass = statusColors[currentStatus] || statusColors.published;
+        const label = statusLabels[currentStatus] || currentStatus;
+
+        const regCount = registrationsData.filter(r => (r.eventId === id) && r.status !== 'cancelled').length;
+        const maxSlots = ev.maxSlots || 100;
+        const waitlistSlots = ev.waitlistSlots || 20;
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4">
+              <span class="font-bold text-slate-900 block">${ev.title}</span>
+              <span class="text-xs text-slate-500">${ev.faculty || 'Đoàn - Hội'} • ${ev.category || 'Học thuật'}</span>
+            </td>
+            <td class="py-3 px-4 text-xs text-slate-600">
+              <span class="block font-medium">${ev.location || 'Hội trường IUH'}</span>
+              <span class="text-slate-400">${ev.time?.start ? new Date(ev.time.start).toLocaleDateString('vi-VN') : 'Sắp diễn ra'}</span>
+            </td>
+            <td class="py-3 px-4 text-xs">
+              <span class="font-bold text-slate-800">${regCount} / ${maxSlots} chỗ</span>
+              <span class="text-slate-400 block">Dự phòng: ${waitlistSlots}</span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2 py-1 rounded bg-slate-100 text-slate-800 font-mono text-xs font-bold border border-slate-200">
+                ${ev.checkInPasscode || '889900'}
+              </span>
+            </td>
+            <td class="py-3 px-4">
+              <span class="px-2.5 py-1 rounded-full text-xs font-semibold border ${badgeClass}">
+                ${label}
+              </span>
+            </td>
+            <td class="py-3 px-4 text-right space-x-1.5 whitespace-nowrap">
+              <select onchange="updateEventStatus('${id}', this.value)" class="text-xs border border-slate-200 rounded-lg p-1 bg-white">
+                <option value="">Chuyển trạng thái...</option>
+                <option value="pending_approval">Chờ duyệt</option>
+                <option value="published">Công bố (Mở vé)</option>
+                <option value="registration_closed">Đóng đăng ký</option>
+                <option value="ongoing">Đang diễn ra (Check-in)</option>
+                <option value="completed">Hoàn tất</option>
+                <option value="cancelled">Hủy sự kiện</option>
+              </select>
+              <button onclick="generateCertificates('${id}')" title="Cấp chứng nhận điện tử" class="p-1.5 bg-indigo-50 hover:bg-indigo-100 text-indigo-700 rounded-lg text-xs font-semibold">
+                <i class="fa-solid fa-certificate"></i>
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function updateEventStatus(eventId, newStatus) {
+      if (!newStatus) return;
+      try {
+        const res = await fetch(`/api/admin/events/${eventId}/status`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ status: newStatus })
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(`Đã chuyển trạng thái sự kiện sang "${newStatus}"!`, 'success');
+          loadAllData();
+        } else {
+          showToast(data.message || 'Lỗi cập nhật', 'error');
+        }
+      } catch (err) {
+        showToast('Không thể kết nối đến máy chủ', 'error');
+      }
+    }
+
+    async function generateCertificates(eventId) {
+      if (!confirm('Bạn có chắc muốn tự động cấp Chứng Nhận Điện Tử cho toàn bộ sinh viên đã check-in sự kiện này?')) return;
+      try {
+        const res = await fetch(`/api/events/${eventId}/certificates`, { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || 'Đã phát hành chứng nhận số thành công!', 'success');
+      } catch (e) {
+        showToast('Lỗi phát hành chứng nhận', 'error');
+      }
+    }
+
+    // Render Appeals
+    function loadAppeals() {
+      const container = document.getElementById('appealsContainer');
+      if (!container) return;
+
+      if (appealsData.length === 0) {
+        container.innerHTML = `<div class="col-span-2 text-center py-10 text-slate-400">Không có khiếu nại nào cần xử lý.</div>`;
+        return;
+      }
+
+      container.innerHTML = appealsData.map(a => {
+        const isPending = a.status === 'pending';
+        return `
+          <div class="border border-slate-200 rounded-xl p-4 bg-white shadow-sm space-y-3">
+            <div class="flex items-start justify-between">
+              <div>
+                <span class="font-bold text-slate-900 block">${a.studentName} (${a.studentId})</span>
+                <span class="text-xs text-slate-500 font-medium">${a.eventTitle || 'Sự kiện'}</span>
+              </div>
+              <span class="px-2.5 py-0.5 rounded-full text-xs font-semibold ${isPending ? 'bg-amber-50 text-amber-700 border border-amber-200' : 'bg-emerald-50 text-emerald-700 border border-emerald-200'}">
+                ${isPending ? 'Chờ xem xét' : 'Đã duyệt'}
+              </span>
+            </div>
+            <p class="text-xs text-slate-700 bg-slate-50 p-2.5 rounded-lg border border-slate-100">
+              <span class="font-semibold block text-slate-500 mb-0.5">Lý do trình bày:</span>
+              ${a.reason}
+            </p>
+            ${a.proofImageUrl ? `
+              <div>
+                <span class="text-[10px] text-slate-400 font-bold uppercase block mb-1">Ảnh minh chứng tại hội trường:</span>
+                <img src="${a.proofImageUrl}" class="w-full h-32 object-cover rounded-lg border border-slate-200">
+              </div>
+            ` : ''}
+            ${isPending ? `
+              <div class="flex space-x-2 pt-2">
+                <button onclick="reviewAppeal('${a.id || a._id}', 'approve')" class="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-xs font-semibold transition">
+                  <i class="fa-solid fa-check mr-1"></i> Chấp Thuận & Check-in
+                </button>
+                <button onclick="reviewAppeal('${a.id || a._id}', 'reject')" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg text-xs font-semibold transition">
+                  Từ Chối
+                </button>
+              </div>
+            ` : ''}
+          </div>
+        `;
+      }).join('');
+    }
+
+    async function reviewAppeal(appealId, action) {
+      try {
+        const res = await fetch(`/api/admin/appeals/${appealId}/review`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action })
+        });
+        const data = await res.json();
+        showToast(data.message || 'Đã xử lý khiếu nại', 'success');
+        loadAllData();
+      } catch (err) {
+        showToast('Lỗi khi xử lý khiếu nại', 'error');
+      }
+    }
+
+    // Training Points
+    function loadTrainingPoints() {
+      const tbody = document.getElementById('pointsTable');
+      if (!tbody) return;
+      const checkedIns = registrationsData.filter(r => r.status === 'checked_in');
+
+      tbody.innerHTML = checkedIns.map(r => {
+        const user = usersData.find(u => u.id === r.userId || u._id === r.userId) || {};
+        const ev = eventsData.find(e => e.id === r.eventId || e._id === r.eventId) || {};
+
+        return `
+          <tr class="hover:bg-slate-50 transition">
+            <td class="py-3 px-4 font-bold text-slate-900">${user.name || user.fullName || 'Sinh viên'}</td>
+            <td class="py-3 px-4 font-mono text-xs text-slate-600">${user.studentId || 'SV'}</td>
+            <td class="py-3 px-4 font-medium text-slate-800">${ev.title || 'Sự kiện'}</td>
+            <td class="py-3 px-4 font-bold text-emerald-600">+${ev.trainingPoints || 10} điểm</td>
+            <td class="py-3 px-4 text-xs text-slate-500">HK1 (2026 - 2027)</td>
+            <td class="py-3 px-4">
+              <span class="inline-flex items-center text-xs font-semibold text-emerald-600">
+                <i class="fa-solid fa-check-circle mr-1"></i> Đủ điều kiện
+              </span>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    async function batchApprovePoints() {
+      try {
+        const res = await fetch('/api/admin/training-points/batch-approve', { method: 'POST' });
+        const data = await res.json();
+        showToast(data.message || 'Đã duyệt cộng điểm rèn luyện thành công!', 'success');
+      } catch (e) {
+        showToast('Lỗi duyệt điểm', 'error');
+      }
+    }
+
+    // Export CSV
+    function exportEventCsv() {
+      const eventId = document.getElementById('exportEventSelect').value;
+      if (!eventId) {
+        showToast('Vui lòng chọn sự kiện', 'error');
+        return;
+      }
+      window.open(`/api/admin/events/${eventId}/export`, '_blank');
+    }
+
+    // Import Students
+    async function importStudents() {
+      const eventId = document.getElementById('importEventSelect').value;
+      const text = document.getElementById('importStudentIds').value;
+      if (!eventId || !text.trim()) {
+        showToast('Vui lòng điền sự kiện và danh sách MSSV', 'error');
+        return;
+      }
+
+      const studentIds = text.split(/[\n,]+/).map(s => s.trim()).filter(Boolean);
+      try {
+        const res = await fetch(`/api/admin/events/${eventId}/import-attendees`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ studentIds })
+        });
+        const data = await res.json();
+        showToast(data.message || `Đã import thành công ${data.importedCount || studentIds.length} sinh viên!`, 'success');
+        document.getElementById('importStudentIds').value = '';
+        loadAllData();
+      } catch (e) {
+        showToast('Lỗi import danh sách', 'error');
+      }
+    }
+
+    // Audit logs
+    async function loadAuditLogs() {
+      const tbody = document.getElementById('auditTable');
+      if (!tbody) return;
+      try {
+        const res = await fetch('/auditLogs?_sort=timestamp&_order=desc&_limit=50').then(r => r.json());
+        const logs = Array.isArray(res) ? res : [];
+        if (logs.length === 0) {
+          tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-slate-400">Chưa có nhật ký ghi nhận.</td></tr>`;
+          return;
+        }
+
+        tbody.innerHTML = logs.map(l => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 text-slate-500">${new Date(l.timestamp).toLocaleString('vi-VN')}</td>
+            <td class="py-2.5 px-4 font-bold text-slate-800">${l.adminName || 'Admin'}</td>
+            <td class="py-2.5 px-4 text-blue-600 font-semibold">${l.action}</td>
+            <td class="py-2.5 px-4 text-slate-600">${l.targetType} (${l.targetId})</td>
+            <td class="py-2.5 px-4 text-slate-500 truncate max-w-xs">${l.details || ''}</td>
+          </tr>
+        `).join('');
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="5" class="text-center py-6 text-rose-500">Lỗi tải nhật ký thao tác.</td></tr>`;
+      }
+    }
+
+    // Bootstrapping
+    document.addEventListener('DOMContentLoaded', () => {
+      loadAllData();
+      setupSSE();
+    });
+  </script>
+</body>
+</html>
