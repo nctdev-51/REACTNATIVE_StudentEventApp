@@ -78,7 +78,7 @@
         "start": "2026-10-15T08:00:00.000Z",
         "end": "2026-10-15T11:30:00.000Z"
       },
-      "location": "Hội trường E4, Trường Đại học Công nghiệp TP.HCM",
+      "location": "Khu vực thực tế: 14/1, Tổ 60 Âp Trung Đông, Thành phố Hồ Chí Minh",
       "organizer": "Khoa Công nghệ thông tin và Đoàn Thanh niên IUH",
       "description": "Hội thảo chuyên sâu về các tiến bộ mới nhất trong lĩnh vực GenAI, Machine Learning và định hướng nghề nghiệp kỹ sư AI cho sinh viên.",
       "images": [
@@ -114,7 +114,11 @@
           "name": "Tai_lieu_huong_dan_su_kien.pdf",
           "url": "https://www.w3.org/WAI/ER/tests/xhtml/testfiles/resources/pdf/dummy.pdf"
         }
-      ]
+      ],
+      "coordinates": {
+        "latitude": 10.8933769,
+        "longitude": 106.6158053
+      }
     },
     {
       "_id": "66f1e2020000000000000002",
