@@ -8,8 +8,7 @@ import React, { useState, useMemo, useEffect, useCallback } from "react";
 import React, { useEffect, useMemo, useState } from "react";
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
 import {
-  ScrollView,
-  Image,
+  FlatList,
   StyleSheet,
   Platform,
   StatusBar,
@@ -27,6 +26,9 @@ import { Colors } from '../../theme';
   Keyboard,
   TouchableOpacity,
   RefreshControl,
+  View,
+  Text,
+  ActivityIndicator,
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
@@ -34,19 +36,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import {
-  YStack,
-  XStack,
-  Card,
-  Button,
-  TextArea,
-  Spinner,
-} from "tamagui";
-import {
-  AppText as TamaguiText,
-  AppHeading as Heading,
-  AppParagraph as Paragraph,
-} from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
 <<<<<<< HEAD
@@ -70,7 +59,10 @@ import {
 } from "../../data/dbService";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
+import FeedbackEventCard from "../../components/feedback/FeedbackEventCard";
+
 type FeedbackNavProp = NativeStackNavigationProp<MainStackParamList>;
+<<<<<<< HEAD
 type FeedbackRouteProp = RouteProp<MainStackParamList, 'Feedback'>;
 
 // ---------------------------------------------------------------------------
@@ -206,6 +198,13 @@ const starStyles = StyleSheet.create({
 
 // ---------------------------------------------------------------------------
 // FeedbackScreen
+=======
+type FeedbackRouteProp = RouteProp<MainStackParamList, "Feedback">;
+type FilterTab = "all" | "reviewed" | "not_reviewed";
+
+// ---------------------------------------------------------------------------
+// FeedbackScreen Component
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 // ---------------------------------------------------------------------------
 
 export default function FeedbackScreen() {
@@ -287,13 +286,9 @@ export default function FeedbackScreen() {
     return getOnlyAttendedEventsFromDb(currentUserId);
   });
 
-  // Bộ lọc: 'all' (Tất cả), 'reviewed' (Đã đánh giá), 'not_reviewed' (Chưa đánh giá)
   const [filterTab, setFilterTab] = useState<FilterTab>("all");
-
-  // Phân trang: Hiển thị 5 sự kiện gần nhất, kéo xuống hoặc bấm để tải thêm +5
   const [visibleLimit, setVisibleLimit] = useState<number>(5);
 
-  // Sự kiện đang được mở rộng chi tiết để xem/đánh giá
   const [expandedEventId, setExpandedEventId] = useState<string | null>(
     route.params?.eventId || (attendedEvents[0]?.id || attendedEvents[0]?._id || null),
 =======
@@ -323,7 +318,6 @@ export default function FeedbackScreen() {
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
   );
 
-  // Lưu trạng thái đánh giá nháp cho từng sự kiện riêng biệt
   const [draftRatings, setDraftRatings] = useState<Record<string, number>>({});
   const [draftComments, setDraftComments] = useState<Record<string, string>>({});
   const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
@@ -358,7 +352,6 @@ export default function FeedbackScreen() {
 <<<<<<< HEAD
   // Tải dữ liệu bền vững từ AsyncStorage và đồng bộ trực tiếp từ Backend_v2
   const loadPersistedData = useCallback(async () => {
-    // 1. Đồng bộ đăng ký và sự kiện tham dự từ Backend_v2
     try {
       const [regList, allEvents] = await Promise.all([
         api.getRegistrationsByUser(currentUserId),
@@ -368,7 +361,6 @@ export default function FeedbackScreen() {
       if (Array.isArray(regList) && regList.length > 0) {
         const eventsMap = new Map<string, any>();
         for (const r of regList) {
-          // Chỉ hiển thị các sự kiện sinh viên ĐÃ THAM GIA (đã check-in hoặc hoàn thành)
           if (r.status !== "checked_in" && (r.status as string) !== "completed") {
             continue;
           }
@@ -403,24 +395,23 @@ export default function FeedbackScreen() {
       setAttendedEvents(getOnlyAttendedEventsFromDb(currentUserId));
     }
 
-    // 2. Đồng bộ feedbacks từ AsyncStorage và Backend_v2
-    try {
-      const stored = await loadFeedbacksFromStorage();
-      if (stored && stored.length > 0) {
-        setFeedbacks(stored);
-      }
-    } catch (err) {
-      console.warn("[FeedbackScreen] Load AsyncStorage error:", err);
-    }
-
+    // 2. Lấy trực tiếp danh sách feedbacks từ Backend MongoDB
     try {
       const apiFeedbacks = await api.getAllFeedbacks();
-      if (Array.isArray(apiFeedbacks) && apiFeedbacks.length > 0) {
+      if (Array.isArray(apiFeedbacks)) {
         const merged = mergeFeedbacksIntoDb(apiFeedbacks);
         setFeedbacks(merged);
       }
     } catch {
-      // Offline fallback an toàn
+      // Offline fallback an toàn nếu không kết nối được backend
+      try {
+        const stored = await loadFeedbacksFromStorage();
+        if (stored && stored.length > 0) {
+          setFeedbacks(stored);
+        }
+      } catch {
+        // ignore
+      }
     }
   }, [currentUserId]);
 
@@ -428,7 +419,6 @@ export default function FeedbackScreen() {
     loadPersistedData();
   }, [loadPersistedData]);
 
-  // Khi mở từ route params (ví dụ từ EventDetailScreen), tự động mở chi tiết sự kiện đó
   useEffect(() => {
     if (route.params?.eventId) {
       setExpandedEventId(route.params.eventId);
@@ -526,7 +516,7 @@ export default function FeedbackScreen() {
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
   };
 
-  // Helper tìm đánh giá của CHÍNH BẢN THÂN cho sự kiện
+  // Helper tìm "Đánh giá của bạn" (Mỗi sự kiện chỉ được đánh giá 1 lần)
   const getMyReview = useCallback(
     (eventId: string) => {
       return feedbacks.find((f) => {
@@ -540,18 +530,18 @@ export default function FeedbackScreen() {
           typeof fUser === "object" && fUser !== null
             ? fUser._id || fUser.id
             : fUser;
-        const matchEvt = fEvtId === eventId;
-        const matchUser =
-          fUserId === currentUserId ||
-          fUserId === defaultStudent._id ||
-          (authUser?._id && fUserId === authUser._id);
-        return matchEvt && matchUser;
+        return (
+          fEvtId === eventId &&
+          (fUserId === currentUserId ||
+            fUserId === defaultStudent._id ||
+            (authUser?._id && fUserId === authUser._id))
+        );
       });
     },
     [feedbacks, currentUserId, defaultStudent._id, authUser?._id],
   );
 
-  // Đếm số lượng cho 3 ô tab
+  // Đếm số lượng cho 3 tab
   const { allCount, reviewedCount, notReviewedCount } = useMemo(() => {
     let rev = 0;
     let notRev = 0;
@@ -570,7 +560,7 @@ export default function FeedbackScreen() {
     };
   }, [attendedEvents, getMyReview]);
 
-  // Lọc danh sách theo tab được chọn
+  // Lọc danh sách theo tab
   const filteredEvents = useMemo(() => {
     return attendedEvents.filter((evt) => {
       const id = evt.id || evt._id;
@@ -581,17 +571,14 @@ export default function FeedbackScreen() {
     });
   }, [attendedEvents, filterTab, getMyReview]);
 
-  // Phân trang 5 sự kiện gần nhất
   const displayedEvents = useMemo(() => {
     return filteredEvents.slice(0, visibleLimit);
   }, [filteredEvents, visibleLimit]);
 
   const hasMore = visibleLimit < filteredEvents.length;
 
-  // Tự động load thêm 10 sự kiện khi kéo tới cuối trang
   const handleLoadMore = useCallback(() => {
     if (!hasMore || isLoadingMore) return;
-
     setIsLoadingMore(true);
     setTimeout(() => {
       setVisibleLimit((prev) => Math.min(prev + 10, filteredEvents.length));
@@ -599,13 +586,10 @@ export default function FeedbackScreen() {
     }, 250);
   }, [hasMore, isLoadingMore, filteredEvents.length]);
 
-  // Bắt sự kiện kéo thanh cuộn tới cuối trang
   const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
     const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
-    // Chạm tới vùng gần cuối (cách đáy 60px)
     const isCloseToBottom =
       layoutMeasurement.height + contentOffset.y >= contentSize.height - 60;
-
     if (isCloseToBottom && hasMore && !isLoadingMore) {
       handleLoadMore();
     }
@@ -616,7 +600,6 @@ export default function FeedbackScreen() {
     setVisibleLimit(5);
   };
 
-  // Format ngày hiển thị
   const formatEventDate = (timeObj?: { start?: string; end?: string }) => {
     if (!timeObj?.start) return "Sắp diễn ra";
     try {
@@ -637,12 +620,11 @@ export default function FeedbackScreen() {
     }
   };
 
-  // Xử lý gửi đánh giá cho 1 sự kiện (mỗi sự kiện chỉ đánh giá 1 lần)
+  // Gửi đánh giá cho sự kiện
   const handleSubmitReview = async (evt: any) => {
     const eventId = evt.id || evt._id;
     if (submittingEventId) return;
 
-    // Kiểm tra xem đã đánh giá chưa
     const existing = getMyReview(eventId);
     if (existing) {
       Alert.alert(
@@ -653,10 +635,8 @@ export default function FeedbackScreen() {
     }
 
     Keyboard.dismiss();
-
     const ratingVal = draftRatings[eventId] || 5;
     const commentVal = (draftComments[eventId] || "").trim();
-
     const finalComment =
       commentVal ||
       (ratingVal >= 4
@@ -671,28 +651,18 @@ export default function FeedbackScreen() {
     };
 
     setSubmittingEventId(eventId);
-
     try {
-      // 1. Gửi trực tiếp lên Backend MongoDB
       let serverRes: any = null;
       try {
         serverRes = await api.createFeedback(payload);
       } catch (apiErr: any) {
-        console.warn("[FeedbackScreen] Lỗi khi lưu vào MongoDB:", apiErr?.response?.data || apiErr?.message);
         const errMsg = apiErr?.response?.data?.message || apiErr?.message || "Không thể kết nối đến máy chủ MongoDB.";
-        if (Platform.OS === "web") {
-          alert(`Không thể gửi đánh giá: ${errMsg}\nVui lòng kiểm tra server Backend MongoDB trên cổng 5000.`);
-        } else {
-          Alert.alert(
-            "Không thể lưu đánh giá",
-            `Lỗi máy chủ MongoDB: ${errMsg}\nVui lòng đảm bảo server Backend đã được khởi động và kết nối ổn định.`,
-            [{ text: "Đóng", style: "default" }]
-          );
-        }
+        const fullMsg = `Lỗi máy chủ MongoDB: ${errMsg}\nVui lòng kiểm tra server Backend.`;
+        if (Platform.OS === "web") alert(fullMsg);
+        else Alert.alert("Không thể lưu đánh giá", fullMsg);
         return;
       }
 
-      // 2. Khi MongoDB lưu thành công, cập nhật state và đồng bộ local
       if (serverRes && (serverRes.id || serverRes._id)) {
         const enrichedServer = enrichFeedback(serverRes);
         setFeedbacks((prev) => {
@@ -703,35 +673,239 @@ export default function FeedbackScreen() {
         mergeFeedbacksIntoDb([serverRes]);
       }
 
-      // Xoá draft comment
       setDraftComments((prev) => ({ ...prev, [eventId]: "" }));
-
-      // 3. Thông báo thành công từ MongoDB
-      if (Platform.OS === "web") {
-        alert(
-          `Đánh giá thành công!\nĐánh giá cho sự kiện "${evt.title}" (${ratingVal} sao) đã được lưu trực tiếp vào cơ sở dữ liệu MongoDB.`,
-        );
-      } else {
-        Alert.alert(
-          "Đánh giá thành công!",
-          `Đánh giá cho sự kiện "${evt.title}" (${ratingVal} sao) đã được lưu trực tiếp vào cơ sở dữ liệu MongoDB.`,
-          [{ text: "Đóng", style: "default" }],
-        );
-      }
+      const successMsg = `Đánh giá cho sự kiện "${evt.title}" (${ratingVal} sao) đã được lưu trực tiếp vào cơ sở dữ liệu MongoDB.`;
+      if (Platform.OS === "web") alert(`Đánh giá thành công!\n${successMsg}`);
+      else Alert.alert("Đánh giá thành công!", successMsg);
     } finally {
       setSubmittingEventId(null);
     }
   };
 
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+  // Cấu hình 3 tab bộ lọc
+  const filterTabsConfig = [
+    {
+      key: "all" as FilterTab,
+      label: `Tất cả (${allCount})`,
+      icon: "apps-outline" as const,
+      color: filterTab === "all" ? "#FFFFFF" : theme.textSecondary,
+    },
+    {
+      key: "reviewed" as FilterTab,
+      label: `Đã đánh giá (${reviewedCount})`,
+      icon: "checkmark-circle" as const,
+      color: filterTab === "reviewed" ? "#FFFFFF" : theme.success,
+    },
+    {
+      key: "not_reviewed" as FilterTab,
+      label: `Chưa đánh giá (${notReviewedCount})`,
+      icon: "time-outline" as const,
+      color: filterTab === "not_reviewed" ? "#FFFFFF" : "#F59E0B",
+    },
+  ];
+
+  // Render Header của danh sách (gồm nút Quay lại, Tiêu đề, 3 Tab, và Số lượng hiển thị)
+  const renderListHeader = () => (
+    <View style={styles.headerContainer}>
+      {/* Top Header Bar */}
+      <View style={styles.navBarRow}>
+        <TouchableOpacity
+          style={[
+            styles.backButton,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+          onPress={() =>
+            navigation.canGoBack() ? navigation.goBack() : navigation.navigate("Home")
+          }
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel="Quay lại"
+        >
+          <View style={styles.backButtonContent}>
+            <Ionicons name="chevron-back" size={20} color={theme.primary} />
+            <Text style={[styles.backButtonText, { color: theme.primary }]}>
+              Quay lại
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={[styles.screenTitle, { color: theme.textPrimary }]}>
+        Góp ý & Đánh giá sự kiện
+      </Text>
+      <Text style={[styles.screenSubtitle, { color: theme.textSecondary }]}>
+        Danh sách sự kiện bạn đã tham dự. Mỗi sự kiện chỉ được phép đánh giá 1 lần. Đánh giá của bạn giúp nâng cao chất lượng các chương trình.
+      </Text>
+
+      {/* 3 Ô Bộ Lọc (Tất cả, Đã đánh giá, Chưa đánh giá) */}
+      <View style={styles.tabsRow}>
+        {filterTabsConfig.map((tab) => {
+          const isSelected = filterTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor: isSelected ? theme.primary : theme.surface,
+                  borderColor: isSelected ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => handleTabChange(tab.key)}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isSelected }}
+            >
+              <View style={styles.tabContent}>
+                <Ionicons name={tab.icon} size={16} color={tab.color} />
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: isSelected ? "#FFFFFF" : theme.textPrimary },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Thông tin số lượng hiển thị */}
+      <View style={styles.countRow}>
+        <Text style={[styles.countText, { color: theme.textTertiary }]}>
+          Hiển thị {displayedEvents.length} / {filteredEvents.length} sự kiện gần nhất
+        </Text>
+        {filterTab !== "all" && (
+          <TouchableOpacity onPress={() => handleTabChange("all")}>
+            <Text style={[styles.viewAllText, { color: theme.primary }]}>
+              Xem tất cả
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  // Render khi danh sách trống
+  const renderListEmpty = () => (
+    <View
+      style={[
+        styles.emptyCard,
+        {
+          borderColor: theme.border,
+          backgroundColor: theme.surface,
+        },
+      ]}
+    >
+      <Ionicons
+        name={filterTab === "reviewed" ? "checkmark-done-circle-outline" : "file-tray-outline"}
+        size={54}
+        color={theme.primary}
+      />
+      <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+        {filterTab === "reviewed"
+          ? "Chưa có sự kiện nào đã đánh giá"
+          : filterTab === "not_reviewed"
+          ? "Bạn đã hoàn thành đánh giá cho tất cả sự kiện!"
+          : "Không tìm thấy sự kiện đã tham dự"}
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+        {filterTab === "not_reviewed"
+          ? "Cảm ơn bạn đã đóng góp ý kiến quý báu cho nhà trường."
+          : "Hãy tham gia các sự kiện để trải nghiệm và gửi đánh giá nhé."}
+      </Text>
+    </View>
+  );
+
+  // Render Footer (tải thêm sự kiện hoặc thông báo đã hết)
+  const renderListFooter = () => {
+    if (isLoadingMore) {
+      return (
+        <View style={styles.footerLoading}>
+          <ActivityIndicator size="small" color={theme.primary} />
+          <Text style={[styles.loadingMoreText, { color: theme.primary }]}>
+            Đang tải thêm 10 sự kiện tiếp theo...
+          </Text>
+        </View>
+      );
+    }
+    if (hasMore) {
+      return (
+        <View style={styles.footerPrompt}>
+          <Ionicons name="arrow-down" size={14} color={theme.textTertiary} />
+          <Text style={[styles.footerPromptText, { color: theme.textTertiary }]}>
+            Kéo xuống cuối trang để tải thêm 10 sự kiện (còn {filteredEvents.length - displayedEvents.length} sự kiện)
+          </Text>
+        </View>
+      );
+    }
+    if (displayedEvents.length > 0) {
+      return (
+        <View style={styles.footerEnd}>
+          <View style={styles.footerEndContent}>
+            <Ionicons name="checkmark-done" size={16} color={theme.textTertiary} />
+            <Text style={[styles.footerPromptText, { color: theme.textTertiary }]}>
+              Đã hiển thị tất cả {filteredEvents.length} sự kiện
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    return null;
+  };
+
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: theme.background }]}
       edges={["top", "bottom"]}
     >
       <StatusBar barStyle={theme.statusBarStyle} />
-      <ScrollView
-        contentContainerStyle={styles.scroll}
+
+      <FlatList
+        data={displayedEvents}
+        keyExtractor={(item) => item.id || item._id}
+        renderItem={({ item: evt }) => {
+          const eventId = evt.id || evt._id;
+          const myReview = getMyReview(eventId);
+          const isExpanded = expandedEventId === eventId;
+
+          return (
+            <FeedbackEventCard
+              key={eventId}
+              evt={evt}
+              myReview={myReview}
+              isExpanded={isExpanded}
+              onToggleExpand={() => setExpandedEventId(isExpanded ? null : eventId)}
+              draftRating={draftRatings[eventId] || 5}
+              onDraftRatingChange={(val) =>
+                setDraftRatings((prev) => ({ ...prev, [eventId]: val }))
+              }
+              draftComment={draftComments[eventId] || ""}
+              onDraftCommentChange={(txt) =>
+                setDraftComments((prev) => ({ ...prev, [eventId]: txt }))
+              }
+              isSubmitting={submittingEventId === eventId}
+              onSubmitReview={() => handleSubmitReview(evt)}
+              theme={theme}
+              isDark={isDark}
+              formatEventDate={formatEventDate}
+              formatReviewDate={formatReviewDate}
+            />
+          );
+        }}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={renderListEmpty}
+        ListFooterComponent={renderListFooter}
+        contentContainerStyle={styles.listContent}
         keyboardShouldPersistTaps="handled"
         showsVerticalScrollIndicator={true}
         onScroll={handleScroll}
@@ -744,6 +918,7 @@ export default function FeedbackScreen() {
             tintColor={theme.primary}
           />
         }
+<<<<<<< HEAD
       >
 <<<<<<< HEAD
         {/* ── Header ── */}
@@ -1372,15 +1547,15 @@ export default function FeedbackScreen() {
         )}
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
       </ScrollView>
+=======
+      />
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
     </SafeAreaView>
   );
 }
 
-// ---------------------------------------------------------------------------
-// Native Styles
-// ---------------------------------------------------------------------------
-
 const styles = StyleSheet.create({
+<<<<<<< HEAD
   safe: { flex: 1, backgroundColor: BACKGROUND },
   scroll: {
 <<<<<<< HEAD
@@ -1483,22 +1658,139 @@ const styles = StyleSheet.create({
   },
   backLabel: { fontSize: 15, color: ACCENT_COLOR, fontWeight: '500' },
 =======
+=======
+  safe: {
+    flex: 1,
+  },
+  listContent: {
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 40,
   },
-  thumbnailImage: {
-    width: 70,
-    height: 70,
-    borderRadius: 12,
-    backgroundColor: "#E2E8F0",
+  headerContainer: {
+    marginBottom: 4,
   },
-  bannerImage: {
-    width: "100%",
-    height: 150,
+  navBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+    paddingTop: Platform.OS === "android" ? 10 : 6,
+  },
+  backButton: {
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  backButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  screenTitle: {
+    fontSize: 22,
+    fontWeight: "800",
+    marginBottom: 4,
+  },
+  screenSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
+    marginBottom: 16,
+  },
+  tabsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 18,
+  },
+  tabButton: {
+    flex: 1,
+    height: 42,
     borderRadius: 12,
+    borderWidth: 1,
+    paddingHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  tabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  tabText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  countRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
     marginBottom: 12,
-    backgroundColor: "#E2E8F0",
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  emptyCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  footerLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  loadingMoreText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  footerPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
+    paddingVertical: 14,
+  },
+  footerPromptText: {
+    fontSize: 12,
+  },
+  footerEnd: {
+    alignItems: "center",
+    marginVertical: 20,
+  },
+  footerEndContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 });

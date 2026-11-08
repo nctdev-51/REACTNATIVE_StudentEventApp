@@ -10,6 +10,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+<<<<<<< HEAD
   Modal,
   KeyboardAvoidingView,
 <<<<<<< HEAD
@@ -23,24 +24,16 @@ import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice
 import api from '../../services/api';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 =======
+=======
+  View,
+  Text,
+  TouchableOpacity,
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
-import {
-  YStack,
-  XStack,
-  Card,
-  Button,
-  Input as TamaguiInput,
-  Spinner,
-} from "tamagui";
-import {
-  AppText as TamaguiText,
-  AppHeading as Heading,
-  AppParagraph as Paragraph,
-} from "../../components/common/AppTypography";
 
 import type { MainStackParamList } from "../../navigation/types";
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
@@ -67,6 +60,11 @@ import { Ionicons } from "@expo/vector-icons";
 =======
 import NotificationPreferencesModal from "../../components/notifications/NotificationPreferencesModal";
 >>>>>>> 83e603c (Tam fix 1 vai cho)
+
+import ActivityStatItem from "../../components/profile/ActivityStatItem";
+import MenuItem from "../../components/profile/MenuItem";
+import EditProfileModal from "../../components/profile/EditProfileModal";
+import LogoutConfirmModal from "../../components/profile/LogoutConfirmModal";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -100,6 +98,7 @@ export interface ProfileScreenProps {
 }
 
 // ---------------------------------------------------------------------------
+<<<<<<< HEAD
 <<<<<<< HEAD
 // Constants
 // ---------------------------------------------------------------------------
@@ -705,6 +704,14 @@ export default function ProfileScreen({
 >>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
 }: ProfileScreenProps) {
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+=======
+// ProfileScreen Component
+// ---------------------------------------------------------------------------
+
+export default function ProfileScreen({ profile }: ProfileScreenProps) {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
   const dispatch = useAppDispatch();
 
   const currentUser = useAppSelector((state) => state.auth.user);
@@ -724,8 +731,6 @@ export default function ProfileScreen({
 =======
 >>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
   const [imageError, setImageError] = useState<boolean>(false);
-
-  // Edit Profile Modal State
   const [editModalVisible, setEditModalVisible] = useState(false);
 <<<<<<< HEAD
   const [editFullName, setEditFullName] = useState('');
@@ -740,11 +745,14 @@ export default function ProfileScreen({
   }, [dispatch, currentUser?._id]);
 =======
   const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+<<<<<<< HEAD
   const [editFullName, setEditFullName] = useState("");
   const [editPhone, setEditPhone] = useState("");
   const [editFaculty, setEditFaculty] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
   const [notifModalVisible, setNotifModalVisible] = useState(false);
+=======
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 
   const targetUserId = currentUser?._id || defaultStudent?._id;
 
@@ -755,7 +763,6 @@ export default function ProfileScreen({
 
   const loadPersonalReviews = useCallback(async () => {
     try {
-      // 1. Lấy trực tiếp từ Backend MongoDB qua API
       const queryId = targetUserId || currentUser?.studentId || defaultStudent?._id;
       const apiFeedbacks = queryId
         ? await api.getFeedbacksByUser(queryId)
@@ -781,7 +788,6 @@ export default function ProfileScreen({
           );
         });
 
-        // Đếm số sự kiện phân biệt (distinct eventId) sinh viên đã gửi đánh giá
         const reviewedEventIds = new Set(
           userFeedbacks
             .map((f: any) =>
@@ -901,6 +907,7 @@ export default function ProfileScreen({
         defaultStudent?.point ??
         getUserStatsFromDb(targetUserId).pointsAccumulated);
 
+<<<<<<< HEAD
   const handleOpenEditProfile = () => {
     setEditFullName(currentUser?.fullName || displayName);
     setEditPhone(currentUser?.phone || phone || "0912345678");
@@ -1017,28 +1024,28 @@ export default function ProfileScreen({
   // Mở modal xác nhận đăng xuất
   const handleLogoutPress = () => {
     setLogoutModalVisible(true);
+=======
+  // Lưu thông tin cá nhân
+  const handleSaveProfile = async (data: { fullName: string; phone: string; faculty: string }) => {
+    await api.updateProfile(data);
+    dispatch(updateUser(data));
+    Alert.alert("Thành công", "Thông tin cá nhân đã được lưu thành công.");
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
   };
 
   // Thực hiện đăng xuất tài khoản
   const confirmLogout = async () => {
     setLogoutModalVisible(false);
-
-    // 1. Thu hồi / xoá token axios interceptor
     try {
       setAuthToken(null);
-    } catch (e) {
+    } catch {
       // ignore
     }
-
-    // 2. Cập nhật Redux: RootNavigator sẽ tự động nhận diện isAuthenticated = false
-    // và lập tức chuyển về AuthStack (LoginScreen)
     dispatch(logout());
-
-    // 3. Thông báo máy chủ backend ngầm
     try {
       await api.logout();
-    } catch (err) {
-      // Bỏ qua lỗi kết nối máy chủ khi đăng xuất
+    } catch {
+      // Bỏ qua lỗi kết nối khi đăng xuất
     }
 >>>>>>> 9994730 (làm sạch 2 trang cá nhân và feedback)
   };
@@ -1054,6 +1061,7 @@ export default function ProfileScreen({
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
       >
+<<<<<<< HEAD
 <<<<<<< HEAD
         {/* ── Top row với nút Left Navbar (☰) & Tùy chọn ──────────────────── */}
         <View style={styles.topRow}>
@@ -1074,12 +1082,18 @@ export default function ProfileScreen({
           paddingBottom={8}
         >
           <XStack alignItems="center" gap={10}>
+=======
+        {/* Top Header */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
             <LeftNavbarButton />
-            <Heading size="$6" fontWeight="700" color={theme.textPrimary}>
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
               Hồ sơ cá nhân
-            </Heading>
-          </XStack>
+            </Text>
+          </View>
 
+<<<<<<< HEAD
           <Button
             size="$3"
             circular
@@ -1091,6 +1105,17 @@ export default function ProfileScreen({
             borderWidth={1}
             pressStyle={{ opacity: 0.7 }}
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+          <TouchableOpacity
+            style={[
+              styles.moreButton,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
+            activeOpacity={0.7}
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
             onPress={() => {
               Alert.alert(
                 "Thông tin tài khoản",
@@ -1111,12 +1136,17 @@ export default function ProfileScreen({
               size={18}
               color={theme.textSecondary}
             />
+<<<<<<< HEAD
           </Button>
         </XStack>
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+          </TouchableOpacity>
+        </View>
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 
-        {/* ── Avatar ──────────────────────────────────────────────────────── */}
-        <YStack alignItems="center" marginTop={8} marginBottom={12}>
+        {/* Avatar */}
+        <View style={styles.avatarContainer}>
           {avatarUrl && !imageError ? (
             <Image
               source={{ uri: avatarUrl }}
@@ -1127,6 +1157,7 @@ export default function ProfileScreen({
               accessibilityLabel={`Ảnh đại diện của ${displayName}`}
             />
           ) : (
+<<<<<<< HEAD
 <<<<<<< HEAD
             <View style={styles.avatarFallback}>
               <Text style={styles.avatarFallbackInitial}>
@@ -1143,12 +1174,25 @@ export default function ProfileScreen({
             >
               <TamaguiText fontSize={36} fontWeight="700" color="#FFFFFF">
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+            <View
+              style={[
+                styles.avatarFallback,
+                {
+                  backgroundColor: theme.primary,
+                  borderColor: theme.surface,
+                },
+              ]}
+            >
+              <Text style={styles.avatarFallbackText}>
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
                 {displayName.charAt(0).toUpperCase()}
-              </TamaguiText>
-            </YStack>
+              </Text>
+            </View>
           )}
-        </YStack>
+        </View>
 
+<<<<<<< HEAD
         {/* ── Student info ─────────────────────────────────────────────────── */}
 <<<<<<< HEAD
         <Text style={styles.displayName}>{displayName}</Text>
@@ -1183,38 +1227,30 @@ export default function ProfileScreen({
           color={theme.textPrimary}
           marginBottom={4}
         >
+=======
+        {/* Student Info */}
+        <Text style={[styles.nameText, { color: theme.textPrimary }]}>
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
           {displayName}
-        </Heading>
-        <Paragraph
-          size="$3"
-          textAlign="center"
-          color={theme.textSecondary}
-          marginBottom={2}
-        >
+        </Text>
+        <Text style={[styles.subText, { color: theme.textSecondary }]}>
           MSSV: {studentId}
-        </Paragraph>
-        <Paragraph
-          size="$3"
-          textAlign="center"
-          color={theme.textSecondary}
-          marginBottom={20}
-        >
+        </Text>
+        <Text style={[styles.subText, styles.facultyText, { color: theme.textSecondary }]}>
           {faculty}
-        </Paragraph>
+        </Text>
 
-        {/* ── Activity stats card (Tamagui Card) ─────────── */}
-        <Card
-          marginHorizontal={20}
-          borderRadius={16}
-          borderWidth={1}
-          borderColor={theme.border}
-          backgroundColor={theme.surface}
-          paddingVertical={14}
-          paddingHorizontal={12}
-          marginBottom={20}
-          elevation={2}
+        {/* Activity Stats Card */}
+        <View
+          style={[
+            styles.statsCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
         >
-          <XStack justifyContent="space-around" alignItems="center">
+          <View style={styles.statsRow}>
             <ActivityStatItem
               value={eventsAttendedCount}
               label="Sự kiện đã tham gia"
@@ -1233,20 +1269,21 @@ export default function ProfileScreen({
               accentColor={theme.primary}
               labelColor={theme.textSecondary}
             />
-          </XStack>
-        </Card>
+          </View>
+        </View>
 
-        {/* ── Menu list (Tamagui Card) ────────────────────────────────────── */}
-        <Card
-          marginHorizontal={20}
-          borderRadius={16}
-          borderWidth={1}
-          borderColor={theme.border}
-          backgroundColor={theme.surface}
-          overflow="hidden"
-          elevation={2}
+        {/* Menu list */}
+        <View
+          style={[
+            styles.menuCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
         >
           <MenuItem
+<<<<<<< HEAD
             icon={
               <Ionicons
                 name="calendar-outline"
@@ -1255,10 +1292,14 @@ export default function ProfileScreen({
               />
             }
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+            icon={<Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />}
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
             label="Lịch sử tham gia"
             onPress={() => navigation.navigate('MySchedule')}
           />
           <MenuItem
+<<<<<<< HEAD
 <<<<<<< HEAD
             icon={<UserOutlineIcon color="#334155" />}
             label="Thông tin cá nhân"
@@ -1280,11 +1321,15 @@ export default function ProfileScreen({
               />
             }
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+            icon={<Ionicons name="person-outline" size={20} color={theme.textSecondary} />}
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
             label="Thông tin cá nhân"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
             borderSubtle={theme.borderSubtle}
             chevronColor={theme.textTertiary}
+<<<<<<< HEAD
 <<<<<<< HEAD
             onPress={() =>
               Alert.alert(
@@ -1296,8 +1341,12 @@ export default function ProfileScreen({
 =======
             onPress={handleOpenEditProfile}
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+            onPress={() => setEditModalVisible(true)}
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
           />
           <MenuItem
+<<<<<<< HEAD
 <<<<<<< HEAD
             icon={<MoonCrescentIcon color="#334155" />}
             label="Đổi theme"
@@ -1311,6 +1360,9 @@ export default function ProfileScreen({
                 color={theme.textSecondary}
               />
             }
+=======
+            icon={<Ionicons name="star-outline" size={20} color={theme.textSecondary} />}
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
             label="Góp ý & Đánh giá sự kiện"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
@@ -1320,6 +1372,7 @@ export default function ProfileScreen({
           />
 
           <MenuItem
+<<<<<<< HEAD
             icon={
               <Ionicons
                 name="notifications-outline"
@@ -1345,6 +1398,9 @@ export default function ProfileScreen({
                 color={theme.textSecondary}
               />
             }
+=======
+            icon={<Ionicons name="settings-outline" size={20} color={theme.textSecondary} />}
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
             label="Cài đặt ứng dụng"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
@@ -1358,6 +1414,10 @@ export default function ProfileScreen({
             }
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
           />
+<<<<<<< HEAD
+=======
+
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
           <MenuItem
 <<<<<<< HEAD
             icon={<LogoutIcon color={DANGER_COLOR} />}
@@ -1384,36 +1444,42 @@ export default function ProfileScreen({
             isLast={true}
             onPress={toggleTheme}
           />
-        </Card>
+        </View>
 
-        {/* ── Nút Đăng xuất riêng biệt nổi bật (Tamagui Button) ── */}
-        <Button
-          marginHorizontal={20}
-          marginTop={14}
-          borderRadius={14}
-          borderWidth={1}
-          height={52}
-          backgroundColor={isDark ? "#261214" : "#FEF2F2"}
-          borderColor={isDark ? "#7F1D1D" : "#FECACA"}
-          onPress={handleLogoutPress}
-          pressStyle={{ opacity: 0.75 }}
+        {/* Nút Đăng xuất */}
+        <TouchableOpacity
+          style={[
+            styles.logoutButton,
+            {
+              backgroundColor: isDark ? "#261214" : "#FEF2F2",
+              borderColor: isDark ? "#7F1D1D" : "#FECACA",
+            },
+          ]}
+          activeOpacity={0.75}
+          onPress={() => setLogoutModalVisible(true)}
           accessibilityRole="button"
           accessibilityLabel="Đăng xuất khỏi tài khoản"
         >
-          <XStack alignItems="center" gap={8}>
+          <View style={styles.logoutContent}>
             <Ionicons name="log-out-outline" size={20} color={theme.danger} />
-            <TamaguiText fontSize={15} fontWeight="700" color={theme.danger}>
+            <Text style={[styles.logoutText, { color: theme.danger }]}>
               Đăng xuất tài khoản
+<<<<<<< HEAD
             </TamaguiText>
           </XStack>
         </Button>
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+            </Text>
+          </View>
+        </TouchableOpacity>
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
       </ScrollView>
 
-
-      {/* ── Modal Chỉnh Sửa Thông Tin Cá Nhân (Tamagui Card + Input + Button) ── */}
-      <Modal
+      {/* Modal Chỉnh Sửa Thông Tin Cá Nhân */}
+      <EditProfileModal
         visible={editModalVisible}
+<<<<<<< HEAD
         transparent
         animationType="slide"
         onRequestClose={() => setEditModalVisible(false)}
@@ -1801,14 +1867,30 @@ export default function ProfileScreen({
         visible={notifModalVisible}
         onClose={() => setNotifModalVisible(false)}
         userId={targetUserId}
+=======
+        onClose={() => setEditModalVisible(false)}
+        studentId={studentId}
+        email={email}
+        initialFullName={displayName}
+        initialPhone={phone || "0912345678"}
+        initialFaculty={faculty}
+        pointsAccumulated={pointsAccumulated}
+        onSave={handleSaveProfile}
+      />
+
+      {/* Modal Xác nhận Đăng xuất */}
+      <LogoutConfirmModal
+        visible={logoutModalVisible}
+        onClose={() => setLogoutModalVisible(false)}
+        onConfirm={confirmLogout}
+        displayName={displayName}
+        theme={theme}
+        isDark={isDark}
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
       />
     </SafeAreaView>
   );
 }
-
-// ---------------------------------------------------------------------------
-// Native Styles (Image & Scroll layout)
-// ---------------------------------------------------------------------------
 
 const styles = StyleSheet.create({
   safe: {
@@ -1818,6 +1900,7 @@ const styles = StyleSheet.create({
   scroll: {
     paddingBottom: 24,
   },
+<<<<<<< HEAD
 <<<<<<< HEAD
 
   // Top row
@@ -2084,11 +2167,119 @@ const editStyles = StyleSheet.create({
 const editStyles = StyleSheet.create({
   keyboardWrap: {
     width: "100%",
+=======
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: 20,
+    paddingTop: Platform.OS === "android" ? 12 : 8,
+    paddingBottom: 8,
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+  },
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
+  },
+  moreButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarContainer: {
+    alignItems: "center",
+    marginTop: 8,
+    marginBottom: 12,
+  },
+  avatarImage: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#E2E8F0",
+    borderWidth: 3,
+  },
+  avatarFallback: {
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
+  },
+  avatarFallbackText: {
+    fontSize: 36,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  nameText: {
+    fontSize: 20,
+    fontWeight: "700",
+    textAlign: "center",
+    marginBottom: 4,
+  },
+  subText: {
+    fontSize: 14,
+    textAlign: "center",
+    marginBottom: 2,
+  },
+  facultyText: {
+    marginBottom: 20,
+  },
+  statsCard: {
+    marginHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    paddingVertical: 14,
+    paddingHorizontal: 12,
+    marginBottom: 20,
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+>>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
     alignItems: "center",
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   },
-  body: {
-    padding: 16,
+  menuCard: {
+    marginHorizontal: 20,
+    borderRadius: 16,
+    borderWidth: 1,
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
+  },
+  logoutButton: {
+    marginHorizontal: 20,
+    marginTop: 14,
+    borderRadius: 14,
+    borderWidth: 1,
+    height: 52,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  logoutContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  logoutText: {
+    fontSize: 15,
+    fontWeight: "700",
   },
 <<<<<<< HEAD
   label: {

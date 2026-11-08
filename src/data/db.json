@@ -388,33 +388,34 @@
   ],
   "feedbacks": [
     {
-      "_id": "6aef45a6085cbbf6547e77a3",
-      "id": "6aef45a6085cbbf6547e77a3",
-      "eventId": "66f1e2020000000000000002",
+      "_id": "6aef6944085cbbf6547e916a",
+      "id": "6aef6944085cbbf6547e916a",
+      "eventId": "66f1e2010000000000000001",
       "userId": "66f1a1010000000000000001",
       "rating": 5,
-      "comment": "Workshop rất bổ ích và diễn giả hướng dẫn chi tiết!",
-      "createdAt": "2026-11-07T15:43:15.034Z"
+      "comment": "Sự kiện rất bổ ích, diễn giả nhiệt tình và ban tổ chức chu đáo!",
+      "createdAt": "2026-11-07T18:09:08.259Z",
+      "updatedAt": "2026-11-07T18:09:08.259Z"
     },
     {
       "_id": "66f1f4010000000000000001",
+      "id": "66f1f4010000000000000001",
       "eventId": "66f1e2040000000000000004",
       "userId": "66f1a1010000000000000001",
       "rating": 5,
       "comment": "Cuộc thi tổ chức rất chuyên nghiệp, ban giám khảo góp ý rất chi tiết cho sản phẩm nghiên cứu của nhóm mình!",
       "createdAt": "2026-08-21T09:00:00.000Z",
-      "updatedAt": "2026-11-06T17:45:43.738Z",
-      "id": "66f1f4010000000000000001"
+      "updatedAt": "2026-11-06T17:45:43.738Z"
     },
     {
       "_id": "66f1f4020000000000000002",
+      "id": "66f1f4020000000000000002",
       "eventId": "66f1e2050000000000000005",
       "userId": "66f1a1020000000000000002",
       "rating": 4,
       "comment": "Các bạn tình nguyện viên hướng dẫn nhiệt tình, chỉ tiếc là thời gian xếp hàng hơi lâu một chút.",
       "createdAt": "2026-07-05T14:30:00.000Z",
-      "updatedAt": "2026-11-06T17:45:43.738Z",
-      "id": "66f1f4020000000000000002"
+      "updatedAt": "2026-11-06T17:45:43.738Z"
     }
   ],
   "notifications": [
