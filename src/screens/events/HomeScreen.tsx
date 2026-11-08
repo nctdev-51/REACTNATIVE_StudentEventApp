@@ -1,9 +1,4 @@
-import React, {
-  useEffect,
-  useState,
-  useCallback,
-  useMemo,
-} from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   FlatList,
   ScrollView,
@@ -47,6 +42,7 @@ import EventCard from "../../components/events/EventCard";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { Colors, Spacing, Typography } from "../../theme";
 =======
 >>>>>>> 8d9ed42 (Update Event)
@@ -59,6 +55,14 @@ import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTa
 import { Colors, Typography } from "../../theme";
 import { useAppTheme } from "../../theme/ThemeContext";
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
+=======
+import AppBottomTab, {
+  AppTabKey,
+} from "../../components/navigation/AppBottomTab";
+import { Colors, Typography } from "../../theme";
+import { useAppTheme } from "../../theme/ThemeContext";
+import type { Event } from "../../types/event";
+>>>>>>> d397c6d (update home and event card)
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">;
 
@@ -79,7 +83,12 @@ export default function HomeScreen() {
   const insets = useSafeAreaInsets();
   const { theme, isDark } = useAppTheme();
 
-  const { loading, error, filter, list: allEvents } = useAppSelector((state) => state.events);
+  const {
+    loading,
+    error,
+    filter,
+    list: allEvents,
+  } = useAppSelector((state) => state.events);
   const filteredEvents = useAppSelector(selectFilteredEvents);
   const user = useAppSelector((state) => state.auth.user);
   const unreadCount = useAppSelector(selectUnreadCount);
@@ -110,50 +119,105 @@ export default function HomeScreen() {
 
   // Chọn category
   const handleCategorySelect = (category: string) => {
-  // Xóa các bộ lọc nâng cao cũ
-  dispatch(setFilterFaculty(null));
-  dispatch(setFilterDate(null));
-  dispatch(setFilterStatus(null));
+    // Xóa các bộ lọc nâng cao cũ
+    dispatch(setFilterFaculty(null));
+    dispatch(setFilterDate(null));
+    dispatch(setFilterStatus(null));
 
-  // Chỉ giữ category vừa chọn
-  dispatch(
-    setFilterCategory(
-      category === "Tất cả" ? null : category
-    )
-  );
-};
+    // Chỉ giữ category vừa chọn
+    dispatch(setFilterCategory(category === "Tất cả" ? null : category));
+  };
 
   const selectedCategory = filter.category ?? "Tất cả";
 
-  // Sắp xếp ưu tiên các sự kiện sắp tới lên trước
-  const sortedEvents = useMemo(() => {
-    return [...filteredEvents].sort((a, b) => {
-      const aPast = isEventPast(a);
-      const bPast = isEventPast(b);
-      if (!aPast && bPast) return -1;
-      if (aPast && !bPast) return 1;
-      const aStart = Date.parse(a.time.start);
-      const bStart = Date.parse(b.time.start);
-      if (!Number.isFinite(aStart)) return Number.isFinite(bStart) ? 1 : 0;
-      if (!Number.isFinite(bStart)) return -1;
-      return aPast ? bStart - aStart : aStart - bStart;
+  // Phân loại sự kiện theo thời gian thực tế
+  const { featuredEvent, ongoingEvents, upcomingEvents } = useMemo(() => {
+    const now = new Date();
+
+    // Thời điểm bắt đầu ngày mai theo giờ địa phương
+    const tomorrow = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate() + 1,
+    );
+
+    // Chỉ lấy sự kiện được phép hiển thị
+    const availableEvents = filteredEvents.filter(
+      (event) =>
+        !event.isHidden &&
+        !["draft", "pending_approval", "cancelled"].includes(event.status),
+    );
+
+    const ongoing: Event[] = [];
+    const upcoming: Event[] = [];
+
+    availableEvents.forEach((event) => {
+      const startTime = new Date(event.time.start);
+      const endTime = new Date(event.time.end);
+
+      // Bỏ qua sự kiện có thời gian không hợp lệ
+      if (
+        !Number.isFinite(startTime.getTime()) ||
+        !Number.isFinite(endTime.getTime())
+      ) {
+        return;
+      }
+
+      // Sự kiện đang diễn ra
+      if (startTime <= now && endTime >= now) {
+        ongoing.push(event);
+      }
+      // Sự kiện bắt đầu từ ngày mai trở đi
+      else if (startTime >= tomorrow) {
+        upcoming.push(event);
+      }
     });
+
+    // Sắp xếp sự kiện đang diễn ra theo thời gian kết thúc gần nhất
+    ongoing.sort(
+      (a, b) => new Date(a.time.end).getTime() - new Date(b.time.end).getTime(),
+    );
+
+    // Sắp xếp sự kiện sắp tới theo thời gian bắt đầu gần nhất
+    upcoming.sort(
+      (a, b) =>
+        new Date(a.time.start).getTime() - new Date(b.time.start).getTime(),
+    );
+
+    // Chọn sự kiện có nhiều sinh viên đăng ký nhất
+    const featuredCandidates = [...ongoing, ...upcoming];
+
+    featuredCandidates.sort((a, b) => {
+      const countA = a.registeredCount ?? 0;
+      const countB = b.registeredCount ?? 0;
+
+      if (countA !== countB) {
+        return countB - countA;
+      }
+
+      // Nếu số đăng ký bằng nhau, ưu tiên sự kiện gần nhất
+      return (
+        new Date(a.time.start).getTime() - new Date(b.time.start).getTime()
+      );
+    });
+
+    return {
+      featuredEvent: featuredCandidates[0] ?? null,
+      ongoingEvents: ongoing,
+      upcomingEvents: upcoming,
+    };
   }, [filteredEvents]);
 
-  // Event đầu tiên làm nổi bật (sắp tới)
-  const featuredEvent = sortedEvents[0] ?? null;
-  // Các event còn lại
-  const upcomingEvents = sortedEvents.slice(1);
-
   // Lazy load
-  const visibleEvents = useMemo(() => {
-    return upcomingEvents.slice(0, visibleCount);
-  }, [upcomingEvents, visibleCount]);
+  const visibleEvents = useMemo(
+    () => upcomingEvents.slice(0, visibleCount),
+    [upcomingEvents, visibleCount],
+  );
 
   const loadMore = useCallback(() => {
     if (visibleCount < upcomingEvents.length) {
       setVisibleCount((current) =>
-        Math.min(current + PAGE_SIZE, upcomingEvents.length)
+        Math.min(current + PAGE_SIZE, upcomingEvents.length),
       );
     }
   }, [visibleCount, upcomingEvents.length]);
@@ -172,11 +236,14 @@ export default function HomeScreen() {
 
   const userName = user?.fullName ?? "Sinh viên";
 
-  const handleTabPress = useCallback((tab: AppTabKey) => {
-    if (tab === "schedule") navigation.navigate("MySchedule");
-    if (tab === "checkin") navigation.navigate("CheckIn");
-    if (tab === "profile") navigation.navigate("Profile");
-  }, [navigation]);
+  const handleTabPress = useCallback(
+    (tab: AppTabKey) => {
+      if (tab === "schedule") navigation.navigate("MySchedule");
+      if (tab === "checkin") navigation.navigate("CheckIn");
+      if (tab === "profile") navigation.navigate("Profile");
+    },
+    [navigation],
+  );
 
   // Header Component của danh sách
   const renderListHeader = () => (
@@ -184,10 +251,18 @@ export default function HomeScreen() {
       {/* Header với Left Navbar Menu (☰) và Avatar */}
       <View style={styles.header}>
         <View style={styles.headerLeft}>
-          <LeftNavbarButton hasNotification={unreadCount > 0} style={styles.navMenuBtn} />
+          <LeftNavbarButton
+            hasNotification={unreadCount > 0}
+            style={styles.navMenuBtn}
+          />
           <View style={styles.greetingBox}>
-            <Text style={[styles.hello, { color: theme.textSecondary }]}>Xin chào,</Text>
-            <Text style={[styles.userName, { color: theme.textPrimary }]} numberOfLines={1}>
+            <Text style={[styles.hello, { color: theme.textSecondary }]}>
+              Xin chào,
+            </Text>
+            <Text
+              style={[styles.userName, { color: theme.textPrimary }]}
+              numberOfLines={1}
+            >
               {userName} 👋
             </Text>
           </View>
@@ -206,7 +281,9 @@ export default function HomeScreen() {
           accessibilityLabel="Mở hồ sơ cá nhân"
         >
           {userName ? (
-            <Text style={styles.avatarText}>{userName.charAt(0).toUpperCase()}</Text>
+            <Text style={styles.avatarText}>
+              {userName.charAt(0).toUpperCase()}
+            </Text>
           ) : (
             <Ionicons name="person-outline" size={22} color={theme.primary} />
           )}
@@ -241,8 +318,14 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("MySchedule")}
           activeOpacity={0.8}
         >
-          <Ionicons name="calendar-outline" size={21} color={theme.textSecondary} />
-          <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Lịch của tôi</Text>
+          <Ionicons
+            name="calendar-outline"
+            size={21}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>
+            Lịch của tôi
+          </Text>
         </TouchableOpacity>
 
         <TouchableOpacity
@@ -261,7 +344,11 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("Notification")}
           activeOpacity={0.8}
         >
-          <Ionicons name="notifications-outline" size={21} color={unreadCount > 0 ? "#D97706" : theme.textSecondary} />
+          <Ionicons
+            name="notifications-outline"
+            size={21}
+            color={unreadCount > 0 ? "#D97706" : theme.textSecondary}
+          />
           <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>
             Thông báo{unreadCount > 0 ? ` (${unreadCount})` : ""}
           </Text>
@@ -278,8 +365,14 @@ export default function HomeScreen() {
           onPress={() => navigation.navigate("Profile")}
           activeOpacity={0.8}
         >
-          <Ionicons name="person-outline" size={21} color={theme.textSecondary} />
-          <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>Hồ sơ</Text>
+          <Ionicons
+            name="person-outline"
+            size={21}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.quickNavText, { color: theme.textSecondary }]}>
+            Hồ sơ
+          </Text>
         </TouchableOpacity>
       </View>
 
@@ -293,17 +386,17 @@ export default function HomeScreen() {
 
       {/* Tìm kiếm */}
       <SearchBar />
-{/* Bộ lọc nâng cao */}
-<TouchableOpacity
-  style={styles.filterButton}
-  onPress={() => navigation.navigate("Filter")}
-  activeOpacity={0.8}
->
-  <View style={styles.filterButtonContent}>
-    <Ionicons name="options-outline" size={17} color={theme.primary} />
-    <Text style={styles.filterButtonText}>Bộ lọc nâng cao</Text>
-  </View>
-</TouchableOpacity>
+      {/* Bộ lọc nâng cao */}
+      <TouchableOpacity
+        style={styles.filterButton}
+        onPress={() => navigation.navigate("Filter")}
+        activeOpacity={0.8}
+      >
+        <View style={styles.filterButtonContent}>
+          <Ionicons name="options-outline" size={17} color={theme.primary} />
+          <Text style={styles.filterButtonText}>Bộ lọc nâng cao</Text>
+        </View>
+      </TouchableOpacity>
       {/* Danh mục */}
       <ScrollView
         horizontal
@@ -328,14 +421,21 @@ export default function HomeScreen() {
       {loading && !refreshing && (
         <View style={styles.loadingBox}>
           <ActivityIndicator color={theme.primary} size="large" />
-          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>Đang tải sự kiện...</Text>
+          <Text style={[styles.loadingText, { color: theme.textSecondary }]}>
+            Đang tải sự kiện...
+          </Text>
         </View>
       )}
 
       {/* Error */}
       {!!error && !loading && (
         <View style={styles.errorBox}>
-          <Ionicons name="warning-outline" size={32} color={Colors.error} style={styles.errorIcon} />
+          <Ionicons
+            name="warning-outline"
+            size={32}
+            color={Colors.error}
+            style={styles.errorIcon}
+          />
           <Text style={styles.errorTitle}>Không thể tải sự kiện</Text>
           <Text style={styles.errorDesc}>{error}</Text>
           <TouchableOpacity style={styles.retryBtn} onPress={loadData}>
@@ -344,22 +444,10 @@ export default function HomeScreen() {
         </View>
       )}
 
-      {/* Featured Event */}
-      {!loading && featuredEvent && (
-        <>
-          <View style={styles.sectionHeader}>
-            <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Sự kiện nổi bật</Text>
-            <TouchableOpacity
-              onPress={() =>
-                navigation.navigate("EventDetail", {
-                  eventId: featuredEvent._id,
-                  title: featuredEvent.title,
-                })
-              }
-            >
-              <Text style={styles.viewAll}>Chi tiết ›</Text>
-            </TouchableOpacity>
-          </View>
+      {/* SỰ KIỆN NỔI BẬT */}
+      {featuredEvent && (
+        <View>
+          <Text style={styles.sectionTitle}>Sự kiện nổi bật</Text>
 
           <TouchableOpacity
             activeOpacity={0.9}
@@ -372,22 +460,40 @@ export default function HomeScreen() {
           >
             <FeaturedEventCard event={featuredEvent} />
           </TouchableOpacity>
-        </>
-      )}
-
-      {/* Tiêu đề danh sách sắp tới */}
-      {!loading && upcomingEvents.length > 0 && (
-        <View style={styles.sectionHeader}>
-          <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Sự kiện sắp tới</Text>
-          <Text style={[styles.eventCountText, { color: theme.textSecondary }]}>
-            {upcomingEvents.length} sự kiện
-          </Text>
         </View>
       )}
+
+      {/* SỰ KIỆN ĐANG DIỄN RA */}
+      {ongoingEvents.length > 0 && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Sự kiện đang diễn ra</Text>
+
+          {ongoingEvents.map((event) => (
+            <TouchableOpacity
+              key={event._id}
+              activeOpacity={0.9}
+              onPress={() =>
+                navigation.navigate("EventDetail", {
+                  eventId: event._id,
+                  title: event.title,
+                })
+              }
+            >
+              <EventCard event={event} />
+            </TouchableOpacity>
+          ))}
+        </View>
+      )}
+
+      {/* TIÊU ĐỀ SỰ KIỆN SẮP TỚI */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Sự kiện sắp tới</Text>
+      </View>
     </>
   );
 
   return (
+<<<<<<< HEAD
 <<<<<<< HEAD
     <SafeAreaView style={styles.safeArea}>
 <<<<<<< HEAD
@@ -408,12 +514,19 @@ export default function HomeScreen() {
         style={styles.container}
 =======
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
+=======
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+    >
+>>>>>>> d397c6d (update home and event card)
       <StatusBar barStyle={theme.statusBarStyle} />
       <FlatList
         style={[styles.container, { backgroundColor: theme.background }]}
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
         data={visibleEvents}
-        keyExtractor={(item, index) => `${item._id || item.id || "evt"}-${index}`}
+        keyExtractor={(item, index) =>
+          `${item._id || item.id || "evt"}-${index}`
+        }
         showsVerticalScrollIndicator={false}
         contentContainerStyle={[
           styles.content,
@@ -730,12 +843,23 @@ export default function HomeScreen() {
                 },
               ]}
             >
-              <Ionicons name="calendar-clear-outline" size={32} color={theme.textTertiary} style={styles.emptyIcon} />
+              <Ionicons
+                name="calendar-clear-outline"
+                size={32}
+                color={theme.textTertiary}
+                style={styles.emptyIcon}
+              />
               <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
                 Không tìm thấy sự kiện
               </Text>
-              <Text style={[styles.emptyDescription, { color: theme.textSecondary }]}>
-                Học kỳ này chưa có hoạt động phù hợp. Hãy thử chọn học kỳ khác hoặc đổi bộ lọc.
+              <Text
+                style={[
+                  styles.emptyDescription,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                Học kỳ này chưa có hoạt động phù hợp. Hãy thử chọn học kỳ khác
+                hoặc đổi bộ lọc.
               </Text>
             </View>
           ) : undefined
@@ -757,14 +881,14 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   filterButton: {
-  borderWidth: 1,
-  borderColor: "#E2E8F0",
-  borderRadius: 12,
-  paddingVertical: 11,
-  alignItems: "center",
-  justifyContent: "center",
-  marginTop: 12,
-  backgroundColor: "#FFFFFF",
+    borderWidth: 1,
+    borderColor: "#E2E8F0",
+    borderRadius: 12,
+    paddingVertical: 11,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 12,
+    backgroundColor: "#FFFFFF",
   },
   filterButtonContent: {
     flexDirection: "row",
@@ -772,9 +896,9 @@ const styles = StyleSheet.create({
     gap: 6,
   },
   filterButtonText: {
-  color: Colors.primary,
-  fontSize: 14,
-  fontWeight: "600",
+    color: Colors.primary,
+    fontSize: 14,
+    fontWeight: "600",
   },
   safeArea: {
     flex: 1,
@@ -961,5 +1085,8 @@ const styles = StyleSheet.create({
   loadMoreText: {
     textAlign: "center",
     paddingVertical: 16,
+  },
+  section: {
+    marginBottom: 16,
   },
 });

@@ -2,9 +2,8 @@ import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Event } from "../../types/event";
-import { isEventPast } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
-
+import { formatEventDateTime } from "../../utils/dateUtils";
 const DEFAULT_EVENT_IMAGE =
   "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80";
 
@@ -12,21 +11,24 @@ interface EventCardProps {
   event: Event;
 }
 
-function formatDate(dateString?: string) {
-  if (!dateString) return "--/--/----";
-  const date = new Date(dateString);
-  if (isNaN(date.getTime())) return "--/--/----";
-
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
-
-  return `${day}/${month}/${year}`;
-}
-
 export default function EventCard({ event }: EventCardProps) {
   const { theme, isDark } = useAppTheme();
-  const isPast = isEventPast(event);
+  const now = new Date();
+  const startTime = new Date(event.time.start);
+  const endTime = new Date(event.time.end);
+
+  const isValidTime =
+    Number.isFinite(startTime.getTime()) && Number.isFinite(endTime.getTime());
+
+  const eventStatus = !isValidTime
+    ? "unknown"
+    : now < startTime
+      ? "upcoming"
+      : now <= endTime
+        ? "ongoing"
+        : "completed";
+
+  const isPast = eventStatus === "completed";
 
   const imageUri =
     event.images && event.images.length > 0 && event.images[0]
@@ -43,11 +45,7 @@ export default function EventCard({ event }: EventCardProps) {
               ? "#1E293B"
               : "#F8FAFC"
             : theme.surface,
-          borderColor: isPast
-            ? isDark
-              ? "#334155"
-              : "#E2E8F0"
-            : theme.border,
+          borderColor: isPast ? (isDark ? "#334155" : "#E2E8F0") : theme.border,
           borderWidth: 1,
         },
         isPast && styles.pastCard,
@@ -88,6 +86,7 @@ export default function EventCard({ event }: EventCardProps) {
         </Text>
 =======
         <View style={styles.infoRow}>
+<<<<<<< HEAD
           <Ionicons name="calendar-outline" size={14} color={theme.textSecondary} />
           <Text style={[styles.info, { color: theme.textSecondary }]}>{formatDate(event.time.start)}</Text>
         </View>
@@ -95,6 +94,30 @@ export default function EventCard({ event }: EventCardProps) {
         <View style={styles.infoRow}>
           <Ionicons name="location-outline" size={14} color={theme.textSecondary} />
           <Text style={[styles.info, { color: theme.textSecondary }]} numberOfLines={1}>{event.location}</Text>
+=======
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.info, { color: theme.textSecondary }]}>
+            {formatEventDateTime(event.time?.start, event.time?.end)}
+          </Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <Ionicons
+            name="location-outline"
+            size={14}
+            color={theme.textSecondary}
+          />
+          <Text
+            style={[styles.info, { color: theme.textSecondary }]}
+            numberOfLines={1}
+          >
+            {event.location || "Đang cập nhật địa điểm"}
+          </Text>
+>>>>>>> d397c6d (update home and event card)
         </View>
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 
@@ -103,13 +126,12 @@ export default function EventCard({ event }: EventCardProps) {
             style={[
               styles.categoryBadge,
               {
-                backgroundColor: isDark
-                  ? "rgba(37,99,235,0.22)"
-                  : "#e8f0ff",
+                backgroundColor: isDark ? "rgba(37,99,235,0.22)" : "#e8f0ff",
               },
             ]}
           >
             <Text
+              numberOfLines={1}
               style={[
                 styles.categoryText,
                 { color: isDark ? "#93C5FD" : "#2563eb" },
@@ -119,7 +141,7 @@ export default function EventCard({ event }: EventCardProps) {
             </Text>
           </View>
 
-          {isPast ? (
+          {eventStatus === "completed" ? (
             <View
               style={[
                 styles.pastBadge,
@@ -127,12 +149,27 @@ export default function EventCard({ event }: EventCardProps) {
               ]}
             >
               <Text
-                style={[
-                  styles.pastBadgeText,
-                  isDark && { color: "#FCA5A5" },
-                ]}
+                numberOfLines={1}
+                style={[styles.pastBadgeText, isDark && { color: "#FCA5A5" }]}
               >
                 Đã kết thúc
+              </Text>
+            </View>
+          ) : eventStatus === "ongoing" ? (
+            <View
+              style={[
+                styles.upcomingBadge,
+                isDark && { backgroundColor: "rgba(34,197,94,0.2)" },
+              ]}
+            >
+              <Text
+                numberOfLines={1}
+                style={[
+                  styles.upcomingBadgeText,
+                  isDark && { color: "#86EFAC" },
+                ]}
+              >
+                Đang diễn ra
               </Text>
             </View>
           ) : (
@@ -148,16 +185,14 @@ export default function EventCard({ event }: EventCardProps) {
                   isDark && { color: "#86EFAC" },
                 ]}
               >
-                Sắp diễn ra
+                {eventStatus === "unknown" ? "Chưa xác định" : "Sắp diễn ra"}
               </Text>
             </View>
           )}
 
           <Text
-            style={[
-              styles.point,
-              { color: isDark ? "#4ADE80" : "#16a34a" },
-            ]}
+            numberOfLines={1}
+            style={[styles.point, { color: isDark ? "#4ADE80" : "#16a34a" }]}
           >
             +{event.trainingPoints ?? 0} điểm
           </Text>
@@ -192,6 +227,7 @@ const styles = StyleSheet.create({
 
   content: {
     flex: 1,
+    minWidth: 0,
     justifyContent: "center",
   },
 
@@ -214,8 +250,9 @@ const styles = StyleSheet.create({
 
   bottomRow: {
     flexDirection: "row",
-    justifyContent: "space-between",
+    flexWrap: "wrap",
     alignItems: "center",
+    gap: 5,
     marginTop: 4,
   },
 
@@ -223,6 +260,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 9,
     paddingVertical: 4,
     borderRadius: 10,
+    flexShrink: 1,
   },
 
   categoryText: {
@@ -233,6 +271,7 @@ const styles = StyleSheet.create({
   point: {
     fontSize: 12,
     fontWeight: "600",
+    flexShrink: 1,
   },
 
   // Past event styling
@@ -247,6 +286,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
+    flexShrink: 1,
   },
   pastBadgeText: {
     color: "#DC2626",
@@ -258,6 +298,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 3,
     borderRadius: 8,
+    flexShrink: 1,
   },
   upcomingBadgeText: {
     color: "#16A34A",

@@ -3,7 +3,7 @@ import { ImageBackground, StyleSheet, Text, View } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { Event } from "../../types/event";
 import { useAppTheme } from "../../theme/ThemeContext";
-
+import { formatEventDateTime } from "../../utils/dateUtils";
 const DEFAULT_EVENT_IMAGE =
   "https://images.unsplash.com/photo-1540575467063-178a50c2df87?auto=format&fit=crop&w=800&q=80";
 
@@ -11,21 +11,28 @@ interface FeaturedEventCardProps {
   event: Event;
 }
 
-function formatDate(dateString?: string) {
+function formatDateTime(dateString?: string) {
   if (!dateString) return "--/--/----";
+
   const date = new Date(dateString);
   if (isNaN(date.getTime())) return "--/--/----";
 
-  const day = String(date.getDate()).padStart(2, "0");
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const year = date.getFullYear();
+  const datePart = date.toLocaleDateString("vi-VN", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
+  });
 
-  return `${day}/${month}/${year}`;
+  const timePart = date.toLocaleTimeString("vi-VN", {
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+
+  return `${datePart} ${timePart}`;
 }
 
-export default function FeaturedEventCard({
-  event,
-}: FeaturedEventCardProps) {
+export default function FeaturedEventCard({ event }: FeaturedEventCardProps) {
   const { theme } = useAppTheme();
 
   const imageUri =
@@ -39,9 +46,14 @@ export default function FeaturedEventCard({
         source={{ uri: imageUri }}
         style={styles.image}
         imageStyle={styles.imageStyle}
-      >
-        <View style={styles.overlay} />
+        onLoad={() => console.log("FEATURED IMAGE LOADED:", imageUri)}
+        onError={(error) =>
+          console.log("FEATURED IMAGE ERROR:", error.nativeEvent)
+        }
+      />
+      <View style={styles.overlay} />
 
+<<<<<<< HEAD
         <View style={styles.content}>
           <View style={[styles.badge, { backgroundColor: theme.primary }]}>
             <Text style={styles.badgeText}>
@@ -78,8 +90,31 @@ export default function FeaturedEventCard({
             <Text style={styles.info} numberOfLines={1}>{event.location}</Text>
           </View>
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
+=======
+      <View style={styles.content}>
+        <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+          <Text style={styles.badgeText}>{event.category || "Chung"}</Text>
+>>>>>>> d397c6d (update home and event card)
         </View>
-      </ImageBackground>
+
+        <Text style={styles.title} numberOfLines={2}>
+          {event.title}
+        </Text>
+
+        <View style={styles.infoRow}>
+          <Ionicons name="calendar-outline" size={15} color="#FFFFFF" />
+          <Text style={styles.info} numberOfLines={2}>
+            {formatEventDateTime(event.time?.start, event.time?.end)}
+          </Text>
+        </View>
+
+        <View style={styles.infoRow}>
+          <Ionicons name="location-outline" size={15} color="#FFFFFF" />
+          <Text style={styles.info} numberOfLines={1}>
+            {event.location || "Đang cập nhật địa điểm"}
+          </Text>
+        </View>
+      </View>
     </View>
   );
 }
@@ -100,7 +135,6 @@ const styles = StyleSheet.create({
   imageStyle: {
     borderRadius: 18,
   },
-
   overlay: {
     position: "absolute",
     top: 0,
@@ -111,6 +145,8 @@ const styles = StyleSheet.create({
   },
 
   content: {
+    flex: 1,
+    justifyContent: "flex-end",
     padding: 16,
   },
 
