@@ -10,6 +10,9 @@ import {
   Linking,
   ActivityIndicator,
   Alert,
+  Modal,
+  TextInput,
+  ScrollView,
 } from 'react-native';
 import { CameraView, useCameraPermissions, BarcodeScanningResult } from 'expo-camera';
 import { useFocusEffect, useIsFocused } from '@react-navigation/native';
@@ -36,6 +39,7 @@ import {
   reverseGeocodeAddress,
   openInGoogleMaps,
   checkLocationServicesEnabled,
+  inspectLocationIntegrity,
 } from '../../utils/permissionHandler';
 import {
   isWithinCheckInRadius,
@@ -45,8 +49,8 @@ import {
 
 const { width } = Dimensions.get('window');
 
-// Kích thước của khung quét QR hình vuông ở giữa màn hình
-const SCANNER_SIZE = Math.min(width * 0.72, 280);
+// Kích thước của khung quét QR hình vuông ở giữa màn hình (tối ưu gọn gàng cho mọi kích thước máy)
+const SCANNER_SIZE = Math.min(width * 0.62, 220);
 const MOCK_EVENT_ID = '66f1e2010000000000000001';
 
 function parseEventId(rawData: string): string | null {
@@ -115,6 +119,67 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
 
   // Trạng thái bật/tắt đèn flash
   const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
+
+  // Passcode Fallback (Nhập mã PIN dự phòng khi GPS/Camera lỗi)
+  const [showPasscodeModal, setShowPasscodeModal] = useState<boolean>(false);
+  const [passcodeInput, setPasscodeInput] = useState<string>('');
+  const [passcodeEventId, setPasscodeEventId] = useState<string>(MOCK_EVENT_ID);
+
+  const handlePasscodeCheckInSubmit = async () => {
+    if (!passcodeInput.trim()) {
+      Alert.alert('Chưa nhập mã', 'Vui lòng nhập mã PIN 6 số do Ban Tổ chức cung cấp.');
+      return;
+    }
+
+    setShowPasscodeModal(false);
+    setLoading(true);
+    setLoadingMessage('Đang xác thực mã PIN dự phòng (Passcode)...');
+
+    try {
+      const response = await qrCheckIn({
+        eventId: passcodeEventId,
+        userId: currentUser?._id,
+        studentId: currentUser?.studentId,
+        method: 'passcode',
+        passcode: passcodeInput.trim(),
+      });
+
+      if (response && response.success) {
+        if (currentUser?._id) {
+          await dispatch(fetchMyRegistrations(currentUser._id));
+        }
+        navigation.navigate('CheckInSuccess', {
+          eventId: passcodeEventId,
+          eventTitle: response.data?.event?.title || 'Sự kiện sinh viên',
+          studentName: currentUser?.fullName || response.data?.user?.name || 'Sinh viên',
+          studentId: currentUser?.studentId || response.data?.user?.studentId || '',
+          checkInTime: new Date().toLocaleTimeString('vi-VN', {
+            hour: '2-digit',
+            minute: '2-digit',
+            second: '2-digit',
+          }),
+          data: passcodeEventId,
+          locationVerified: false,
+        });
+      } else {
+        navigation.navigate('CheckInFailed', {
+          reason: response?.message || 'Mã PIN dự phòng không chính xác.',
+          data: passcodeEventId,
+          isLocationError: false,
+        });
+      }
+    } catch (err: any) {
+      const errMsg = err?.response?.data?.message || err?.message || 'Lỗi xác thực mã PIN.';
+      navigation.navigate('CheckInFailed', {
+        reason: errMsg,
+        data: passcodeEventId,
+        isLocationError: false,
+      });
+    } finally {
+      setLoading(false);
+      setPasscodeInput('');
+    }
+  };
 
   // ─── CLO4: Reanimated Animation cho tia laser quét ──────────────────────────
   const scanLineAnim = useSharedValue(0);
@@ -373,10 +438,27 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
           return;
         }
 
+        // Anti-Fraud: Kiểm tra tính toàn vẹn vị trí (Fake GPS / Độ chính xác)
+        const integrity = inspectLocationIntegrity(loc);
+        if (!integrity.isValid) {
+          navigation.navigate('CheckInFailed', {
+            reason: integrity.riskReason || 'Tín hiệu GPS không đủ độ tin cậy.',
+            data: eventId,
+            isLocationError: true,
+          });
+          return;
+        }
+
         const userLat = loc.coords.latitude;
         const userLon = loc.coords.longitude;
-        verifiedLocation = { latitude: userLat, longitude: userLon };
-        setRealCoords(verifiedLocation);
+        verifiedLocation = {
+          latitude: userLat,
+          longitude: userLon,
+          // @ts-ignore - Pass extra telemetry to server for anti-fraud audit
+          accuracy: integrity.accuracy,
+          isMockLocation: integrity.isMocked,
+        };
+        setRealCoords({ latitude: userLat, longitude: userLon });
 
         // Tính khoảng cách Haversine giữa vị trí thực tế của sinh viên và sự kiện theo bán kính sự kiện
         const eventRadius = eventData.coordinates.radiusMeters || CHECK_IN_RADIUS_METERS;
@@ -620,7 +702,12 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
         </View>
 
         {/* Phần dưới: Tối màu đen mờ kèm text hướng dẫn & công cụ kiểm thử thực tế */}
-        <View style={styles.overlayBottom}>
+        <ScrollView
+          style={styles.overlayBottom}
+          contentContainerStyle={styles.overlayBottomContent}
+          showsVerticalScrollIndicator={false}
+          bounces={false}
+        >
           <Text style={styles.instructionText}>Đưa mã QR sự kiện vào khung</Text>
           <Text style={styles.subInstructionText}>
             Hệ thống tự động xác thực sự có mặt của sinh viên tại địa điểm tổ chức
@@ -633,8 +720,10 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               activeOpacity={0.8}
               onPress={handleSetEventToCurrentLocation}
             >
-              <View style={styles.demoButtonTitle}><Ionicons name="locate" size={15} color="#4ADE80" /><Text style={styles.demoSuccessBtnText}>Đặt gần tôi (≤500m)</Text></View>
-              <Text style={styles.demoBtnSub}>Mô phỏng tại trường</Text>
+              <View style={styles.demoButtonTitle}>
+                <Ionicons name="locate" size={14} color="#4ADE80" style={{ marginRight: 4 }} />
+                <Text style={styles.demoSuccessBtnText}>Tại trường (≤500m)</Text>
+              </View>
             </TouchableOpacity>
 
             <TouchableOpacity
@@ -642,22 +731,75 @@ export default function QRScannerScreen({ navigation }: QRScannerScreenProps) {
               activeOpacity={0.8}
               onPress={handleSetEventFarAway}
             >
-              <View style={styles.demoButtonTitle}><Ionicons name="warning-outline" size={15} color="#F87171" /><Text style={styles.demoFailBtnText}>Dời ra xa (&gt;500m)</Text></View>
-              <Text style={styles.demoBtnSubFail}>Mô phỏng ngoài trường</Text>
+              <View style={styles.demoButtonTitle}>
+                <Ionicons name="warning-outline" size={14} color="#F87171" style={{ marginRight: 4 }} />
+                <Text style={styles.demoFailBtnText}>Ngoài trường (&gt;500m)</Text>
+              </View>
             </TouchableOpacity>
           </View>
 
-          <Text style={styles.syncLocationHint}>
-            Chạm để đổi địa điểm kiểm thử: Điểm danh hợp lệ hoặc Thử nghiệm ngoài phạm vi
-          </Text>
+          {/* Nút Fallback: Nhập mã PIN dự phòng */}
+          <TouchableOpacity
+            style={styles.passcodeFallbackBtn}
+            onPress={() => setShowPasscodeModal(true)}
+            activeOpacity={0.8}
+          >
+            <Ionicons name="keypad-outline" size={16} color="#FBBF24" style={{ marginRight: 6 }} />
+            <Text style={styles.passcodeFallbackBtnText}>Nhập mã PIN dự phòng (Passcode)</Text>
+          </TouchableOpacity>
 
           {__DEV__ && (
             <TouchableOpacity style={styles.mockScanButton} onPress={handleMockScan} accessibilityRole="button">
               <Text style={styles.mockScanButtonText}>Chạy QR mock trên Emulator</Text>
             </TouchableOpacity>
           )}
-        </View>
+        </ScrollView>
       </View>
+
+      {/* Modal Nhập Passcode Fallback khi GPS hoặc Camera bị lỗi */}
+      <Modal
+        visible={showPasscodeModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setShowPasscodeModal(false)}
+      >
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalCard}>
+            <View style={styles.modalHeader}>
+              <Ionicons name="keypad" size={24} color="#F59E0B" />
+              <Text style={styles.modalTitle}>Điểm danh mã PIN</Text>
+            </View>
+            <Text style={styles.modalSubtitle}>
+              Áp dụng khi hội trường không có sóng GPS hoặc camera bị lỗi. Nhập mã PIN do Ban Tổ Chức công bố trên màn chiếu:
+            </Text>
+
+            <TextInput
+              style={styles.modalInput}
+              placeholder="VD: 889900"
+              placeholderTextColor="#94A3B8"
+              value={passcodeInput}
+              onChangeText={setPasscodeInput}
+              keyboardType="number-pad"
+              maxLength={8}
+            />
+
+            <View style={styles.modalBtnRow}>
+              <TouchableOpacity
+                style={styles.modalCancelBtn}
+                onPress={() => setShowPasscodeModal(false)}
+              >
+                <Text style={styles.modalCancelText}>Hủy</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.modalConfirmBtn}
+                onPress={handlePasscodeCheckInSubmit}
+              >
+                <Text style={styles.modalConfirmText}>Xác nhận</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       {/* ================= OVERLAY LOADING KHI ĐANG KIỂM TRA & GỌI API ================= */}
       {loading && (
@@ -762,11 +904,11 @@ const styles = StyleSheet.create({
     ...StyleSheet.absoluteFill,
   },
   overlayTop: {
-    flex: 1,
+    flex: 0.85,
     backgroundColor: OVERLAY_COLOR,
     justifyContent: 'flex-start',
     alignItems: 'center',
-    paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 12 : 50,
+    paddingTop: StatusBar.currentHeight ? StatusBar.currentHeight + 8 : 42,
   },
   headerBar: {
     flexDirection: 'row',
@@ -808,12 +950,12 @@ const styles = StyleSheet.create({
     marginTop: 10,
     borderWidth: 1,
     borderColor: 'rgba(255, 255, 255, 0.2)',
-    gap: 6,
   },
   gpsDot: {
     width: 8,
     height: 8,
     borderRadius: 4,
+    marginRight: 6,
   },
   gpsBadgeText: {
     color: '#F8FAFC',
@@ -906,44 +1048,48 @@ const styles = StyleSheet.create({
 
   // Phần đáy dưới khung quét
   overlayBottom: {
-    flex: 1.3,
+    flex: 1.25,
     backgroundColor: OVERLAY_COLOR,
-    alignItems: 'center',
-    paddingTop: 22,
+    paddingTop: 10,
     paddingHorizontal: 20,
+  },
+  overlayBottomContent: {
+    alignItems: 'center',
+    paddingBottom: 24,
   },
   instructionText: {
     color: '#FFFFFF',
-    fontSize: 17,
+    fontSize: 16,
     fontWeight: '700',
     textAlign: 'center',
-    marginBottom: 6,
+    marginBottom: 4,
   },
   subInstructionText: {
     color: '#CBD5E1',
-    fontSize: 13,
+    fontSize: 12,
     textAlign: 'center',
-    lineHeight: 18,
-    marginBottom: 16,
+    lineHeight: 16,
+    marginBottom: 10,
   },
 
   // Demo Controls
   demoButtonsRow: {
     flexDirection: 'row',
-    gap: 10,
     width: '100%',
-    marginTop: 4,
+    marginBottom: 8,
   },
-  demoButtonTitle: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  demoButtonTitle: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center' },
   demoSuccessBtn: {
     flex: 1,
     backgroundColor: 'rgba(34, 197, 94, 0.2)',
     borderWidth: 1.5,
     borderColor: '#22C55E',
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
+    marginRight: 8,
   },
   demoSuccessBtnText: {
     color: '#4ADE80',
@@ -951,21 +1097,16 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  demoBtnSub: {
-    color: '#86EFAC',
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-  },
   demoFailBtn: {
     flex: 1,
     backgroundColor: 'rgba(239, 68, 68, 0.2)',
     borderWidth: 1.5,
     borderColor: '#EF4444',
-    paddingVertical: 8,
+    paddingVertical: 7,
     paddingHorizontal: 8,
-    borderRadius: 12,
+    borderRadius: 10,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   demoFailBtnText: {
     color: '#F87171',
@@ -973,22 +1114,10 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     textAlign: 'center',
   },
-  demoBtnSubFail: {
-    color: '#FCA5A5',
-    fontSize: 10,
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  syncLocationHint: {
-    color: '#94A3B8',
-    fontSize: 10,
-    marginTop: 6,
-    textAlign: 'center',
-  },
   mockScanButton: {
-    marginTop: 14,
+    marginTop: 10,
     paddingHorizontal: 16,
-    paddingVertical: 10,
+    paddingVertical: 8,
     borderRadius: 10,
     backgroundColor: 'rgba(37, 99, 235, 0.28)',
     borderWidth: 1,
@@ -1024,5 +1153,95 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     textAlign: 'center',
     lineHeight: 22,
+  },
+  passcodeFallbackBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(245, 158, 11, 0.2)',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 20,
+    marginTop: 4,
+  },
+  passcodeFallbackBtnText: {
+    color: '#FBBF24',
+    fontSize: 13,
+    fontWeight: '700',
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.65)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 24,
+  },
+  modalCard: {
+    backgroundColor: '#1E293B',
+    borderRadius: 20,
+    padding: 24,
+    width: '100%',
+    maxWidth: 360,
+    borderWidth: 1,
+    borderColor: '#334155',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 8,
+  },
+  modalTitle: {
+    color: '#FFFFFF',
+    fontSize: 17,
+    fontWeight: '700',
+    marginLeft: 10,
+  },
+  modalSubtitle: {
+    color: '#94A3B8',
+    fontSize: 13,
+    lineHeight: 18,
+    marginBottom: 16,
+  },
+  modalInput: {
+    backgroundColor: '#0F172A',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+    borderRadius: 12,
+    color: '#F8FAFC',
+    fontSize: 22,
+    fontWeight: '800',
+    textAlign: 'center',
+    letterSpacing: 6,
+    paddingVertical: 12,
+    marginBottom: 20,
+  },
+  modalBtnRow: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+  },
+  modalCancelBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 16,
+    borderRadius: 10,
+    backgroundColor: '#334155',
+    marginRight: 10,
+  },
+  modalCancelText: {
+    color: '#CBD5E1',
+    fontWeight: '600',
+    fontSize: 14,
+  },
+  modalConfirmBtn: {
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    borderRadius: 10,
+    backgroundColor: '#F59E0B',
+  },
+  modalConfirmText: {
+    color: '#000000',
+    fontWeight: '700',
+    fontSize: 14,
   },
 });

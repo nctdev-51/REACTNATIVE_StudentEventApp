@@ -59,10 +59,14 @@ import {
   getUserStatsFromDb,
   findDbEvent,
 } from "../../data/dbService";
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
 import { Ionicons } from "@expo/vector-icons";
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
+=======
+import NotificationPreferencesModal from "../../components/notifications/NotificationPreferencesModal";
+>>>>>>> 83e603c (Tam fix 1 vai cho)
 
 // ---------------------------------------------------------------------------
 // Types
@@ -740,6 +744,7 @@ export default function ProfileScreen({
   const [editPhone, setEditPhone] = useState("");
   const [editFaculty, setEditFaculty] = useState("");
   const [savingProfile, setSavingProfile] = useState(false);
+  const [notifModalVisible, setNotifModalVisible] = useState(false);
 
   const targetUserId = currentUser?._id || defaultStudent?._id;
 
@@ -1317,6 +1322,24 @@ export default function ProfileScreen({
           <MenuItem
             icon={
               <Ionicons
+                name="notifications-outline"
+                size={20}
+                color="#2563EB"
+              />
+            }
+            label="Tùy chọn thông báo & Giờ yên lặng"
+            badge="Mới"
+            badgeBg="#EFF6FF"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => setNotifModalVisible(true)}
+          />
+
+          <MenuItem
+            icon={
+              <Ionicons
                 name="settings-outline"
                 size={20}
                 color={theme.textSecondary}
@@ -1773,6 +1796,12 @@ export default function ProfileScreen({
           </Card>
         </YStack>
       </Modal>
+
+      <NotificationPreferencesModal
+        visible={notifModalVisible}
+        onClose={() => setNotifModalVisible(false)}
+        userId={targetUserId}
+      />
     </SafeAreaView>
   );
 }

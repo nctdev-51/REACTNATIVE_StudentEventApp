@@ -5,6 +5,7 @@ import {
   View,
   TouchableOpacity,
   StatusBar,
+  ScrollView,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { CheckInSuccessScreenProps } from '../../navigation/CheckInStack';
@@ -36,12 +37,16 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
   return (
     <SafeAreaView style={[styles.safeArea, { backgroundColor: theme.background }]}>
       <StatusBar barStyle={theme.statusBarStyle} />
-      <View style={styles.container}>
+      <ScrollView
+        style={styles.scrollView}
+        contentContainerStyle={styles.scrollContent}
+        showsVerticalScrollIndicator={false}
+      >
         {/* Phần trung tâm: Icon Check màu xanh lá to & Thông báo */}
         <View style={styles.centerContent}>
-          {/* Icon Check xanh lá thật to ở giữa màn hình */}
+          {/* Icon Check xanh lá ở giữa màn hình */}
           <View style={styles.iconCircle}>
-            <Ionicons name="checkmark" size={54} color="#FFFFFF" />
+            <Ionicons name="checkmark" size={48} color="#FFFFFF" />
           </View>
 
           <Text style={[styles.title, { color: theme.textPrimary }]}>Check-in thành công</Text>
@@ -59,7 +64,7 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
               },
             ]}
           >
-            <Ionicons name="shield-checkmark-outline" size={24} color={isDark ? '#34D399' : '#065F46'} />
+            <Ionicons name="shield-checkmark-outline" size={24} color={isDark ? '#34D399' : '#065F46'} style={{ marginRight: 10 }} />
             <View style={styles.antiFakeBadgeTextContainer}>
               <Text
                 style={[
@@ -148,7 +153,7 @@ export default function CheckInSuccessScreen({ route, navigation }: CheckInSucce
             <Text style={styles.primaryButtonText}>Về trang chủ</Text>
           </TouchableOpacity>
         </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -158,31 +163,35 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
-  container: {
+  scrollView: {
     flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
     justifyContent: 'space-between',
-    paddingHorizontal: 24,
-    paddingVertical: 24,
+    paddingHorizontal: 20,
+    paddingTop: 16,
+    paddingBottom: 24,
   },
   centerContent: {
-    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
+    paddingBottom: 20,
   },
-  // Icon Check màu xanh lá thật to ở giữa
+  // Icon Check màu xanh lá ở giữa
   iconCircle: {
-    width: 104,
-    height: 104,
-    borderRadius: 52,
+    width: 88,
+    height: 88,
+    borderRadius: 44,
     backgroundColor: '#16A34A',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: 16,
     shadowColor: '#16A34A',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.35,
-    shadowRadius: 16,
-    elevation: 8,
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
   },
   checkmarkIcon: {
     fontSize: 56,
@@ -191,7 +200,7 @@ const styles = StyleSheet.create({
     lineHeight: 64,
   },
   title: {
-    fontSize: 24,
+    fontSize: 22,
     fontWeight: '800',
     color: '#0F172A',
     textAlign: 'center',
@@ -202,7 +211,7 @@ const styles = StyleSheet.create({
     color: '#64748B',
     textAlign: 'center',
     lineHeight: 20,
-    marginBottom: 20,
+    marginBottom: 18,
     paddingHorizontal: 12,
   },
   antiFakeBadge: {
@@ -216,7 +225,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: 14,
     width: '100%',
     marginBottom: 18,
-    gap: 10,
   },
   antiFakeBadgeIcon: {
     fontSize: 22,

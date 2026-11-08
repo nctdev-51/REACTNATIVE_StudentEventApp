@@ -69,10 +69,14 @@ import {
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 import { Colors } from "../../theme";
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 83e603c (Tam fix 1 vai cho)
 import {
   isEventPast,
   toggleHideEvent,
   deleteEvent,
+<<<<<<< HEAD
 } from "../../services/api";
 =======
 import { isEventPast, toggleHideEvent, deleteEvent } from "../../services/api";
@@ -80,6 +84,13 @@ import { isEventPast, toggleHideEvent, deleteEvent } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
 =======
 import { summarizeEvent } from "../../services/api";
+=======
+  summarizeEvent,
+  getGoogleCalendarAddUrl,
+  getCalendarIcsUrl,
+} from "../../services/api";
+import { useAppTheme } from "../../theme/ThemeContext";
+>>>>>>> 83e603c (Tam fix 1 vai cho)
 import AILoading from "../../components/ai/AILoading";
 import AIError from "../../components/ai/AIError";
 import type { AISummary as AISummaryType } from "../../types/event";
@@ -418,6 +429,49 @@ export default function EventDetailScreen() {
     });
   };
 
+  // Thêm vào Google Calendar
+  const handleAddToGoogleCalendar = () => {
+    if (!event) return;
+    const url = getGoogleCalendarAddUrl(event as any);
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Lỗi", "Không thể mở ứng dụng Lịch.");
+    });
+  };
+
+  // Tải file iCalendar (.ics)
+  const handleDownloadIcs = () => {
+    if (!event) return;
+    const targetId = event._id || (event as any).id || eventId;
+    const url = getCalendarIcsUrl(targetId);
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Lỗi", "Không thể tải file iCalendar.");
+    });
+  };
+
+  // Mở bản đồ chỉ đường
+  const handleOpenDirections = () => {
+    if (!event) return;
+    if (event.coordinates?.latitude && event.coordinates?.longitude) {
+      openInGoogleMaps(
+        event.coordinates.latitude,
+        event.coordinates.longitude,
+        event.location || event.title
+      );
+    } else {
+      const query = encodeURIComponent(event.location || "Trường Đại học Công nghiệp TP.HCM");
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+    }
+  };
+
+  // Mở Livestream
+  const handleOpenLivestream = () => {
+    if (event?.livestreamUrl) {
+      Linking.openURL(event.livestreamUrl).catch(() => {
+        Alert.alert("Lỗi", "Không thể mở liên kết livestream.");
+      });
+    }
+  };
+
   // Trạng thái đang tải (chỉ khi không có cả dữ liệu cache)
   if (loadingDetail && !event) {
 =======
@@ -677,7 +731,7 @@ const handleShare = async () => {
         <XStack
           justifyContent="space-between"
           alignItems="center"
-          marginBottom={12}
+          marginBottom={8}
         >
           <XStack
             backgroundColor={isDark ? "rgba(37,99,235,0.2)" : "#DBEAFE"}
@@ -706,6 +760,72 @@ const handleShare = async () => {
               color={isDark ? "#34D399" : "#16A34A"}
             >
               +{event.trainingPoints ?? 5} điểm rèn luyện
+            </TamaguiText>
+          </XStack>
+        </XStack>
+
+        {/* State Machine Status & Quota */}
+        <XStack justifyContent="space-between" alignItems="center" marginBottom={12} flexWrap="wrap" gap={8}>
+          <XStack
+            backgroundColor={
+              event.status === "ongoing"
+                ? "rgba(16,185,129,0.15)"
+                : event.status === "registration_closed"
+                ? "rgba(239,68,68,0.15)"
+                : event.status === "completed"
+                ? "rgba(100,116,139,0.15)"
+                : "rgba(37,99,235,0.15)"
+            }
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+            alignItems="center"
+            gap={6}
+          >
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor:
+                  event.status === "ongoing"
+                    ? "#10B981"
+                    : event.status === "registration_closed"
+                    ? "#EF4444"
+                    : event.status === "completed"
+                    ? "#64748B"
+                    : "#2563EB",
+              }}
+            />
+            <TamaguiText
+              fontSize={12}
+              fontWeight="700"
+              color={
+                event.status === "ongoing"
+                  ? "#10B981"
+                  : event.status === "registration_closed"
+                  ? "#EF4444"
+                  : event.status === "completed"
+                  ? "#64748B"
+                  : "#2563EB"
+              }
+            >
+              {event.status === "ongoing"
+                ? "Đang diễn ra (Check-in active)"
+                : event.status === "registration_closed"
+                ? "Đã đóng đăng ký"
+                : event.status === "completed"
+                ? "Sự kiện đã hoàn tất"
+                : event.status === "pending_approval"
+                ? "Chờ duyệt"
+                : "Đang mở đăng ký"}
+            </TamaguiText>
+          </XStack>
+
+          <XStack alignItems="center" gap={4}>
+            <Ionicons name="ticket-outline" size={14} color={theme.textTertiary} />
+            <TamaguiText fontSize={12} fontWeight="600" color={theme.textSecondary}>
+              Quota: {event.maxSlots ?? 100} chỗ (Waitlist: {event.waitlistSlots ?? 20})
             </TamaguiText>
           </XStack>
         </XStack>
@@ -1098,6 +1218,139 @@ const handleShare = async () => {
           </XStack>
         )}
 
+        {/* Banner thông báo sinh viên đang ở trong Danh sách chờ (Waitlist) */}
+        {existingReg?.status === "waitlist" && (
+          <XStack
+            alignItems="center"
+            backgroundColor={isDark ? "rgba(245,158,11,0.15)" : "#FEF3C7"}
+            borderColor={isDark ? "#F59E0B" : "#FDE68A"}
+            borderWidth={1}
+            borderRadius={14}
+            padding={14}
+            marginBottom={16}
+            gap={12}
+          >
+            <Ionicons name="hourglass-outline" size={26} color="#D97706" />
+            <YStack flex={1}>
+              <TamaguiText
+                fontSize={14}
+                fontWeight="700"
+                marginBottom={2}
+                color={isDark ? "#FCD34D" : "#92400E"}
+              >
+                Bạn đang trong Danh sách chờ (Waitlist #{existingReg.waitlistPosition ?? 1})
+              </TamaguiText>
+              <Paragraph
+                size="$2"
+                lineHeight={18}
+                color={isDark ? "#FDE68A" : "#B45309"}
+              >
+                Khi có sinh viên khác hủy vé trước hạn, hệ thống sẽ tự động chuyển bạn lên danh sách chính thức và gửi thông báo đẩy.
+              </Paragraph>
+            </YStack>
+          </XStack>
+        )}
+
+        {/* Khối tiện ích sinh viên (Calendar, Maps, Livestream) */}
+        <Card
+          backgroundColor={theme.surface}
+          borderColor={theme.border}
+          borderWidth={1}
+          borderRadius={14}
+          padding={14}
+          marginBottom={16}
+        >
+          <TamaguiText fontSize={13} fontWeight="700" color={theme.textPrimary} marginBottom={10}>
+            TIỆN ÍCH SINH VIÊN
+          </TamaguiText>
+
+          <XStack gap={8} flexWrap="wrap" marginBottom={8}>
+            <Button
+              flex={1}
+              height={38}
+              borderRadius={10}
+              backgroundColor={isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF"}
+              onPress={handleAddToGoogleCalendar}
+            >
+              <XStack alignItems="center" gap={6}>
+                <Ionicons name="logo-google" size={15} color="#2563EB" />
+                <TamaguiText fontSize={12} fontWeight="600" color="#2563EB">
+                  Google Calendar
+                </TamaguiText>
+              </XStack>
+            </Button>
+
+            <Button
+              flex={1}
+              height={38}
+              borderRadius={10}
+              backgroundColor={isDark ? "rgba(100,116,139,0.15)" : "#F1F5F9"}
+              onPress={handleDownloadIcs}
+            >
+              <XStack alignItems="center" gap={6}>
+                <Ionicons name="download-outline" size={15} color={theme.textPrimary} />
+                <TamaguiText fontSize={12} fontWeight="600" color={theme.textPrimary}>
+                  Tải file .ICS
+                </TamaguiText>
+              </XStack>
+            </Button>
+
+            <Button
+              flex={1}
+              height={38}
+              borderRadius={10}
+              backgroundColor={isDark ? "rgba(16,185,129,0.15)" : "#ECFDF5"}
+              onPress={handleOpenDirections}
+            >
+              <XStack alignItems="center" gap={6}>
+                <Ionicons name="navigate-outline" size={15} color="#059669" />
+                <TamaguiText fontSize={12} fontWeight="600" color="#059669">
+                  Chỉ đường
+                </TamaguiText>
+              </XStack>
+            </Button>
+          </XStack>
+
+          {/* Livestream nếu có */}
+          {event.livestreamUrl && (
+            <Button
+              height={40}
+              borderRadius={10}
+              backgroundColor="#EF4444"
+              marginTop={6}
+              onPress={handleOpenLivestream}
+            >
+              <XStack alignItems="center" gap={6}>
+                <Ionicons name="videocam" size={16} color="#FFFFFF" />
+                <TamaguiText fontSize={13} fontWeight="700" color="#FFFFFF">
+                  Xem Livestream Trực Tuyến
+                </TamaguiText>
+              </XStack>
+            </Button>
+          )}
+
+          {/* Tài liệu đính kèm */}
+          {event.attachments && event.attachments.length > 0 && (
+            <YStack marginTop={10} paddingTop={8} borderTopWidth={1} borderTopColor={theme.borderSubtle}>
+              <TamaguiText fontSize={12} fontWeight="600" color={theme.textSecondary} marginBottom={6}>
+                Tài liệu đính kèm:
+              </TamaguiText>
+              {event.attachments.map((att: any, idx: number) => (
+                <TouchableOpacity
+                  key={idx}
+                  onPress={() => Linking.openURL(att.url)}
+                  style={{ flexDirection: "row", alignItems: "center", paddingVertical: 4 }}
+                >
+                  <Ionicons name="document-attach" size={16} color="#2563EB" style={{ marginRight: 6 }} />
+                  <TamaguiText fontSize={13} color="#2563EB" textDecorationLine="underline">
+                    {att.name}
+                  </TamaguiText>
+                </TouchableOpacity>
+              ))}
+            </YStack>
+          )}
+        </Card>
+
         {/* Các nút hành động chính */}
         <YStack gap={12}>
           {/* Nút Chia Sẻ */}
@@ -1159,12 +1412,14 @@ const handleShare = async () => {
             backgroundColor={
               isPast
                 ? "#94A3B8"
+                : existingReg?.status === "waitlist"
+                ? "#F59E0B"
                 : isRegistered
                 ? "#10B981"
                 : theme.primary
             }
             opacity={actionLoading || isPast ? 0.75 : 1}
-            disabled={actionLoading || isRegistered || isPast}
+            disabled={actionLoading || isRegistered || (existingReg as any)?.status === "waitlist" || isPast}
             onPress={handleRegister}
             pressStyle={{ opacity: 0.85 }}
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
@@ -1209,6 +1464,13 @@ const handleShare = async () => {
                   name={
                     isPast
                       ? "close-circle-outline"
+<<<<<<< HEAD
+=======
+                      : existingReg?.status === "checked_in"
+                      ? "checkmark-done-circle"
+                      : existingReg?.status === "waitlist"
+                      ? "hourglass-outline"
+>>>>>>> 83e603c (Tam fix 1 vai cho)
                       : isRegistered
                       ? "checkmark-circle"
                       : "clipboard-outline"
@@ -1219,6 +1481,13 @@ const handleShare = async () => {
                 <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
                   {isPast
                     ? "Đã hết hạn đăng ký"
+<<<<<<< HEAD
+=======
+                    : existingReg?.status === "checked_in"
+                    ? "Đã check-in"
+                    : existingReg?.status === "waitlist"
+                    ? "Đang ở danh sách chờ"
+>>>>>>> 83e603c (Tam fix 1 vai cho)
                     : isRegistered
                     ? "Đã đăng ký tham gia"
                     : "Đăng ký tham gia"}
