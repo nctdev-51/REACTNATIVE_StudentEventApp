@@ -1,7 +1,7 @@
 require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
-const connectDB = require("./config/db");
+const { connectDB, isDatabaseConnected } = require("./config/db");
 
 // Import Routes
 const authRoutes = require("./routes/authRoutes");
@@ -52,9 +52,11 @@ app.get("/", (req, res) => {
 });
 
 app.get("/api/health", (req, res) => {
-  res.status(200).json({
-    success: true,
-    message: "Server is healthy",
+  const database = isDatabaseConnected();
+  res.status(database ? 200 : 503).json({
+    success: database,
+    message: database ? "Server and database are healthy" : "Server is running but MongoDB is unavailable",
+    data: { database },
     uptime: process.uptime(),
     timestamp: new Date().toISOString(),
   });
