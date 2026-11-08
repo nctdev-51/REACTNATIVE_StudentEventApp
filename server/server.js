@@ -307,6 +307,15 @@ server.get(["/admin", "/dashboard"], (req, res) => {
   res.send("Admin Portal HTML not found");
 });
 
+// Trình chiếu mã QR cho Máy Chiếu Hội Trường & Laptop (Demo Quét QR)
+server.get(["/qr", "/projector"], (req, res) => {
+  const htmlPath = path.join(__dirname, "qrProjector.html");
+  if (fs.existsSync(htmlPath)) {
+    return res.sendFile(htmlPath);
+  }
+  res.send("QR Projector HTML not found");
+});
+
 server.get("/api/admin/stream", (req, res) => {
   res.setHeader("Content-Type", "text/event-stream");
   res.setHeader("Cache-Control", "no-cache");
@@ -321,10 +330,54 @@ server.get("/api/admin/stream", (req, res) => {
   });
 });
 
+// ─── Dynamic QR Token Generation (Anti-Replay / Anti-Screensharing) ──────────
+// GET /api/events/:id/qr-token & /events/:id/qr-token
+server.get(["/api/events/:id/qr-token", "/events/:id/qr-token"], (req, res) => {
+  const { id } = req.params;
+  const event = router.db.get("events").find((e) => e.id === id || e._id === id).value();
+  if (!event) {
+    return res.status(404).json({ success: false, message: "Sự kiện không tồn tại" });
+  }
+
+  const TTL_SECONDS = 45; // Đổi mới mỗi 45 giây chống chụp màn hình
+  const now = Math.floor(Date.now() / 1000);
+  const expiresAt = now + TTL_SECONDS;
+
+  // Tạo chữ ký JWT với thời hạn 45 giây
+  const token = jwt.sign(
+    {
+      eventId: event.id || event._id,
+      title: event.title,
+      type: "dynamic_qr",
+      iat: now,
+    },
+    JWT_SECRET,
+    { expiresIn: `${TTL_SECONDS}s` }
+  );
+
+  const eventIdentifier = event.id || event._id;
+  const schemeUrl = `studentevent://checkin?eventId=${eventIdentifier}&token=${token}&exp=${expiresAt}`;
+  const universalUrl = `https://studentevent.iuh.edu.vn/checkin?eventId=${eventIdentifier}&token=${token}&exp=${expiresAt}`;
+
+  res.status(200).json({
+    success: true,
+    data: {
+      eventId: eventIdentifier,
+      eventTitle: event.title,
+      token,
+      expiresAt,
+      ttlSeconds: TTL_SECONDS,
+      schemeUrl,
+      universalUrl,
+      qrPayload: schemeUrl,
+    },
+  });
+});
+
 // ─── Custom Check-In Endpoint (GPS Anti-Fraud & Passcode Fallback) ────────────
 // POST /api/registrations/check-in & /registrations/check-in
 server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, res) => {
-  const { eventId, userId, studentId, userLocation, method, passcode } = req.body;
+  const { eventId, userId, studentId, userLocation, method, passcode, token } = req.body;
 
   if (!eventId) {
     return res.status(400).json({
@@ -346,6 +399,32 @@ server.post(["/api/registrations/check-in", "/registrations/check-in"], (req, re
   }
 
   let finalMethod = method || "qr_scan";
+
+  // Bảo mật 1: Xác thực Dynamic QR Token (Chữ ký JWT có hạn 45s)
+  if (token) {
+    try {
+      const decoded = jwt.verify(token, JWT_SECRET);
+      if (decoded.eventId !== event.id && decoded.eventId !== event._id) {
+        return res.status(400).json({
+          success: false,
+          message: "Mã QR bảo mật không khớp với sự kiện này!",
+        });
+      }
+      finalMethod = "dynamic_qr";
+    } catch (tokenErr) {
+      if (tokenErr.name === "TokenExpiredError") {
+        return res.status(403).json({
+          success: false,
+          isExpired: true,
+          message: "Mã QR bảo mật đã hết hạn! Vui lòng quét mã QR mới đang chiếu trên màn hình (mã đổi mới mỗi 45s để chống chụp ảnh gửi người khác).",
+        });
+      }
+      return res.status(400).json({
+        success: false,
+        message: "Chữ ký mã QR không hợp lệ hoặc đã bị can thiệp trái phép!",
+      });
+    }
+  }
 
   // Fallback 1: Check-in bằng Passcode dự phòng do BTC công bố tại hội trường
   if (method === "passcode" || passcode) {

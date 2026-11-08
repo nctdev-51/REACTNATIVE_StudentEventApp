@@ -11,7 +11,13 @@ import CheckInFailedScreen from '../screens/checkin/CheckInFailedScreen';
  * Định nghĩa danh sách các màn hình và tham số (params) cho luồng Check-in QR
  */
 export type CheckInStackParamList = {
-  QRScanner: undefined;
+  QRScanner:
+    | {
+        eventId?: string;
+        token?: string;
+        autoCheckIn?: boolean;
+      }
+    | undefined;
   CheckInSuccess:
     | {
         eventId?: string;
