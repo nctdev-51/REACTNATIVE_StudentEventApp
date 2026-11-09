@@ -1,4 +1,6 @@
 const User = require("../models/User");
+const PushToken = require("../models/PushToken");
+const { VALID_TOKEN } = require("../services/pushService");
 
 const publicUser = (user) => user?.toJSON ? user.toJSON() : user;
 
@@ -94,4 +96,33 @@ const updatePreferences = async (req, res) => {
   }
 };
 
-module.exports = { getUsers, getUser, createUser, updateUser, deleteUser, getPreferences, updatePreferences };
+const registerPushToken = async (req, res) => {
+  try {
+    const { token, platform } = req.body;
+    if (!VALID_TOKEN.test(String(token || ""))) {
+      return res.status(400).json({ success: false, message: "Expo push token không hợp lệ" });
+    }
+    if (!["android", "ios"].includes(platform)) {
+      return res.status(400).json({ success: false, message: "Platform phải là android hoặc ios" });
+    }
+    const device = await PushToken.findOneAndUpdate(
+      { token },
+      { $set: { userId: req.user._id, platform, active: true, lastSeenAt: new Date() } },
+      { upsert: true, new: true, setDefaultsOnInsert: true }
+    );
+    res.status(200).json({ success: true, data: { id: String(device._id), active: device.active } });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+const unregisterPushToken = async (req, res) => {
+  try {
+    await PushToken.updateOne({ userId: req.user._id, token: req.body.token }, { $set: { active: false } });
+    res.status(200).json({ success: true });
+  } catch (error) {
+    res.status(400).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { getUsers, getUser, createUser, updateUser, deleteUser, getPreferences, updatePreferences, registerPushToken, unregisterPushToken };

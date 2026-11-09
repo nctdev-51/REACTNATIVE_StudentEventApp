@@ -3,6 +3,7 @@ services:
     name: student-event-server
     runtime: node
     plan: free
+    healthCheckPath: /api/health
     rootDir: backend
     buildCommand: npm ci
     startCommand: npm start

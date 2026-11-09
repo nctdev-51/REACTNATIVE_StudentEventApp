@@ -429,6 +429,25 @@ export const changePassword = async (
   }
 };
 
+export async function requestPasswordReset(email: string): Promise<{ demoCode?: string }> {
+  const res = await apiClient.post("/auth/forgot-password", { email });
+  return res.data ?? {};
+}
+
+export async function resetPassword(email: string, code: string, newPassword: string): Promise<void> {
+  await apiClient.post("/auth/reset-password", { email, code, newPassword });
+}
+
+export async function requestEmailChange(newEmail: string): Promise<{ demoCode?: string }> {
+  const res = await apiClient.post("/auth/change-email/request", { newEmail });
+  return res.data ?? {};
+}
+
+export async function confirmEmailChange(code: string): Promise<User> {
+  const res = await apiClient.post("/auth/change-email/confirm", { code });
+  return mapBackendUser(res.data);
+}
+
 export const logout = async (): Promise<void> => {
   try {
     await apiClient.post("/auth/logout");
@@ -1467,6 +1486,10 @@ export const markNotificationAsRead = async (
     isRead: true,
   });
   return unwrapOne<Notification>(res.data);
+};
+
+export const unregisterPushToken = async (token: string): Promise<void> => {
+  await apiClient.delete("/users/me/push-tokens", { data: { token } });
 };
 
 // ─── Users & Admin User Management ──────────────────────────────────────────

@@ -14,6 +14,7 @@ import NotificationReminderScreen from "../screens/notifications/NotificationRem
 import FeedbackScreen from "../screens/events/FeedbackScreen";
 import FilterScreen from "../screens/events/FilterScreen";
 import RegistrationSuccessScreen from "../screens/events/RegistrationSuccessScreen";
+import ChangeEmailScreen from "../screens/profile/ChangeEmailScreen";
 import { useAppTheme } from "../theme/ThemeContext";
 import { useEventReminders } from "../hooks/useEventReminders";
 import AppBottomTab, { AppTabKey } from "../components/navigation/AppBottomTab";
@@ -191,6 +192,7 @@ export default function MainStack() {
           gestureEnabled: false,
         }}
       />
+      <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} options={{ headerShown: true, title: "Đổi email" }} />
     </Stack.Navigator>
   );
 }

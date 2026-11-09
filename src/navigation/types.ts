@@ -11,6 +11,7 @@ import type { CheckInStackParamList } from './CheckInStack';
 export type AuthStackParamList = {
   Login: undefined;
   Register: undefined;
+  ForgotPassword: undefined;
 };
 
 // ─── Main Tabs (Sinh viên) ────────────────────────────────────────────────────
@@ -42,6 +43,7 @@ export type MainStackParamList = {
         waitlistPosition?: number | null;
       }
     | undefined;
+  ChangeEmail: undefined;
 };
 
 // ─── Admin Tabs (Thanh điều hướng dưới cho Quản trị viên) ────────────────────

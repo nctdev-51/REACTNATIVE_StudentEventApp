@@ -69,6 +69,11 @@ const userSchema = new mongoose.Schema(
       default: null,
       select: false,
     },
+    passwordResetCodeHash: { type: String, default: null, select: false },
+    passwordResetExpiresAt: { type: Date, default: null, select: false },
+    pendingEmail: { type: String, default: null, select: false },
+    emailChangeCodeHash: { type: String, default: null, select: false },
+    emailChangeExpiresAt: { type: Date, default: null, select: false },
     preferences: {
       enablePush: { type: Boolean, default: true },
       enableEmail: { type: Boolean, default: false },

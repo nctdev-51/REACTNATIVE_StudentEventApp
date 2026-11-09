@@ -6,7 +6,10 @@
     "scripts": {
         "dev": "nodemon src/app.js",
         "start": "node src/app.js",
-        "seed": "node src/seed.js"
+        "seed": "node src/seed.js",
+        "backup": "node scripts/backup.js",
+        "restore": "node scripts/restore.js",
+        "test:integration": "node --test tests/**/*.integration.test.js"
     },
     "keywords": [],
     "author": "",

@@ -216,6 +216,9 @@ export default function LoginScreen() {
               <Text style={[styles.registerLink, { color: theme.primary }]}>Đăng ký ngay</Text>
             </TouchableOpacity>
           </View>
+            <TouchableOpacity onPress={() => navigation.navigate('ForgotPassword')} accessibilityRole="button">
+              <Text style={[styles.registerLink, { color: theme.primary, textAlign: 'center', marginTop: 12 }]}>Quên mật khẩu?</Text>
+            </TouchableOpacity>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>

@@ -1,7 +1,8 @@
 const Event = require("../models/Event");
 const Registration = require("../models/Registration");
 const User = require("../models/User");
-const Notification = require("../models/Notification");
+const { createAndDeliverNotification } = require("../services/notificationService");
+const AuditLog = require("../models/AuditLog");
 const seedEvents = require("../data/seedEvents");
 const {
   renumberWaitlist,
@@ -134,7 +135,7 @@ const addAttendee = async (req, res) => {
     }
 
     try {
-      await Notification.create({
+      await createAndDeliverNotification({
         userId: user._id,
         eventId: event._id,
         title: status === "registered" ? "Bạn đã được thêm vào sự kiện" : "Bạn đã được thêm vào danh sách chờ",
@@ -234,4 +235,17 @@ const quickCheckIn = async (req, res) => {
   }
 };
 
-module.exports = { updateQuota, addAttendee, deleteRegistration, quickCheckIn };
+const getAuditLogs = async (req, res) => {
+  try {
+    const limit = Math.min(Math.max(Number(req.query.limit) || 100, 1), 500);
+    const logs = await AuditLog.find()
+      .populate("actorId", "name email role")
+      .sort({ createdAt: -1 })
+      .limit(limit);
+    res.json({ success: true, data: logs });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+module.exports = { updateQuota, addAttendee, deleteRegistration, quickCheckIn, getAuditLogs };

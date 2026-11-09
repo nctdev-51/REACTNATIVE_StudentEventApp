@@ -389,6 +389,16 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           />
 
           <MenuItem
+            icon={<Ionicons name="mail-outline" size={20} color={theme.textSecondary} />}
+            label="Đổi email"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => navigation.navigate("ChangeEmail")}
+          />
+
+          <MenuItem
             icon={
               <Ionicons
                 name="star-outline"
