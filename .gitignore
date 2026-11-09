@@ -34,6 +34,9 @@ yarn-error.*
 .env
 .env*.local
 
+# Database snapshots can contain personal data and must never be committed.
+/backend/backups/
+
 # typescript
 *.tsbuildinfo
 

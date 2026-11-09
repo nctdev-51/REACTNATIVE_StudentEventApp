@@ -1,4 +1,5 @@
 const Notification = require("../models/Notification");
+const { createAndDeliverNotification } = require("../services/notificationService");
 
 // @desc    Get notifications for user
 // @route   GET /api/notifications
@@ -80,7 +81,7 @@ const createNotification = async (req, res) => {
         message: "userId, title and body are required",
       });
     }
-    const notification = await Notification.create({
+    const notification = await createAndDeliverNotification({
       userId,
       title: String(title).trim(),
       body: String(body).trim(),

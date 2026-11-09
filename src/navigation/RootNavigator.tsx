@@ -3,6 +3,7 @@ import { View, ActivityIndicator, StyleSheet, StatusBar } from 'react-native';
 import { useAppSelector, useAppDispatch } from '../hooks/redux';
 import api, { setAuthToken } from '../services/api';
 import { clearAuthSession, saveAuthSession } from '../services/authSession';
+import { registerRemotePushDevice } from '../services/remotePush';
 import { hydrateSession, logout, updateUser } from '../features/auth/authSlice';
 import AuthStack from './AuthStack';
 import MainStack from './MainStack';
@@ -30,6 +31,14 @@ export default function RootNavigator() {
   useEffect(() => {
     setAuthToken(token);
   }, [token]);
+
+  // A token is registered only after the shared session is authenticated.
+  // Failure is non-blocking and will be retried at the next app launch.
+  useEffect(() => {
+    if (!isHydrating && isAuthenticated && token && user) {
+      void registerRemotePushDevice();
+    }
+  }, [isAuthenticated, isHydrating, token, user]);
 
   // A stored session can outlive a tunnel restart or an earlier offline-demo
   // login. Validate its identity with Express before letting it access admin

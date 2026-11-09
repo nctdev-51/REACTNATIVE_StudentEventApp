@@ -1,7 +1,7 @@
 const Registration = require("../models/Registration");
 const Event = require("../models/Event");
 const User = require("../models/User");
-const Notification = require("../models/Notification");
+const { createAndDeliverNotification } = require("../services/notificationService");
 const seedEvents = require("../data/seedEvents");
 const jwt = require("jsonwebtoken");
 const {
@@ -301,7 +301,7 @@ const registerEvent = async (req, res) => {
       });
     }
 
-    await Notification.create({
+    await createAndDeliverNotification({
       userId: targetUserId,
       eventId: resolvedEventId,
       title: status === "registered" ? "Đăng ký sự kiện thành công" : "Bạn đã vào danh sách chờ",

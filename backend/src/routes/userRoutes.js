@@ -5,6 +5,8 @@ const controller = require("../controllers/userController");
 
 router.get("/", protect, authorize("admin"), controller.getUsers);
 router.post("/", protect, authorize("admin"), controller.createUser);
+router.post("/me/push-tokens", protect, controller.registerPushToken);
+router.delete("/me/push-tokens", protect, controller.unregisterPushToken);
 router.get("/:id/preferences", protect, controller.getPreferences);
 router.put("/:id/preferences", protect, controller.updatePreferences);
 router.get("/:id", protect, controller.getUser);

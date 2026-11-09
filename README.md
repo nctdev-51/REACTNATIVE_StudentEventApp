@@ -99,6 +99,13 @@ Kể từ thay đổi này, khi API hoặc MongoDB không hoạt động, thao t
 chỉnh sửa và điểm danh sẽ trả lỗi thay vì giả lập thành công tại máy đang dùng.
 Do đó một thao tác thành công là thao tác đã đi qua database dùng chung.
 
+Tài liệu vận hành và release: [Operations](docs/OPERATIONS.md),
+[Release checklist](docs/RELEASE_CHECKLIST.md), [Privacy policy](docs/PRIVACY_POLICY.md)
+và [Terms](docs/TERMS_OF_USE.md).
+
+Đối chiếu yêu cầu môn học và các template ghi minh chứng thực tế nằm tại
+[Rubric evidence](docs/RUBRIC_EVIDENCE.md).
+
 ## 4. Tài khoản thử nghiệm
 
 Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:

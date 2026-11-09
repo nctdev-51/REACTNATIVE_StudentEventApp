@@ -61,6 +61,7 @@
           "barcodeScannerEnabled": true
         }
       ],
+      "expo-notifications",
       "expo-font"
     ]
   }

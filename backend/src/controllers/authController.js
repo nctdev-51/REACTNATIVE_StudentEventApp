@@ -1,5 +1,11 @@
 ﻿const jwt = require("jsonwebtoken");
 const User = require("../models/User");
+const crypto = require("crypto");
+const { sendOtpEmail } = require("../services/emailService");
+
+const OTP_LIFETIME_MS = 15 * 60 * 1000;
+const createOtp = () => String(crypto.randomInt(100000, 1000000));
+const hashOtp = (code) => crypto.createHash("sha256").update(String(code)).digest("hex");
 
 // Helper: Generate Access Token
 const generateAccessToken = (id) => {
@@ -330,6 +336,80 @@ const changePassword = async (req, res) => {
   }
 };
 
+const requestPasswordReset = async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const user = await User.findOne({ email }).select("+passwordResetCodeHash +passwordResetExpiresAt");
+    if (!user) return res.status(200).json({ success: true, message: "Nếu email tồn tại, mã xác nhận đã được gửi." });
+    const code = createOtp();
+    user.passwordResetCodeHash = hashOtp(code);
+    user.passwordResetExpiresAt = new Date(Date.now() + OTP_LIFETIME_MS);
+    await user.save({ validateBeforeSave: false });
+    const delivery = await sendOtpEmail({ to: user.email, code, purpose: "reset" });
+    res.status(200).json({ success: true, message: "Mã xác nhận đã được gửi.", ...(delivery.demoCode ? { demoCode: delivery.demoCode } : {}) });
+  } catch {
+    res.status(500).json({ success: false, message: "Không thể gửi mã xác nhận." });
+  }
+};
+
+const resetPassword = async (req, res) => {
+  try {
+    const email = String(req.body.email || "").trim().toLowerCase();
+    const code = String(req.body.code || "").trim();
+    const newPassword = String(req.body.newPassword || "");
+    if (!/^\d{6}$/.test(code) || newPassword.length < 6) return res.status(400).json({ success: false, message: "Mã gồm 6 chữ số và mật khẩu phải có ít nhất 6 ký tự." });
+    const user = await User.findOne({ email }).select("+password +passwordResetCodeHash +passwordResetExpiresAt +refreshToken");
+    if (!user || !user.passwordResetExpiresAt || user.passwordResetExpiresAt < new Date() || user.passwordResetCodeHash !== hashOtp(code)) {
+      return res.status(400).json({ success: false, message: "Mã xác nhận không đúng hoặc đã hết hạn." });
+    }
+    user.password = newPassword;
+    user.passwordResetCodeHash = null;
+    user.passwordResetExpiresAt = null;
+    user.refreshToken = null;
+    await user.save();
+    res.status(200).json({ success: true, message: "Đặt lại mật khẩu thành công. Hãy đăng nhập lại." });
+  } catch {
+    res.status(500).json({ success: false, message: "Không thể đặt lại mật khẩu." });
+  }
+};
+
+const requestEmailChange = async (req, res) => {
+  try {
+    const newEmail = String(req.body.newEmail || "").trim().toLowerCase();
+    if (!/^\S+@\S+\.\S+$/.test(newEmail)) return res.status(400).json({ success: false, message: "Email không hợp lệ." });
+    if (newEmail === req.user.email) return res.status(400).json({ success: false, message: "Đây đã là email hiện tại." });
+    if (await User.exists({ email: newEmail })) return res.status(409).json({ success: false, message: "Email này đã được sử dụng." });
+    const code = createOtp();
+    req.user.pendingEmail = newEmail;
+    req.user.emailChangeCodeHash = hashOtp(code);
+    req.user.emailChangeExpiresAt = new Date(Date.now() + OTP_LIFETIME_MS);
+    await req.user.save({ validateBeforeSave: false });
+    const delivery = await sendOtpEmail({ to: newEmail, code, purpose: "email-change" });
+    res.status(200).json({ success: true, message: "Mã xác nhận đã được gửi đến email mới.", ...(delivery.demoCode ? { demoCode: delivery.demoCode } : {}) });
+  } catch {
+    res.status(500).json({ success: false, message: "Không thể gửi mã xác nhận." });
+  }
+};
+
+const confirmEmailChange = async (req, res) => {
+  try {
+    const code = String(req.body.code || "").trim();
+    const user = await User.findById(req.user._id).select("+pendingEmail +emailChangeCodeHash +emailChangeExpiresAt");
+    if (!user?.pendingEmail || !user.emailChangeExpiresAt || user.emailChangeExpiresAt < new Date() || user.emailChangeCodeHash !== hashOtp(code)) {
+      return res.status(400).json({ success: false, message: "Mã xác nhận không đúng hoặc đã hết hạn." });
+    }
+    if (await User.exists({ email: user.pendingEmail, _id: { $ne: user._id } })) return res.status(409).json({ success: false, message: "Email này đã được sử dụng." });
+    user.email = user.pendingEmail;
+    user.pendingEmail = null;
+    user.emailChangeCodeHash = null;
+    user.emailChangeExpiresAt = null;
+    await user.save({ validateBeforeSave: false });
+    res.status(200).json({ success: true, message: "Đổi email thành công.", data: { user: user.toJSON() } });
+  } catch {
+    res.status(500).json({ success: false, message: "Không thể đổi email." });
+  }
+};
+
 module.exports = {
   register,
   login,
@@ -338,4 +418,8 @@ module.exports = {
   getMe,
   updateMe,
   changePassword,
+  requestPasswordReset,
+  resetPassword,
+  requestEmailChange,
+  confirmEmailChange,
 };

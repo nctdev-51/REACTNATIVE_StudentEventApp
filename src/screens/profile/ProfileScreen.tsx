@@ -1422,6 +1422,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
             icon={<MoonCrescentIcon color="#334155" />}
             label="Đổi theme"
             badge={currentTheme}
@@ -1429,6 +1430,18 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
 =======
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+            icon={<Ionicons name="mail-outline" size={20} color={theme.textSecondary} />}
+            label="Đổi email"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => navigation.navigate("ChangeEmail")}
+          />
+
+          <MenuItem
+>>>>>>> b7e1736 (Done)
             icon={
               <Ionicons
                 name="star-outline"

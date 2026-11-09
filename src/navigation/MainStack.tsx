@@ -3,6 +3,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import {
   createBottomTabNavigator,
   type BottomTabBarProps,
+<<<<<<< HEAD
 } from '@react-navigation/bottom-tabs';
 import type { MainStackParamList, MainTabParamList } from './types';
 import HomeScreen from '../screens/events/HomeScreen';
@@ -20,6 +21,23 @@ import AppBottomTab, { AppTabKey } from '../components/navigation/AppBottomTab';
 =======
 import { useEventReminders } from '../hooks/useEventReminders';
 >>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
+=======
+} from "@react-navigation/bottom-tabs";
+import type { MainStackParamList, MainTabParamList } from "./types";
+import HomeScreen from "../screens/events/HomeScreen";
+import EventDetailScreen from "../screens/events/EventDetailScreen";
+import CheckInStack from "./CheckInStack";
+import ProfileScreen from "../screens/profile/ProfileScreen";
+import MyScheduleScreen from "../screens/schedule/MyScheduleScreen";
+import NotificationReminderScreen from "../screens/notifications/NotificationReminderScreen";
+import FeedbackScreen from "../screens/events/FeedbackScreen";
+import FilterScreen from "../screens/events/FilterScreen";
+import RegistrationSuccessScreen from "../screens/events/RegistrationSuccessScreen";
+import ChangeEmailScreen from "../screens/profile/ChangeEmailScreen";
+import { useAppTheme } from "../theme/ThemeContext";
+import { useEventReminders } from "../hooks/useEventReminders";
+import AppBottomTab, { AppTabKey } from "../components/navigation/AppBottomTab";
+>>>>>>> b7e1736 (Done)
 
 const Tab = createBottomTabNavigator<MainTabParamList>();
 const Stack = createNativeStackNavigator<MainStackParamList>();
@@ -194,6 +212,7 @@ export default function MainStack() {
           gestureEnabled: false,
         }}
       />
+      <Stack.Screen name="ChangeEmail" component={ChangeEmailScreen} options={{ headerShown: true, title: "Đổi email" }} />
     </Stack.Navigator>
   );
 }
