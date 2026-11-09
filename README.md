@@ -45,18 +45,19 @@ API sẽ lắng nghe tại cổng `5000` trên `0.0.0.0`; kiểm tra bằng `htt
      ```bash
      npx cloudflared tunnel --url http://127.0.0.1:5000
      ```
-     Sao chép URL `https://...trycloudflare.com` được in ra, tạo/sửa `.env.local` tại thư mục gốc:
+     Sao chép URL `https://...trycloudflare.com` được in ra, tạo/sửa file `.env` tại thư mục gốc:
      ```env
      EXPO_PUBLIC_API_URL=https://your-subdomain.trycloudflare.com/api
      ```
+     > ⚠️ Chỉ giữ **một** file `.env` (không để file `.env.local` cũ tồn tại song song vì Expo ưu tiên `.env.local` đè lên `.env` khiến app gọi nhầm tunnel đã tắt).
      Không dán token Cloudflare Access hoặc một chuỗi bất kỳ vào biến này: giá trị phải bắt đầu bằng `https://`.
      Kiểm tra URL trước bằng trình duyệt điện thoại: `https://your-subdomain.trycloudflare.com/api/health` phải trả JSON `success: true`.
 3. Chạy ứng dụng:
    ```bash
-   npx expo start --tunnel
+   npx expo start --tunnel -c
    ```
 
-   Expo SDK 58 nạp biến `EXPO_PUBLIC_*` từ `.env`/`.env.local`; sau khi đổi URL, reload hoàn toàn Expo Go. `--tunnel` ở đây chỉ làm Expo Go truy cập Metro qua 4G; nó không tự public API Express, nên Cloudflare Tunnel vẫn cần chạy.
+   Expo SDK 58 nạp biến `EXPO_PUBLIC_*` từ `.env`/`.env.local` tại thời điểm bundle; mỗi khi đổi URL trong `.env`, bắt buộc thêm cờ `-c` để xoá Metro cache và reload hoàn toàn Expo Go. `--tunnel` ở đây chỉ làm Expo Go truy cập Metro qua 4G; nó không tự public API Express, nên Cloudflare Tunnel vẫn cần chạy.
 
    - Nhấn `a` để chạy trên Android Emulator.
    - Nhấn `w` để chạy trên Web.
@@ -73,7 +74,32 @@ Ma trận 10 ca kiểm thử (bao gồm thành công, thất bại, quyền thi�
 
 ---
 
-## 3. Tài khoản thử nghiệm
+## 3. Đồng bộ dữ liệu giữa nhiều máy
+
+Ứng dụng chỉ đồng bộ khi mọi thiết bị gọi cùng một Express API và API đó dùng
+một MongoDB Atlas/production database. Chế độ mock là cục bộ, không dùng cho
+bản demo nhiều máy.
+
+1. Tạo một cluster MongoDB Atlas và tạo database user có quyền `readWrite`.
+2. Trên Render, tạo Blueprint từ repository này. File `render.yaml` đã trỏ
+   đúng vào `backend/` và chạy Express API, không còn chạy JSON mock server.
+3. Trong Render service, đặt biến môi trường bí mật `MONGO_URI` bằng connection
+   string Atlas và deploy lại. Giữ `JWT_SECRET` do Render tự sinh.
+4. Khi `https://<your-service>.onrender.com/api/health` trả về
+   `"database": true`, đặt URL đó vào `.env` của mobile app:
+
+   ```env
+   EXPO_PUBLIC_API_URL=https://<your-service>.onrender.com/api
+   EXPO_PUBLIC_USE_STANDALONE_MOCK=false
+   ```
+
+5. Chạy `npx expo start -c` rồi reload hoàn toàn app trên cả máy A và B.
+
+Kể từ thay đổi này, khi API hoặc MongoDB không hoạt động, thao tác đăng ký,
+chỉnh sửa và điểm danh sẽ trả lỗi thay vì giả lập thành công tại máy đang dùng.
+Do đó một thao tác thành công là thao tác đã đi qua database dùng chung.
+
+## 4. Tài khoản thử nghiệm
 
 Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
 
@@ -85,7 +111,7 @@ Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
 
 ---
 
-## 4. Phân công nhiệm vụ các thành viên
+## 5. Phân công nhiệm vụ các thành viên
 
 ### Hà (Nhiệm vụ 7)
 
@@ -135,7 +161,7 @@ Dữ liệu đã được tạo sẵn qua lệnh `npm run seed`:
 
 ---
 
-## 5. Quy trình làm việc với Git
+## 6. Quy trình làm việc với Git
 
 1. Lấy code mới nhất từ nhánh `main`:
    ```bash

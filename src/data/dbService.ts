@@ -4,6 +4,9 @@ import dbRaw from './db.json';
 export const FEEDBACKS_STORAGE_KEY = '@student_app_persisted_feedbacks';
 
 // In-memory working copy initialized from db.json
+const extractId = (val: any): string =>
+  val && typeof val === 'object' ? String(val._id ?? val.id ?? '') : String(val ?? '');
+
 const dbState = {
   users: [...((dbRaw as any).users || [])] as any[],
   events: [...((dbRaw as any).events || [])] as any[],
@@ -164,7 +167,7 @@ export const getAttendedEventsFromDb = (userId?: string) => {
   const uId = targetUser?._id || targetUser?.id;
 
   const userRegs = dbState.registrations.filter(
-    (r) => r.userId === uId && r.status === 'checked_in'
+    (r) => extractId(r.userId) === String(uId) && r.status === 'checked_in'
   );
 
   const registeredEventIds = new Set(
@@ -192,7 +195,7 @@ export const getOnlyAttendedEventsFromDb = (userId?: string): any[] => {
   const uId = targetUser?._id || targetUser?.id;
 
   const userRegs = dbState.registrations.filter(
-    (r) => r.userId === uId && r.status === 'checked_in'
+    (r) => extractId(r.userId) === String(uId) && r.status === 'checked_in'
   );
 
   const registeredEventIds = new Set(
@@ -299,7 +302,7 @@ export const mergeFeedbacksIntoDb = (incoming: any[]): EnrichedFeedback[] => {
 export const getEnrichedFeedbacksFromDb = (eventId?: string): EnrichedFeedback[] => {
   let list = dbState.feedbacks;
   if (eventId) {
-    list = list.filter((f) => f.eventId === eventId);
+    list = list.filter((f) => extractId(f.eventId) === String(eventId));
   }
 
   return list.map(enrichFeedback);

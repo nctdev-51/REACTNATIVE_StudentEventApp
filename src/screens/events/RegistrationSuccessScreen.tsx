@@ -42,6 +42,7 @@ type NavProp = NativeStackNavigationProp<MainStackParamList>;
 type RoutePropType = RouteProp<MainStackParamList, "RegistrationSuccess">;
 
 const SUCCESS_COLOR = "#22C55E";
+const WAITLIST_COLOR = "#F59E0B";
 
 // ---------------------------------------------------------------------------
 // Custom Vector Icons (Pure React Native Views)
@@ -53,6 +54,17 @@ function SuccessCheckmarkIcon() {
     <View style={iconStyles.circleContainer}>
       <View style={iconStyles.checkmarkStem} />
       <View style={iconStyles.checkmarkKick} />
+    </View>
+  );
+}
+
+/** Amber Circle with Waitlist Queue Symbol */
+function WaitlistQueueIcon({ position }: { position?: number | null }) {
+  return (
+    <View style={iconStyles.waitlistCircleContainer}>
+      <Text style={iconStyles.waitlistHashText}>
+        #{position ?? 1}
+      </Text>
     </View>
   );
 }
@@ -71,6 +83,24 @@ const iconStyles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: 16,
     elevation: 6,
+  },
+  waitlistCircleContainer: {
+    width: 110,
+    height: 110,
+    borderRadius: 55,
+    backgroundColor: WAITLIST_COLOR,
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: WAITLIST_COLOR,
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.25,
+    shadowRadius: 16,
+    elevation: 6,
+  },
+  waitlistHashText: {
+    color: "#FFFFFF",
+    fontSize: 32,
+    fontWeight: "800",
   },
   checkmarkStem: {
     position: "absolute",
@@ -105,10 +135,12 @@ export default function RegistrationSuccessScreen({
 }: RegistrationSuccessScreenProps) {
   const navigation = useNavigation<NavProp>();
   const route = useRoute<RoutePropType>();
-  const { theme, isDark } = useAppTheme();
+  const { theme } = useAppTheme();
 
   const title =
     route.params?.eventTitle || propEventTitle || "Sự kiện sinh viên IUH";
+  const isWaitlist = route.params?.registrationStatus === "waitlist";
+  const waitlistPosition = route.params?.waitlistPosition ?? 1;
 
   const handleViewSchedule = () => {
     if (onViewSchedule) {
@@ -142,21 +174,49 @@ export default function RegistrationSuccessScreen({
         {/* Top Space / Graphic area */}
         <View style={styles.contentContainer}>
           <View style={styles.iconWrapper}>
-            <SuccessCheckmarkIcon />
+            {isWaitlist ? (
+              <WaitlistQueueIcon position={waitlistPosition} />
+            ) : (
+              <SuccessCheckmarkIcon />
+            )}
           </View>
 
           {/* Headline */}
           <Text style={[styles.title, { color: theme.textPrimary }]}>
-            Đăng ký thành công!
+            {isWaitlist ? "Đã vào danh sách chờ!" : "Đăng ký thành công!"}
           </Text>
 
           {/* Subtitle message */}
           <Text style={[styles.message, { color: theme.textSecondary }]}>
+<<<<<<< HEAD
             Bạn đã đăng ký tham gia{"\n"}
             <Text style={[styles.eventTitleHighlight, { color: theme.primary }]}>
               {title}
             </Text>
             .
+=======
+            {isWaitlist ? (
+              <>
+                Sự kiện{"\n"}
+                <Text
+                  style={[styles.eventTitleHighlight, { color: WAITLIST_COLOR }]}
+                >
+                  {title}
+                </Text>
+                {"\n"}đã đủ chỗ chính thức. Bạn đang ở vị trí chờ #{waitlistPosition} và sẽ được tự động đôn lên khi có chỗ trống.
+              </>
+            ) : (
+              <>
+                Bạn đã đăng ký tham gia{"\n"}
+                <Text
+                  style={[styles.eventTitleHighlight, { color: theme.primary }]}
+                >
+                  {title}
+                </Text>
+                .
+              </>
+            )}
+>>>>>>> 40ca2f1 (A)
           </Text>
         </View>
 

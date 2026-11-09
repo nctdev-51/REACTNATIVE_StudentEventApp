@@ -116,13 +116,16 @@ test('successful QR remains attended after repeated stale API reloads', async ()
   }
 });
 
-test('offline QR mock cannot be overwritten by an old server registration', async () => {
+test('offline QR cannot mark a registration as checked in', async () => {
   const { api, offline } = setupApi();
   offline();
-  assert.equal((await api.qrCheckIn({ eventId: 'event1', userId: 'student1' })).success, true);
+  await assert.rejects(
+    () => api.qrCheckIn({ eventId: 'event1', userId: 'student1' }),
+    { code: 'ERR_NETWORK' },
+  );
   const list = await api.getRegistrationsByUser('student1');
   assert.equal(list.length, 1);
-  assert.equal(schedule(list)[0].status, 'past');
+  assert.equal(schedule(list)[0].status, 'upcoming');
 });
 
 test('failed QR leaves registration upcoming', async () => {

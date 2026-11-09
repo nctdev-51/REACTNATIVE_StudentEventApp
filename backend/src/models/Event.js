@@ -44,10 +44,12 @@ const eventSchema = new mongoose.Schema(
     maxSlots: {
       type: Number,
       default: 100,
+      min: [1, "maxSlots must be at least 1"],
     },
     waitlistSlots: {
       type: Number,
       default: 20,
+      min: [0, "waitlistSlots cannot be negative"],
     },
     isHidden: {
       type: Boolean,
@@ -69,6 +71,7 @@ const eventSchema = new mongoose.Schema(
     trainingPoints: {
       type: Number,
       default: 0,
+      min: [0, "trainingPoints cannot be negative"],
     },
     status: {
       type: String,

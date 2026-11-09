@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,18 @@ import {
   ActivityIndicator,
   Alert,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { logout, switchTestAccount } from '../../features/auth/authSlice';
-import { getEvents, getAllRegistrations } from '../../services/api';
-import { Event, Registration } from '../../types';
+import { getEvents, getAllRegistrations, getUsers } from '../../services/api';
+import { Event, Registration, User } from '../../types';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
+import AdminDashboardCharts from '../../components/admin/AdminDashboardCharts';
 import { useAppTheme } from '../../theme/ThemeContext';
 import { Ionicons } from '@expo/vector-icons';
 
@@ -31,28 +33,43 @@ export default function AdminDashboardScreen() {
   const user = useAppSelector((s) => s.auth.user);
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [events, setEvents] = useState<Event[]>([]);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean; refresh?: boolean }) => {
+    if (opts?.refresh) {
+      setRefreshing(true);
+    } else if (!opts?.silent) {
+      setLoading(true);
+    }
     try {
-      const [evts, regs] = await Promise.all([
+      const [evts, regs, usrs] = await Promise.all([
         getEvents(),
         getAllRegistrations(),
+        getUsers().catch(() => [] as User[]),
       ]);
       setEvents(evts);
       setRegistrations(regs);
+      setUsers(usrs);
     } catch (e) {
       console.warn('Lỗi load dashboard:', e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadData({ silent: true });
+    }, [loadData])
+  );
 
   const handleLogout = () => {
     Alert.alert('Đăng xuất', 'Bạn có chắc chắn muốn đăng xuất khỏi quyền Quản trị viên?', [
@@ -75,13 +92,26 @@ export default function AdminDashboardScreen() {
   // Tính toán số liệu thống kê
   const totalEvents = events.length;
   const eventsWithGPS = events.filter((e) => e.coordinates?.latitude && e.coordinates?.longitude).length;
-  const totalRegistrations = registrations.length;
-  const checkedInCount = registrations.filter((r) => r.status === 'checked_in').length;
+  const totalRegistrations = registrations.filter((r) => r.status !== 'cancelled').length;
+  const checkedInCount = registrations.filter(
+    (r) => r.status === 'checked_in' || r.status === 'completed'
+  ).length;
 
   return (
     <SafeAreaView style={[styles.safe, { backgroundColor: theme.background }]} edges={['top', 'left', 'right']}>
       <StatusBar barStyle={theme.statusBarStyle} />
-      <ScrollView contentContainerStyle={styles.scroll} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        contentContainerStyle={styles.scroll}
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void loadData({ refresh: true })}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
+      >
         {/* Header Admin với Hamburger Menu Button */}
         <View style={[styles.header, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1 }]}>
           <View style={styles.adminHeaderLeft}>
@@ -93,13 +123,19 @@ export default function AdminDashboardScreen() {
               />
               <View style={styles.adminText}>
                 <View style={styles.roleBadgeRow}>
-                  <Text style={[styles.adminName, { color: theme.textPrimary }]}>{user?.fullName || 'Ban Quản Trị'}</Text>
+                  <Text style={[styles.adminName, { color: theme.textPrimary }]} numberOfLines={1}>
+                    {user?.fullName || 'Ban Quản Trị'}
+                  </Text>
                   <View style={styles.adminBadge}>
                     <Text style={styles.adminBadgeText}>ADMIN</Text>
                   </View>
                 </View>
-                <Text style={[styles.adminSub, { color: theme.textSecondary }]}>{user?.email} • {user?.studentId || 'AD01'}</Text>
-                <Text style={[styles.adminFaculty, { color: theme.textTertiary }]}>{user?.faculty || 'Phòng Công tác sinh viên'}</Text>
+                <Text style={[styles.adminSub, { color: theme.textSecondary }]} numberOfLines={1}>
+                  {user?.email} • {user?.studentId || 'AD01'}
+                </Text>
+                <Text style={[styles.adminFaculty, { color: theme.textTertiary }]} numberOfLines={1}>
+                  {user?.faculty || 'Phòng Công tác sinh viên'}
+                </Text>
               </View>
             </View>
           </View>
@@ -118,17 +154,22 @@ export default function AdminDashboardScreen() {
         </View>
 
         <TouchableOpacity
-          style={[styles.refreshBtn, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB', borderColor: '#FCD34D' }]}
+          style={[styles.refreshBtn, { backgroundColor: isDark ? 'rgba(245,158,11,0.15)' : '#FFFBEB', borderColor: '#FCD34D', marginBottom: 14 }]}
           onPress={() => void switchToStudent()}
           activeOpacity={0.8}
         >
-          <Ionicons name="school-outline" size={18} color="#B45309" />
-          <Text style={[styles.refreshBtnText, { color: '#B45309' }]}>Chuyển nhanh sang Sinh viên (demo)</Text>
+          <View style={styles.iconTitle}>
+            <Ionicons name="school-outline" size={18} color="#B45309" />
+            <Text style={[styles.refreshBtnText, { color: '#B45309' }]}>Chuyển nhanh sang Sinh viên (demo)</Text>
+          </View>
         </TouchableOpacity>
 
         {/* Title banner */}
         <View style={[styles.banner, { backgroundColor: isDark ? theme.surfaceSecondary : '#1E293B' }]}>
-          <View style={styles.iconTitle}><Ionicons name="shield-checkmark-outline" size={23} color="#FFFFFF" /><Text style={styles.bannerTitle}>Trung Tâm Quản Trị Sự Kiện</Text></View>
+          <View style={[styles.iconTitle, { marginBottom: 6 }]}>
+            <Ionicons name="shield-checkmark-outline" size={23} color="#FFFFFF" />
+            <Text style={[styles.bannerTitle, { flex: 1, marginBottom: 0 }]}>Trung Tâm Quản Trị Sự Kiện</Text>
+          </View>
           <Text style={styles.bannerDesc}>
             Quản lý địa điểm tổ chức, phân quyền sinh viên và giám sát điểm danh tự động theo khuôn viên trường.
           </Text>
@@ -137,39 +178,70 @@ export default function AdminDashboardScreen() {
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#3B82F6', borderColor: theme.border, borderWidth: 1 }]}>
-            <Ionicons style={styles.statIcon} name="calendar-outline" size={28} color="#3B82F6" />
-            <View>
-              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : totalEvents}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Tổng sự kiện</Text>
+            <Ionicons style={styles.statIcon} name="calendar-outline" size={26} color="#3B82F6" />
+            <View style={styles.statTextWrap}>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]} numberOfLines={1}>
+                {loading ? '...' : totalEvents}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={2}>
+                Tổng sự kiện
+              </Text>
             </View>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#10B981', borderColor: theme.border, borderWidth: 1 }]}>
-            <Ionicons style={styles.statIcon} name="location-outline" size={28} color="#10B981" />
-            <View>
-              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>
+            <Ionicons style={styles.statIcon} name="location-outline" size={26} color="#10B981" />
+            <View style={styles.statTextWrap}>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]} numberOfLines={1}>
                 {loading ? '...' : `${eventsWithGPS}/${totalEvents}`}
               </Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Đã xác thực địa điểm</Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={2}>
+                Đã xác thực GPS
+              </Text>
             </View>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#8B5CF6', borderColor: theme.border, borderWidth: 1 }]}>
-            <Ionicons style={styles.statIcon} name="people-outline" size={28} color="#8B5CF6" />
-            <View>
-              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : totalRegistrations}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Lượt đăng ký</Text>
+            <Ionicons style={styles.statIcon} name="people-outline" size={26} color="#8B5CF6" />
+            <View style={styles.statTextWrap}>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]} numberOfLines={1}>
+                {loading ? '...' : totalRegistrations}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={2}>
+                Lượt đăng ký
+              </Text>
             </View>
           </View>
 
           <View style={[styles.statCard, { backgroundColor: theme.surface, borderLeftColor: '#F59E0B', borderColor: theme.border, borderWidth: 1 }]}>
-            <Ionicons style={styles.statIcon} name="checkmark-circle-outline" size={28} color="#F59E0B" />
-            <View>
-              <Text style={[styles.statNumber, { color: theme.textPrimary }]}>{loading ? '...' : checkedInCount}</Text>
-              <Text style={[styles.statLabel, { color: theme.textSecondary }]}>Đã Check-in QR</Text>
+            <Ionicons style={styles.statIcon} name="checkmark-circle-outline" size={26} color="#F59E0B" />
+            <View style={styles.statTextWrap}>
+              <Text style={[styles.statNumber, { color: theme.textPrimary }]} numberOfLines={1}>
+                {loading ? '...' : checkedInCount}
+              </Text>
+              <Text style={[styles.statLabel, { color: theme.textSecondary }]} numberOfLines={2}>
+                Đã Check-in QR
+              </Text>
             </View>
           </View>
         </View>
+
+        {/* Interactive Dashboard Analytics Charts */}
+        <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
+          Biểu Đồ Phân Tích & Điều Hành
+        </Text>
+        <AdminDashboardCharts
+          events={events}
+          registrations={registrations}
+          users={users}
+          loading={loading}
+          onSelectEventReport={(eventId) =>
+            navigation.navigate('AdminCheckInReports', { eventId })
+          }
+          onSelectEventQr={(eventId, eventTitle) =>
+            navigation.navigate('AdminQRDisplay', { eventId, eventTitle })
+          }
+        />
 
         {/* Section Actions */}
         <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>Chức Năng Quản Lý Chính</Text>
@@ -273,7 +345,7 @@ export default function AdminDashboardScreen() {
 
         <TouchableOpacity
           style={[styles.refreshBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
-          onPress={loadData}
+          onPress={() => void loadData()}
           activeOpacity={0.8}
         >
           {loading ? (
@@ -302,15 +374,15 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 10,
     elevation: 2,
-    marginBottom: 16,
+    marginBottom: 12,
   },
-  adminHeaderLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 10 },
+  adminHeaderLeft: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, gap: 10 },
   adminMenuBtn: { marginRight: 2 },
-  adminInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, gap: 12 },
+  adminInfo: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 0, gap: 12 },
   avatar: { width: 50, height: 50, borderRadius: 25, backgroundColor: '#E2E8F0' },
-  adminText: { flex: 1 },
-  roleBadgeRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  adminName: { fontSize: 16, fontWeight: '700', color: '#0F172A' },
+  adminText: { flex: 1, minWidth: 0 },
+  roleBadgeRow: { flexDirection: 'row', alignItems: 'center', flexWrap: 'wrap', gap: 6 },
+  adminName: { fontSize: 16, fontWeight: '700', color: '#0F172A', flexShrink: 1 },
   adminBadge: {
     backgroundColor: '#DC2626',
     paddingHorizontal: 6,
@@ -326,6 +398,8 @@ const styles = StyleSheet.create({
     paddingVertical: 8,
     borderRadius: 10,
     backgroundColor: '#FEE2E2',
+    flexShrink: 0,
+    marginLeft: 8,
   },
   logoutIcon: { fontSize: 18 },
   logoutText: { fontSize: 11, color: '#DC2626', fontWeight: '700', marginTop: 2 },
@@ -341,10 +415,11 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     flexWrap: 'wrap',
     gap: 12,
-    marginBottom: 20,
+    marginBottom: 18,
   },
   statCard: {
-    width: '48%',
+    flexBasis: '46%',
+    flexGrow: 1,
     backgroundColor: '#FFFFFF',
     padding: 14,
     borderRadius: 12,
@@ -357,6 +432,7 @@ const styles = StyleSheet.create({
     shadowRadius: 6,
     elevation: 1,
   },
+  statTextWrap: { flex: 1, minWidth: 0 },
   statIcon: { fontSize: 24 },
   statNumber: { fontSize: 18, fontWeight: '800', color: '#0F172A' },
   statLabel: { fontSize: 11, color: '#64748B', fontWeight: '500' },

@@ -45,6 +45,13 @@ const updateUser = async (req, res) => {
     const allowed = ["name", "fullName", "studentId", "faculty", "phone", "point", "role", "status", "isActive", "avatar", "avatarUrl"];
     const update = {};
     for (const key of allowed) if (req.body[key] !== undefined) update[key === "fullName" ? "name" : key] = req.body[key];
+    if (update.point !== undefined) {
+      const parsedPoint = Number(update.point);
+      if (!Number.isFinite(parsedPoint) || parsedPoint < 0) {
+        return res.status(400).json({ success: false, message: "Điểm rèn luyện phải là số không âm" });
+      }
+      update.point = parsedPoint;
+    }
     if (update.role && !["student", "admin", "organizer"].includes(update.role)) delete update.role;
     const user = await User.findByIdAndUpdate(req.params.id, update, { new: true, runValidators: true });
     if (!user) return res.status(404).json({ success: false, message: "User not found" });

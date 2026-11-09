@@ -26,6 +26,15 @@ export function upcomingRegisteredEvents(registrations: Registration[], events: 
     .sort((a, b) => Date.parse(a.time.start) - Date.parse(b.time.start));
 }
 
+const STATUS_PRIORITY: Record<string, number> = {
+  checked_in: 4,
+  completed: 4,
+  registered: 3,
+  waitlist: 2,
+  absent: 1,
+  cancelled: 0,
+};
+
 /** One registration per user/event. A confirmed check-in wins over an old registration. */
 export function mergeRegistrations(registrations: Registration[], events: Event[] = []): Registration[] {
   const aliases = new Map<string, string>();
@@ -40,7 +49,13 @@ export function mergeRegistrations(registrations: Registration[], events: Event[
     const eventId = aliases.get(rawId) ?? rawId;
     const key = JSON.stringify([entityId(registration.userId), eventId]);
     const existing = merged.get(key);
-    if (!existing || existing.status !== 'checked_in' || registration.status === 'checked_in') {
+    if (!existing) {
+      merged.set(key, registration);
+      continue;
+    }
+    const existingRank = STATUS_PRIORITY[existing.status] ?? 1;
+    const nextRank = STATUS_PRIORITY[registration.status] ?? 1;
+    if (nextRank >= existingRank) {
       merged.set(key, registration);
     }
   }

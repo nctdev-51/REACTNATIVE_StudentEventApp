@@ -34,7 +34,14 @@ export type MainStackParamList = {
   Notification: undefined;
   Feedback: { eventId?: string; eventTitle?: string } | undefined;
   Filter: undefined;
-  RegistrationSuccess: { eventId?: string; eventTitle?: string } | undefined;
+  RegistrationSuccess:
+    | {
+        eventId?: string;
+        eventTitle?: string;
+        registrationStatus?: 'registered' | 'waitlist';
+        waitlistPosition?: number | null;
+      }
+    | undefined;
 };
 
 // ─── Admin Tabs (Thanh điều hướng dưới cho Quản trị viên) ────────────────────

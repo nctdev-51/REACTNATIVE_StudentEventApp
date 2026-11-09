@@ -3,14 +3,14 @@ const User = require("../models/User");
 
 // Helper: Generate Access Token
 const generateAccessToken = (id) => {
-  return jwt.sign({ id }, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"), {
+  return jwt.sign({ id, tokenType: "access" }, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"), {
     expiresIn: process.env.JWT_EXPIRES_IN || "7d",
   });
 };
 
 // Helper: Generate Refresh Token
 const generateRefreshToken = (id) => {
-  return jwt.sign({ id }, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"), {
+  return jwt.sign({ id, tokenType: "refresh" }, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"), {
     expiresIn: "30d",
   });
 };
@@ -21,9 +21,18 @@ const generateRefreshToken = (id) => {
 const register = async (req, res) => {
   try {
     const { name, email, password, studentId, role, faculty, phone } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
+    const normalizedStudentId = studentId ? String(studentId).trim() : null;
+
+    if (!name || !normalizedEmail || !password) {
+      return res.status(400).json({
+        success: false,
+        message: "Please provide name, email and password",
+      });
+    }
 
     // Check if user already exists
-    const existingUser = await User.findOne({ email });
+    const existingUser = await User.findOne({ email: normalizedEmail });
     if (existingUser) {
       return res.status(400).json({
         success: false,
@@ -31,12 +40,22 @@ const register = async (req, res) => {
       });
     }
 
+    if (normalizedStudentId) {
+      const existingStudent = await User.findOne({ studentId: normalizedStudentId });
+      if (existingStudent) {
+        return res.status(400).json({
+          success: false,
+          message: "Student ID already exists",
+        });
+      }
+    }
+
     // Create user
     const user = await User.create({
-      name,
-      email,
+      name: String(name).trim(),
+      email: normalizedEmail,
       password,
-      studentId: studentId || null,
+      studentId: normalizedStudentId,
       faculty: faculty || null,
       phone: phone || null,
       role: role === "organizer" ? "organizer" : "student",
@@ -67,6 +86,12 @@ const register = async (req, res) => {
         message: messages.join(", "),
       });
     }
+    if (error.code === 11000) {
+      return res.status(400).json({
+        success: false,
+        message: "Email or Student ID already exists",
+      });
+    }
     res.status(500).json({
       success: false,
       message: "Server error during registration",
@@ -80,8 +105,9 @@ const register = async (req, res) => {
 const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+    const normalizedEmail = String(email || "").trim().toLowerCase();
 
-    if (!email || !password) {
+    if (!normalizedEmail || !password) {
       return res.status(400).json({
         success: false,
         message: "Please provide email and password",
@@ -89,7 +115,7 @@ const login = async (req, res) => {
     }
 
     // Find user with password field
-    const user = await User.findOne({ email }).select("+password +refreshToken");
+    const user = await User.findOne({ email: normalizedEmail }).select("+password +refreshToken");
     if (!user) {
       return res.status(401).json({
         success: false,
@@ -142,10 +168,12 @@ const login = async (req, res) => {
 // @access  Private
 const logout = async (req, res) => {
   try {
-    const user = await User.findById(req.user._id).select("+refreshToken");
-    if (user) {
-      user.refreshToken = null;
-      await user.save({ validateBeforeSave: false });
+    if (req.user?._id) {
+      const user = await User.findById(req.user._id).select("+refreshToken");
+      if (user) {
+        user.refreshToken = null;
+        await user.save({ validateBeforeSave: false });
+      }
     }
 
     res.status(200).json({
@@ -175,9 +203,16 @@ const refreshToken = async (req, res) => {
     }
 
     const decoded = jwt.verify(token, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"));
+    if (decoded.tokenType && decoded.tokenType !== "refresh") {
+      return res.status(401).json({
+        success: false,
+        message: "Invalid refresh token type",
+      });
+    }
+
     const user = await User.findById(decoded.id).select("+refreshToken");
 
-    if (!user || user.refreshToken !== token) {
+    if (!user || !user.isActive || user.refreshToken !== token) {
       return res.status(401).json({
         success: false,
         message: "Invalid refresh token",
