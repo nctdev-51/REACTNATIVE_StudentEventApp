@@ -17,7 +17,7 @@ import { useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
 import { navigate } from '../../navigation/navigationRef';
-import { createEvent } from '../../services/api';
+import { createEvent, BASE_URL } from '../../services/api';
 import { EventCoordinates } from '../../types';
 import SemesterPicker from '../../components/events/SemesterPicker';
 import { getCurrentSemesterId } from '../../utils/semester';
@@ -127,6 +127,10 @@ export default function AdminCreateEventScreen() {
     try {
       await createEvent({
         title: title.trim(),
+        // Keep the displayed organizer aligned with the authenticated account.
+        // The API also derives this value server-side, so an older client cannot
+        // create an event with a missing required `organizer` field.
+        organizer: currentUser.fullName?.trim() || 'Ban Chấp hành Đoàn trường',
         faculty: faculty.trim(),
         category,
         location: location.trim(),
@@ -159,7 +163,13 @@ export default function AdminCreateEventScreen() {
       ]);
     } catch (e: any) {
       const status = e?.response?.status;
-      const message = status === 401 || status === 403
+      const isOfflineFallback = e?.message === 'OFFLINE_FALLBACK_ACTIVE';
+      const isNetworkErr = !isOfflineFallback && (e?.code === 'ERR_NETWORK' || e?.code === 'ECONNABORTED' || !e?.response);
+      const message = isOfflineFallback
+        ? 'Điện thoại đang dùng Expo Tunnel/4G nhưng chưa có API HTTPS công khai. Hãy kết nối điện thoại và máy tính cùng Wi‑Fi, hoặc cấu hình EXPO_PUBLIC_API_URL bằng URL Cloudflare Tunnel đang hoạt động rồi chạy npx expo start --tunnel -c.'
+        : isNetworkErr
+        ? `Không thể kết nối tới máy chủ (${BASE_URL}). Hãy kiểm tra Cloudflare Tunnel và backend port 5000 đang chạy, cập nhật EXPO_PUBLIC_API_URL trong .env (xoá .env.local nếu còn) rồi chạy lại npx expo start --tunnel -c.`
+        : status === 401 || status === 403
         ? 'Máy chủ từ chối phiên đăng nhập. Hãy đăng xuất, đăng nhập lại tài khoản admin rồi thử lại.'
         : e?.response?.data?.message || e?.message || 'Không thể tạo sự kiện.';
       Alert.alert('Lỗi tạo sự kiện', message);
@@ -478,10 +488,12 @@ const styles = StyleSheet.create({
   catChipActive: { backgroundColor: '#2563EB' },
   catChipText: { fontSize: 12, fontWeight: '600', color: '#475569' },
   catChipTextActive: { color: '#FFFFFF' },
-  gpsButtonsRow: { flexDirection: 'row', gap: 8, marginTop: 4 },
+  gpsButtonsRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginTop: 4 },
   geocodeBtn: {
     flex: 1,
+    minWidth: 135,
     backgroundColor: '#2563EB',
+    paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -490,7 +502,9 @@ const styles = StyleSheet.create({
   geocodeBtnText: { color: '#FFFFFF', fontSize: 12, fontWeight: '700' },
   currentPosBtn: {
     flex: 1,
+    minWidth: 135,
     backgroundColor: '#F1F5F9',
+    paddingHorizontal: 10,
     paddingVertical: 10,
     borderRadius: 8,
     alignItems: 'center',
@@ -512,10 +526,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 4,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 6,
   },
-  coordsSuccessText: { fontSize: 12, color: '#059669', fontWeight: '700' },
-  mapLinkBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  coordsSuccessText: { flex: 1, flexShrink: 1, minWidth: 160, fontSize: 12, lineHeight: 16, color: '#059669', fontWeight: '700' },
+  mapLinkBtn: { backgroundColor: '#EEF2FF', paddingHorizontal: 10, paddingVertical: 5, borderRadius: 6, flexShrink: 0 },
   mapLinkBtnText: { fontSize: 11, color: '#4338CA', fontWeight: '700' },
   coordsMissingText: { fontSize: 12, color: '#DC2626', marginTop: 4, fontStyle: 'italic' },
   submitBtn: {

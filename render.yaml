@@ -3,13 +3,16 @@ services:
     name: student-event-server
     runtime: node
     plan: free
-    buildCommand: npm install
-    startCommand: node server/server.js
+    rootDir: backend
+    buildCommand: npm ci
+    startCommand: npm start
     envVars:
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
       - key: JWT_SECRET
-        value: studenteventapp_secret_key_2026
+        generateValue: true
+      - key: MONGO_URI
+        sync: false
 

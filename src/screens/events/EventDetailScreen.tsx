@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from "react";
+import React, { useEffect, useState, useMemo, useRef } from "react";
 import {
   Image,
   ScrollView,
@@ -29,6 +29,7 @@ import { navigate } from "../../navigation/navigationRef";
 import AISummary from "../../components/ai/AISummary";
 import AdminLocationModal from "../../components/events/AdminLocationModal";
 import { getDistanceMeters, formatDistance } from "../../utils/locationUtils";
+import { entityId } from "../../utils/registrations";
 import {
   getCurrentPosition,
   openInGoogleMaps,
@@ -41,6 +42,7 @@ import {
 import {
   fetchMyRegistrations,
   registerForEvent,
+  cancelMyRegistration,
 } from "../../features/check-in/registrationsSlice";
 import { Colors } from "../../theme";
 import {
@@ -127,33 +129,44 @@ export default function EventDetailScreen() {
 
   // 2. Kiểm tra trạng thái đã đăng ký (hỗ trợ cả id, _id và object eventId)
   const existingReg = myRegistrations.find((registration) => {
-    const regEventId =
-      typeof registration.eventId === "object" && registration.eventId !== null
-        ? (registration.eventId as { _id?: string; id?: string })._id ??
-          (registration.eventId as { id?: string }).id
-        : registration.eventId;
-    const currentId = eventId || event?._id || (event as any)?.id;
+    const regEventId = entityId(registration.eventId);
+    const currentIds = new Set(
+      [eventId, event?._id, (event as any)?.id]
+        .filter(Boolean)
+        .map((val) => String(val)),
+    );
     return (
-      (regEventId === currentId ||
-        regEventId === eventId ||
-        regEventId === event?._id ||
-        regEventId === (event as any)?.id) &&
+      !!regEventId &&
+      currentIds.has(regEventId) &&
       registration.status !== "cancelled"
     );
   });
 
   const isRegistered = !!existingReg;
   const isPast = isEventPast(event);
+  const isCancelled = event?.status === "cancelled";
+  const isUnpublished =
+    event?.status === "draft" || event?.status === "pending_approval";
+  const isRegClosed = event?.status === "registration_closed";
+  const cannotRegister = isPast || isCancelled || isUnpublished || isRegClosed;
+  const cannotCheckIn = isPast || isCancelled || isUnpublished;
+  const isPastCancelDeadline = Boolean(
+    event?.cancellationDeadline &&
+      new Date(event.cancellationDeadline).getTime() <= Date.now(),
+  );
+
+  const registerLockRef = useRef(false);
   const [adminModalVisible, setAdminModalVisible] = useState(false);
   const [userDistance, setUserDistance] = useState<number | null>(null);
   const [bannerError, setBannerError] = useState(false);
 
-  // 3. Tính khoảng cách GPS với xử lý an toàn lỗi Promise
+  // 3. Tính khoảng cách GPS với xử lý an toàn lỗi Promise & cleanup khi unmount
   useEffect(() => {
+    let mounted = true;
     if (event?.coordinates?.latitude && event?.coordinates?.longitude) {
       getCurrentPosition(5000)
         .then((loc) => {
-          if (loc && event?.coordinates) {
+          if (mounted && loc && event?.coordinates) {
             const d = getDistanceMeters(
               loc.coords.latitude,
               loc.coords.longitude,
@@ -164,13 +177,24 @@ export default function EventDetailScreen() {
           }
         })
         .catch(() => {
-          setUserDistance(null);
+          if (mounted) setUserDistance(null);
         });
+    } else {
+      setUserDistance(null);
     }
+    return () => {
+      mounted = false;
+    };
   }, [event?.coordinates?.latitude, event?.coordinates?.longitude]);
 
-  // 4. Đồng bộ dữ liệu mới nhất từ backend trong nền
+  // 4. Đồng bộ dữ liệu mới nhất từ backend trong nền & reset state cũ khi đổi eventId
   useEffect(() => {
+    setAiSummary(null);
+    setAiError(null);
+    setBannerError(false);
+    setUserDistance(null);
+    registerLockRef.current = false;
+
     if (eventId) {
       dispatch(fetchEventById(eventId));
     }
@@ -178,18 +202,44 @@ export default function EventDetailScreen() {
     // A QR check-in can create/update a registration while this screen is not
     // mounted. Refresh the source of truth before deciding whether to enable
     // registration again.
-    if (user?._id) {
-      void dispatch(fetchMyRegistrations(user._id));
+    if (currentUserId) {
+      void dispatch(fetchMyRegistrations(currentUserId));
     }
 
     return () => {
       dispatch(clearSelectedEvent());
     };
-  }, [eventId, dispatch, user?._id]);
+  }, [eventId, dispatch, currentUserId]);
 
-  // Đăng ký sự kiện
+  // Đăng ký sự kiện (có khóa chống bấm đúp tức thời)
   const handleRegister = async () => {
-    if (!currentUserId || !eventId) return;
+    if (!currentUserId || !eventId || registerLockRef.current || actionLoading) {
+      return;
+    }
+
+    if (isCancelled) {
+      Alert.alert(
+        "Sự kiện đã bị hủy",
+        "Ban tổ chức đã hủy sự kiện này. Bạn không thể đăng ký tham gia.",
+      );
+      return;
+    }
+
+    if (isUnpublished) {
+      Alert.alert(
+        "Chưa mở đăng ký",
+        "Sự kiện này chưa được công bố công khai.",
+      );
+      return;
+    }
+
+    if (isRegClosed) {
+      Alert.alert(
+        "Đã đóng cổng đăng ký",
+        "Sự kiện này đã ngừng nhận thêm đăng ký mới.",
+      );
+      return;
+    }
 
     if (isPast) {
       Alert.alert(
@@ -201,34 +251,99 @@ export default function EventDetailScreen() {
 
     if (isRegistered) {
       Alert.alert(
-        existingReg?.status === "checked_in" ? "Đã check-in" : "Đã đăng ký",
-        existingReg?.status === "checked_in"
+        existingReg?.status === "checked_in" || existingReg?.status === "completed"
+          ? "Đã check-in"
+          : "Đã đăng ký",
+        existingReg?.status === "checked_in" || existingReg?.status === "completed"
           ? "Bạn đã check-in sự kiện này, không thể đăng ký lại."
           : "Bạn đã đăng ký sự kiện này rồi.",
       );
       return;
     }
 
-    const result = await dispatch(
-      registerForEvent({
-        eventId,
-        userId: currentUserId,
-        participantRole: "attendee",
-        status: "registered",
-      }),
-    );
-
-    if (registerForEvent.fulfilled.match(result)) {
-      navigation.navigate("RegistrationSuccess", {
-        eventId,
-        eventTitle: event?.title,
-      });
-    } else {
-      Alert.alert(
-        "Thất bại",
-        (result.payload as string) ?? "Đăng ký thất bại",
+    registerLockRef.current = true;
+    try {
+      const targetId = event?._id || (event as any)?.id || eventId;
+      const result = await dispatch(
+        registerForEvent({
+          eventId: targetId,
+          userId: currentUserId,
+          participantRole: "attendee",
+          status: "registered",
+        }),
       );
+
+      if (registerForEvent.fulfilled.match(result)) {
+        if (targetId) {
+          void dispatch(fetchEventById(targetId));
+        }
+        navigation.navigate("RegistrationSuccess", {
+          eventId: targetId,
+          eventTitle: event?.title,
+          registrationStatus:
+            result.payload?.status === "waitlist" ? "waitlist" : "registered",
+          waitlistPosition: result.payload?.waitlistPosition ?? null,
+        });
+      } else {
+        Alert.alert(
+          "Thất bại",
+          (result.payload as string) ?? "Đăng ký thất bại",
+        );
+      }
+    } finally {
+      registerLockRef.current = false;
     }
+  };
+
+  // Hủy đăng ký sự kiện (trước hạn hủy vé / khi chưa điểm danh)
+  const handleCancelRegistration = () => {
+    if (!existingReg || registerLockRef.current || actionLoading) return;
+    if (isPastCancelDeadline) {
+      Alert.alert(
+        "Đã quá hạn hủy vé",
+        "Thời hạn cho phép hủy đăng ký của sự kiện này đã qua.",
+      );
+      return;
+    }
+
+    const regId = (existingReg as any).id || existingReg._id;
+    Alert.alert(
+      "Xác nhận hủy đăng ký",
+      existingReg.status === "waitlist"
+        ? `Bạn có chắc muốn rời khỏi danh sách chờ của sự kiện "${event?.title}"?`
+        : `Bạn có chắc muốn hủy đăng ký tham gia "${event?.title}"? Chỗ trống sẽ được chuyển cho sinh viên trong danh sách chờ (nếu có).`,
+      [
+        { text: "Giữ lại", style: "cancel" },
+        {
+          text: "Hủy đăng ký",
+          style: "destructive",
+          onPress: async () => {
+            if (registerLockRef.current) return;
+            registerLockRef.current = true;
+            try {
+              const res = await dispatch(cancelMyRegistration(regId));
+              if (cancelMyRegistration.fulfilled.match(res)) {
+                if (currentUserId) {
+                  void dispatch(fetchMyRegistrations(currentUserId));
+                }
+                const targetId = event?._id || (event as any)?.id || eventId;
+                if (targetId) {
+                  void dispatch(fetchEventById(targetId));
+                }
+                Alert.alert("Đã hủy đăng ký", "Vé tham gia của bạn đã được hủy.");
+              } else {
+                Alert.alert(
+                  "Không thể hủy",
+                  (res.payload as string) ?? "Hủy đăng ký thất bại",
+                );
+              }
+            } finally {
+              registerLockRef.current = false;
+            }
+          },
+        },
+      ],
+    );
   };
 
   const handleSummarize = async () => {
@@ -442,12 +557,14 @@ export default function EventDetailScreen() {
         <XStack justifyContent="space-between" alignItems="center" marginBottom={12} flexWrap="wrap" gap={8}>
           <XStack
             backgroundColor={
-              event.status === "ongoing"
-                ? "rgba(16,185,129,0.15)"
-                : event.status === "registration_closed"
+              isCancelled || isRegClosed
                 ? "rgba(239,68,68,0.15)"
-                : event.status === "completed"
+                : isPast
                 ? "rgba(100,116,139,0.15)"
+                : isUnpublished
+                ? "rgba(245,158,11,0.15)"
+                : event.status === "ongoing"
+                ? "rgba(16,185,129,0.15)"
                 : "rgba(37,99,235,0.15)"
             }
             paddingHorizontal={10}
@@ -462,12 +579,14 @@ export default function EventDetailScreen() {
                 height: 8,
                 borderRadius: 4,
                 backgroundColor:
-                  event.status === "ongoing"
-                    ? "#10B981"
-                    : event.status === "registration_closed"
+                  isCancelled || isRegClosed
                     ? "#EF4444"
-                    : event.status === "completed"
+                    : isPast
                     ? "#64748B"
+                    : isUnpublished
+                    ? "#F59E0B"
+                    : event.status === "ongoing"
+                    ? "#10B981"
                     : "#2563EB",
               }}
             />
@@ -475,23 +594,29 @@ export default function EventDetailScreen() {
               fontSize={12}
               fontWeight="700"
               color={
-                event.status === "ongoing"
-                  ? "#10B981"
-                  : event.status === "registration_closed"
+                isCancelled || isRegClosed
                   ? "#EF4444"
-                  : event.status === "completed"
+                  : isPast
                   ? "#64748B"
+                  : isUnpublished
+                  ? "#D97706"
+                  : event.status === "ongoing"
+                  ? "#10B981"
                   : "#2563EB"
               }
             >
-              {event.status === "ongoing"
-                ? "Đang diễn ra (Check-in active)"
-                : event.status === "registration_closed"
-                ? "Đã đóng đăng ký"
-                : event.status === "completed"
+              {isCancelled
+                ? "Sự kiện đã bị hủy"
+                : isPast
                 ? "Sự kiện đã hoàn tất"
+                : isRegClosed
+                ? "Đã đóng đăng ký"
+                : event.status === "draft"
+                ? "Bản nháp"
                 : event.status === "pending_approval"
                 ? "Chờ duyệt"
+                : event.status === "ongoing"
+                ? "Đang diễn ra (Check-in active)"
                 : "Đang mở đăng ký"}
             </TamaguiText>
           </XStack>
@@ -727,34 +852,74 @@ export default function EventDetailScreen() {
           </Paragraph>
         </Card>
 
-        {/* Banner thông báo sự kiện đã kết thúc */}
-        {isPast && (
+        {/* Banner thông báo trạng thái sự kiện (Hủy / Chưa mở / Đóng đăng ký / Đã kết thúc) */}
+        {(isCancelled || isPast || isUnpublished || (isRegClosed && !isRegistered)) && (
           <XStack
             alignItems="center"
-            backgroundColor={isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2"}
-            borderColor={isDark ? "#F87171" : "#FECACA"}
+            backgroundColor={
+              isUnpublished
+                ? isDark ? "rgba(245,158,11,0.15)" : "#FEF3C7"
+                : isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2"
+            }
+            borderColor={
+              isUnpublished
+                ? isDark ? "#F59E0B" : "#FDE68A"
+                : isDark ? "#F87171" : "#FECACA"
+            }
             borderWidth={1}
             borderRadius={14}
             padding={14}
             marginBottom={16}
             gap={12}
           >
-            <Ionicons name="time-outline" size={26} color="#DC2626" />
+            <Ionicons
+              name={
+                isCancelled
+                  ? "ban-outline"
+                  : isUnpublished
+                  ? "alert-circle-outline"
+                  : isRegClosed
+                  ? "lock-closed-outline"
+                  : "time-outline"
+              }
+              size={26}
+              color={isUnpublished ? "#D97706" : "#DC2626"}
+            />
             <YStack flex={1}>
               <TamaguiText
                 fontSize={14}
                 fontWeight="700"
                 marginBottom={2}
-                color={isDark ? "#FCA5A5" : "#991B1B"}
+                color={
+                  isUnpublished
+                    ? isDark ? "#FCD34D" : "#92400E"
+                    : isDark ? "#FCA5A5" : "#991B1B"
+                }
               >
-                Sự kiện đã kết thúc
+                {isCancelled
+                  ? "Sự kiện đã bị hủy"
+                  : isPast
+                  ? "Sự kiện đã kết thúc"
+                  : isUnpublished
+                  ? "Sự kiện chưa mở công khai"
+                  : "Đã đóng cổng đăng ký"}
               </TamaguiText>
               <Paragraph
                 size="$2"
                 lineHeight={18}
-                color={isDark ? "#FCD5D5" : "#7F1D1D"}
+                color={
+                  isUnpublished
+                    ? isDark ? "#FDE68A" : "#B45309"
+                    : isDark ? "#FCD5D5" : "#7F1D1D"
+                }
               >
-                Sự kiện này đã kết thúc thời gian tổ chức. Bạn chỉ có thể xem lại thông tin lưu trữ và không thể đăng ký hoặc điểm danh được nữa.
+                {isCancelled
+                  ? "Ban tổ chức đã hủy sự kiện này. Bạn không thể đăng ký hoặc điểm danh."
+                  : isPast
+                  ? "Sự kiện này đã kết thúc thời gian tổ chức. Bạn chỉ có thể xem lại thông tin lưu trữ và không thể đăng ký hoặc điểm danh được nữa."
+                  : isUnpublished
+                  ? "Sự kiện hiện đang ở trạng thái bản nháp hoặc chờ duyệt."
+                  : "Cổng đăng ký mới cho sự kiện này đã đóng. Sinh viên đã đăng ký chính thức vẫn có thể điểm danh theo lịch."}
               </Paragraph>
             </YStack>
           </XStack>
@@ -916,7 +1081,7 @@ export default function EventDetailScreen() {
             height={50}
             borderRadius={12}
             backgroundColor={
-              isPast
+              cannotRegister
                 ? "#94A3B8"
                 : existingReg?.status === "waitlist"
                 ? "#F59E0B"
@@ -924,8 +1089,8 @@ export default function EventDetailScreen() {
                 ? "#10B981"
                 : theme.primary
             }
-            opacity={actionLoading || isPast ? 0.75 : 1}
-            disabled={actionLoading || isRegistered || (existingReg as any)?.status === "waitlist" || isPast}
+            opacity={actionLoading || cannotRegister ? 0.75 : 1}
+            disabled={actionLoading || isRegistered || cannotRegister}
             onPress={handleRegister}
             pressStyle={{ opacity: 0.85 }}
           >
@@ -935,9 +1100,10 @@ export default function EventDetailScreen() {
               <XStack alignItems="center" gap={8}>
                 <Ionicons
                   name={
-                    isPast
+                    cannotRegister
                       ? "close-circle-outline"
-                      : existingReg?.status === "checked_in"
+                      : existingReg?.status === "checked_in" ||
+                        existingReg?.status === "completed"
                       ? "checkmark-done-circle"
                       : existingReg?.status === "waitlist"
                       ? "hourglass-outline"
@@ -949,19 +1115,69 @@ export default function EventDetailScreen() {
                   color="#FFFFFF"
                 />
                 <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
-                  {isPast
+                  {isCancelled
+                    ? "Sự kiện đã bị hủy"
+                    : isUnpublished
+                    ? "Chưa mở đăng ký"
+                    : isPast
                     ? "Đã hết hạn đăng ký"
-                    : existingReg?.status === "checked_in"
+                    : existingReg?.status === "checked_in" ||
+                      existingReg?.status === "completed"
                     ? "Đã check-in"
                     : existingReg?.status === "waitlist"
                     ? "Đang ở danh sách chờ"
                     : isRegistered
                     ? "Đã đăng ký"
+                    : isRegClosed
+                    ? "Đã đóng cổng đăng ký"
                     : "Đăng ký tham gia"}
                 </TamaguiText>
               </XStack>
             )}
           </Button>
+
+          {/* Nút Hủy Đăng Ký (khi đang ở danh sách chính thức/chờ & chưa điểm danh) */}
+          {(existingReg?.status === "registered" ||
+            existingReg?.status === "waitlist") &&
+            !isPast &&
+            !isCancelled && (
+              <Button
+                height={44}
+                borderRadius={12}
+                borderWidth={1}
+                backgroundColor={
+                  isPastCancelDeadline
+                    ? theme.surfaceSecondary
+                    : isDark
+                    ? "rgba(239,68,68,0.12)"
+                    : "#FEF2F2"
+                }
+                borderColor={isPastCancelDeadline ? theme.border : "#EF4444"}
+                opacity={actionLoading || isPastCancelDeadline ? 0.6 : 1}
+                disabled={actionLoading || isPastCancelDeadline}
+                onPress={handleCancelRegistration}
+                pressStyle={{ opacity: 0.85 }}
+              >
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={18}
+                    color={isPastCancelDeadline ? theme.textTertiary : "#EF4444"}
+                  />
+                  <TamaguiText
+                    fontSize={14}
+                    fontWeight="600"
+                    color={isPastCancelDeadline ? theme.textTertiary : "#EF4444"}
+                  >
+                    {isPastCancelDeadline
+                      ? "Đã quá hạn hủy đăng ký"
+                      : existingReg.status === "waitlist"
+                      ? "Rời danh sách chờ"
+                      : "Hủy đăng ký tham gia"}
+                  </TamaguiText>
+                </XStack>
+              </Button>
+            )}
 
           {/* Nút Quét QR Điểm Danh */}
           <Button
@@ -970,13 +1186,17 @@ export default function EventDetailScreen() {
             borderWidth={1}
             backgroundColor={theme.surface}
             borderColor={theme.border}
-            opacity={isPast ? 0.6 : 1}
-            disabled={isPast}
+            opacity={cannotCheckIn ? 0.6 : 1}
+            disabled={cannotCheckIn}
             onPress={() => {
-              if (isPast) {
+              if (cannotCheckIn) {
                 Alert.alert(
-                  "Hết hạn điểm danh",
-                  "Sự kiện này đã kết thúc thời gian diễn ra. Cổng điểm danh đã đóng.",
+                  "Không thể điểm danh",
+                  isCancelled
+                    ? "Sự kiện này đã bị hủy."
+                    : isUnpublished
+                    ? "Sự kiện chưa được mở chính thức."
+                    : "Sự kiện này đã kết thúc thời gian diễn ra. Cổng điểm danh đã đóng.",
                 );
                 return;
               }
@@ -1001,22 +1221,23 @@ export default function EventDetailScreen() {
           >
             <XStack alignItems="center" gap={8}>
               <Ionicons
-                name={isPast ? "lock-closed-outline" : "qr-code-outline"}
+                name={cannotCheckIn ? "lock-closed-outline" : "qr-code-outline"}
                 size={18}
-                color={isPast ? "#94A3B8" : theme.textPrimary}
+                color={cannotCheckIn ? "#94A3B8" : theme.textPrimary}
               />
               <TamaguiText
                 fontSize={14}
                 fontWeight="600"
-                color={isPast ? "#94A3B8" : theme.textPrimary}
+                color={cannotCheckIn ? "#94A3B8" : theme.textPrimary}
               >
-                {isPast ? "Cổng điểm danh đã đóng" : "Quét QR Điểm Danh Ngay"}
+                {cannotCheckIn ? "Cổng điểm danh đã đóng" : "Quét QR Điểm Danh Ngay"}
               </TamaguiText>
             </XStack>
           </Button>
 
           {/* Nút Gửi Phản Hồi (Sau khi đã điểm danh) */}
-          {existingReg?.status === "checked_in" && (
+          {(existingReg?.status === "checked_in" ||
+            existingReg?.status === "completed") && (
             <Button
               height={46}
               borderRadius={12}
@@ -1070,17 +1291,26 @@ export default function EventDetailScreen() {
                   onPress={async () => {
                     const targetId = event._id || (event as any).id || eventId;
                     if (!targetId) return;
-                    const newHidden = await toggleHideEvent(
-                      targetId,
-                      !!event.isHidden,
-                    );
-                    if (eventId) dispatch(fetchEventById(eventId));
-                    Alert.alert(
-                      "Thành công",
-                      newHidden
-                        ? "Đã ẩn sự kiện khỏi danh sách sinh viên."
-                        : "Đã mở lại sự kiện hiển thị cho sinh viên.",
-                    );
+                    try {
+                      const newHidden = await toggleHideEvent(
+                        targetId,
+                        !!event.isHidden,
+                      );
+                      if (eventId) dispatch(fetchEventById(eventId));
+                      Alert.alert(
+                        "Thành công",
+                        newHidden
+                          ? "Đã ẩn sự kiện khỏi danh sách sinh viên."
+                          : "Đã mở lại sự kiện hiển thị cho sinh viên.",
+                      );
+                    } catch (err: any) {
+                      Alert.alert(
+                        "Lỗi",
+                        err?.response?.data?.message ||
+                          err?.message ||
+                          "Không thể cập nhật trạng thái ẩn/hiện sự kiện.",
+                      );
+                    }
                   }}
                   pressStyle={{ opacity: 0.8 }}
                 >
@@ -1113,12 +1343,21 @@ export default function EventDetailScreen() {
                           text: "Xóa vĩnh viễn",
                           style: "destructive",
                           onPress: async () => {
-                            await deleteEvent(targetId);
-                            Alert.alert("Đã xóa", "Sự kiện đã được xóa thành công.");
-                            if (navigation.canGoBack()) {
-                              navigation.goBack();
-                            } else {
-                              navigate("Home");
+                            try {
+                              await deleteEvent(targetId);
+                              Alert.alert("Đã xóa", "Sự kiện đã được xóa thành công.");
+                              if (navigation.canGoBack()) {
+                                navigation.goBack();
+                              } else {
+                                navigate("Home");
+                              }
+                            } catch (err: any) {
+                              Alert.alert(
+                                "Lỗi",
+                                err?.response?.data?.message ||
+                                  err?.message ||
+                                  "Không thể xóa sự kiện.",
+                              );
                             }
                           },
                         },

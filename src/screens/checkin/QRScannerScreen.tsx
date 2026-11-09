@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   StyleSheet,
   Text,
@@ -30,9 +30,11 @@ import Animated, {
 
 import { QRScannerScreenProps } from '../../navigation/CheckInStack';
 import { navigate } from '../../navigation/navigationRef';
-import { qrCheckIn, getEventById, updateEventCoordinates } from '../../services/api';
+import { qrCheckIn, getEventById, updateEventCoordinates, isEventPast } from '../../services/api';
 import { useAppDispatch, useAppSelector } from '../../hooks/redux';
 import { fetchMyRegistrations } from '../../features/check-in/registrationsSlice';
+import { entityId } from '../../utils/registrations';
+import { getDefaultDbUser } from '../../data/dbService';
 import {
   requestLocationPermission,
   checkLocationPermission,
@@ -131,11 +133,16 @@ function parseQrPayload(rawData: string): ParsedQrPayload {
 export default function QRScannerScreen({ navigation, route }: QRScannerScreenProps) {
   const isFocused = useIsFocused();
   const dispatch = useAppDispatch();
-  const currentUser = useAppSelector((state) => state.auth.user);
+  const authUser = useAppSelector((state) => state.auth.user);
+  const currentUser = authUser || getDefaultDbUser();
+  const currentUserId = currentUser?._id || (currentUser as any)?.id;
   const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
+  const eventsList = useAppSelector((state) => state.events.list);
 
-  // Nhận tham số Deep Link khi mở từ Camera ngoài (iOS / Android / Zalo)
-  const { eventId: deepEventId, token: deepToken, autoCheckIn } = route?.params || {};
+  // Khoá đồng bộ chống quét/nhấn đúp trên nhiều frame liên tiếp trước khi state React commit
+  const scanLockRef = useRef<boolean>(false);
+  const unlockTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const consumedDeepLinkRef = useRef<string | null>(null);
 
   // Điều hướng quay lại an toàn (hỗ trợ cả nested stack và root stack)
   const handleGoBack = () => {
@@ -179,33 +186,103 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
   // Trạng thái bật/tắt đèn flash
   const [torchEnabled, setTorchEnabled] = useState<boolean>(false);
 
+  // Danh sách sự kiện sinh viên đang ở trạng thái đã đăng ký để chọn khi nhập Passcode
+  const registeredEventOptions = useMemo(() => {
+    const items: { id: string; title: string }[] = [];
+    const seen = new Set<string>();
+    for (const reg of myRegistrations) {
+      if (reg.status !== 'registered') continue;
+      const eid = entityId(reg.eventId);
+      if (!eid || seen.has(eid)) continue;
+      seen.add(eid);
+      const populatedTitle =
+        typeof reg.eventId === 'object' && reg.eventId !== null
+          ? (reg.eventId as any).title
+          : undefined;
+      const listMatch = eventsList.find((ev) => entityId(ev) === eid);
+      items.push({
+        id: eid,
+        title: populatedTitle || listMatch?.title || `Sự kiện (${eid.slice(-6)})`,
+      });
+    }
+    return items;
+  }, [myRegistrations, eventsList]);
+
   // Passcode Fallback (Nhập mã PIN dự phòng khi GPS/Camera lỗi)
   const [showPasscodeModal, setShowPasscodeModal] = useState<boolean>(false);
   const [passcodeInput, setPasscodeInput] = useState<string>('');
-  const [passcodeEventId, setPasscodeEventId] = useState<string>(MOCK_EVENT_ID);
+  const [passcodeEventId, setPasscodeEventId] = useState<string>(
+    route.params?.eventId || registeredEventOptions[0]?.id || MOCK_EVENT_ID,
+  );
+
+  // Đồng bộ passcodeEventId khi có tham số truyền vào hoặc danh sách đăng ký thay đổi
+  useEffect(() => {
+    if (route.params?.eventId) {
+      setPasscodeEventId(route.params.eventId);
+    } else if (
+      registeredEventOptions.length > 0 &&
+      !registeredEventOptions.some((opt) => opt.id === passcodeEventId)
+    ) {
+      setPasscodeEventId(registeredEventOptions[0].id);
+    }
+  }, [route.params?.eventId, registeredEventOptions, passcodeEventId]);
+
+  const scheduleUnlockScanner = useCallback((delayMs = 2500) => {
+    if (unlockTimerRef.current) {
+      clearTimeout(unlockTimerRef.current);
+    }
+    unlockTimerRef.current = setTimeout(() => {
+      scanLockRef.current = false;
+      setScanned(false);
+      unlockTimerRef.current = null;
+    }, delayMs);
+  }, []);
+
+  const showScannerNotice = useCallback((title: string, message: string) => {
+    if (unlockTimerRef.current) {
+      clearTimeout(unlockTimerRef.current);
+      unlockTimerRef.current = null;
+    }
+    Alert.alert(title, message, [
+      {
+        text: 'Đã hiểu',
+        onPress: () => {
+          scanLockRef.current = false;
+          setScanned(false);
+        },
+      },
+    ]);
+  }, []);
 
   const handlePasscodeCheckInSubmit = async () => {
+    if (scanLockRef.current || loading) return;
     if (!passcodeInput.trim()) {
       Alert.alert('Chưa nhập mã', 'Vui lòng nhập mã PIN 6 số do Ban Tổ chức cung cấp.');
       return;
     }
+    if (!passcodeEventId) {
+      Alert.alert('Chưa chọn sự kiện', 'Vui lòng chọn sự kiện cần điểm danh.');
+      return;
+    }
 
+    scanLockRef.current = true;
     setShowPasscodeModal(false);
+    setScanned(true);
     setLoading(true);
     setLoadingMessage('Đang xác thực mã PIN dự phòng (Passcode)...');
 
     try {
       const response = await qrCheckIn({
         eventId: passcodeEventId,
-        userId: currentUser?._id,
+        userId: currentUserId,
         studentId: currentUser?.studentId,
         method: 'passcode',
         passcode: passcodeInput.trim(),
       });
 
       if (response && response.success) {
-        if (currentUser?._id) {
-          await dispatch(fetchMyRegistrations(currentUser._id));
+        if (currentUserId) {
+          await dispatch(fetchMyRegistrations(currentUserId));
         }
         navigation.navigate('CheckInSuccess', {
           eventId: passcodeEventId,
@@ -228,13 +305,19 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
         });
       }
     } catch (err: any) {
-      const errMsg = err?.response?.data?.message || err?.message || 'Lỗi xác thực mã PIN.';
+      const isNetworkErr =
+        err?.code === 'ERR_NETWORK' || err?.code === 'ECONNABORTED' || !err?.response;
+      const errMsg = isNetworkErr
+        ? 'Mất kết nối mạng khi xác thực mã PIN. Vui lòng thử lại hoặc gửi khiếu nại.'
+        : err?.response?.data?.message || err?.message || 'Lỗi xác thực mã PIN.';
       navigation.navigate('CheckInFailed', {
         reason: errMsg,
         data: passcodeEventId,
         isLocationError: false,
       });
     } finally {
+      scanLockRef.current = false;
+      setScanned(false);
       setLoading(false);
       setPasscodeInput('');
     }
@@ -328,14 +411,30 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
     }
   }, []);
 
-  // Khi màn hình được focus, tự động bật và làm mới vị trí GPS
+  // Khi màn hình được focus, reset khoá quét và tự động làm mới GPS
   useFocusEffect(
     useCallback(() => {
+      if (unlockTimerRef.current) {
+        clearTimeout(unlockTimerRef.current);
+        unlockTimerRef.current = null;
+      }
+      scanLockRef.current = false;
       setScanned(false);
       setLoading(false);
       setLoadingMessage('Đang xử lý check-in...');
-      refreshRealLocation();
-    }, [refreshRealLocation])
+      if (currentUserId && myRegistrations.length === 0) {
+        void dispatch(fetchMyRegistrations(currentUserId));
+      }
+      // Ask for GPS when the student deliberately opens Check-in. This only
+      // prepares a location; it never creates a check-in by itself.
+      void refreshRealLocation(true);
+      return () => {
+        if (unlockTimerRef.current) {
+          clearTimeout(unlockTimerRef.current);
+          unlockTimerRef.current = null;
+        }
+      };
+    }, [refreshRealLocation, currentUserId, myRegistrations.length, dispatch])
   );
 
   // ─── Memoized Computed Values (CLO2) ─────────────────────────────────────────
@@ -347,7 +446,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       return realAddress ? `${realAddress}` : 'Vị trí hợp lệ • Đã kết nối định vị';
     }
     return 'Anti-Fake GPS đang bật';
-  }, [fetchingGps, isGpsHardwareOn, locationPermissionGranted, realCoords]);
+  }, [fetchingGps, isGpsHardwareOn, locationPermissionGranted, realCoords, realAddress]);
 
   // ─── Tính năng thông minh: Gán toạ độ sự kiện về vị trí hiện tại (Test thực tế)
   const handleSetEventToCurrentLocation = async () => {
@@ -364,7 +463,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       setLoading(true);
       setLoadingMessage('Đang đồng bộ toạ độ sự kiện về vị trí GPS hiện tại của bạn...');
 
-      const defaultEventId = '66f1e2010000000000000001';
+      const defaultEventId = route.params?.eventId || '66f1e2010000000000000001';
       const addressName = realAddress || 'Vị trí thực tế của thiết bị';
 
       // Cập nhật sự kiện 1 có toạ độ bằng đúng toạ độ GPS thực tế của bạn
@@ -383,9 +482,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       Alert.alert('Thông báo', 'Đã lưu toạ độ hiện tại làm mốc kiểm tra Anti-Fake cho phiên này.');
     } finally {
       setLoading(false);
-      setTimeout(() => {
-        setScanned(false);
-      }, 3000);
+      scheduleUnlockScanner(1500);
     }
   };
 
@@ -395,7 +492,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       setLoading(true);
       setLoadingMessage('Đang dời toạ độ sự kiện ra xa để test Anti-Fake...');
 
-      const defaultEventId = '66f1e2010000000000000001';
+      const defaultEventId = route.params?.eventId || '66f1e2010000000000000001';
       const baseLat = realCoords ? realCoords.latitude : 10.8221;
       const baseLon = realCoords ? realCoords.longitude : 106.6876;
       const farLatitude = baseLat + 0.025; // ~2.7km
@@ -416,32 +513,19 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       Alert.alert('Thông báo', 'Đã lưu toạ độ kiểm thử vi phạm khoảng cách.');
     } finally {
       setLoading(false);
-      setTimeout(() => {
-        setScanned(false);
-      }, 3000);
+      scheduleUnlockScanner(1500);
     }
   };
 
-  // Xử lý khi nhận Deep Link từ Camera ngoài (iOS / Android / Zalo)
-  useEffect(() => {
-    if (deepEventId && isFocused) {
-      console.log('[QRScanner] Nhận Deep Link Check-in:', deepEventId, deepToken);
-      void handlePerformCheckIn({
-        eventId: deepEventId,
-        token: deepToken,
-      });
-    }
-  }, [deepEventId, deepToken, isFocused]);
-
   /**
    * Pipeline xử lý điểm danh chung (dùng cho cả In-App Scanner, Deep Link ngoài & Mock Scan):
-   * 1. Kiểm tra toạ độ Anti-Fake GPS của sự kiện
+   * 1. Kiểm tra trạng thái sự kiện & đăng ký của sinh viên
    * 2. Lấy vị trí THỰC TẾ của thiết bị & kiểm tra Mock Location
-   * 3. Tính khoảng cách Haversine. Nếu > 500m -> Chặn và báo lỗi
+   * 3. Tính khoảng cách Haversine. Nếu > radiusMeters -> Chặn và báo lỗi
    * 4. Gửi eventId, token (JWT Dynamic QR), userLocation lên Backend
-   * 5. Điều hướng CheckInSuccess hoặc CheckInFailed kèm Haptic Feedback
+   * 5. Điều hướng CheckInSuccess hoặc CheckInFailed (hoặc Notice) kèm Haptic Feedback
    */
-  const handlePerformCheckIn = async ({
+  const handlePerformCheckIn = useCallback(async ({
     eventId,
     token,
     mockLocation = false,
@@ -452,10 +536,13 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
   }) => {
     if (loading) return;
 
+    scanLockRef.current = true;
     setScanned(true);
     setLoading(true);
     setLoadingMessage('Đang xác thực thông tin điểm danh...');
     Vibration.vibrate(100);
+
+    let keepLockedForDialogOrNav = false;
 
     try {
       // Bước 1: Lấy thông tin sự kiện từ API
@@ -467,36 +554,78 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
         // Fallback nếu không tải được chi tiết
       }
 
+      if (eventData) {
+        if (eventData.status === 'cancelled') {
+          keepLockedForDialogOrNav = true;
+          Vibration.vibrate([100, 80, 100]);
+          showScannerNotice('Sự kiện đã bị hủy', 'Sự kiện này đã bị Ban tổ chức hủy nên không thể điểm danh.');
+          return;
+        }
+        if (['draft', 'pending_approval'].includes(eventData.status)) {
+          keepLockedForDialogOrNav = true;
+          Vibration.vibrate([100, 80, 100]);
+          showScannerNotice('Chưa mở điểm danh', 'Sự kiện này chưa được mở chính thức.');
+          return;
+        }
+        if (isEventPast(eventData)) {
+          keepLockedForDialogOrNav = true;
+          Vibration.vibrate([100, 80, 100]);
+          showScannerNotice('Cổng điểm danh đã đóng', 'Sự kiện này đã kết thúc thời gian tổ chức.');
+          return;
+        }
+      }
+
       // Bước 1.5: Kiểm tra trạng thái đăng ký của sinh viên (Chỉ người ĐÃ ĐĂNG KÝ mới được check-in)
+      const targetEventId = String(eventData?._id || (eventData as any)?.id || eventId);
+      const matchesTargetEvent = (r: any) => {
+        const regEventId = entityId(r?.eventId);
+        return (
+          !!regEventId &&
+          (regEventId === String(eventId) || regEventId === targetEventId)
+        );
+      };
+
       let userRegs = myRegistrations;
-      if (currentUser?._id && userRegs.length === 0) {
+      let existingReg = userRegs.find((r) => matchesTargetEvent(r) && r.status !== 'cancelled');
+      let syncCompleted = false;
+
+      // Nếu trong Redux cache chưa thấy (do object populated hoặc dữ liệu chưa đồng bộ), tải lại danh sách mới nhất từ backend
+      if (!existingReg && currentUserId) {
         try {
-          const fetched = await dispatch(fetchMyRegistrations(currentUser._id)).unwrap();
-          if (Array.isArray(fetched)) userRegs = fetched;
+          const fetched = await dispatch(fetchMyRegistrations(currentUserId)).unwrap();
+          if (Array.isArray(fetched)) {
+            userRegs = fetched;
+            syncCompleted = true;
+            existingReg = userRegs.find((r) => matchesTargetEvent(r) && r.status !== 'cancelled');
+          }
         } catch (e) {}
       }
 
-      const existingReg = userRegs.find(
-        (r) => r.eventId === eventId || (r as any).eventId === (eventData?._id || eventId)
-      );
+      const matchedAnyReg = existingReg || userRegs.find((r) => matchesTargetEvent(r));
 
-      if (existingReg) {
-        if (existingReg.status === 'waitlist') {
+      if (!matchedAnyReg && syncCompleted) {
+        keepLockedForDialogOrNav = true;
+        Vibration.vibrate([100, 80, 100]);
+        showScannerNotice('Chưa đăng ký tham gia', 'Bạn cần đăng ký tham gia sự kiện trước khi có thể quét mã QR điểm danh.');
+        return;
+      }
+
+      if (matchedAnyReg) {
+        if (matchedAnyReg.status === 'waitlist') {
+          keepLockedForDialogOrNav = true;
           Vibration.vibrate([100, 80, 100]);
-          navigation.navigate('CheckInFailed', {
-            reason: 'Bạn đang ở trong Danh sách chờ (Waitlist). Chỉ sinh viên trong danh sách chính thức mới được phép điểm danh.',
-            data: eventId,
-            isLocationError: false,
-          });
+          showScannerNotice('Chưa thể điểm danh', 'Bạn đang ở trong danh sách chờ. Chỉ sinh viên trong danh sách chính thức mới được phép điểm danh.');
           return;
         }
-        if (existingReg.status === 'cancelled') {
+        if (matchedAnyReg.status === 'cancelled') {
+          keepLockedForDialogOrNav = true;
           Vibration.vibrate([100, 80, 100]);
-          navigation.navigate('CheckInFailed', {
-            reason: 'Bạn đã hủy đăng ký sự kiện này. Không thể điểm danh.',
-            data: eventId,
-            isLocationError: false,
-          });
+          showScannerNotice('Chưa thể điểm danh', 'Bạn đã hủy đăng ký sự kiện này.');
+          return;
+        }
+        if (matchedAnyReg.status === 'checked_in' || matchedAnyReg.status === 'completed') {
+          keepLockedForDialogOrNav = true;
+          showScannerNotice('Bạn đã điểm danh', 'Sự kiện này đã được ghi nhận check-in trước đó.');
           return;
         }
       }
@@ -518,38 +647,27 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
           // Xin quyền vị trí nếu chưa có
           const perm = await requestLocationPermission();
           if (!perm.granted) {
+            keepLockedForDialogOrNav = true;
             Vibration.vibrate([100, 80, 100]);
-            navigation.navigate('CheckInFailed', {
-              reason:
-                'Sự kiện này yêu cầu quyền vị trí để chống check-in giả mạo từ xa. Vui lòng cấp quyền vị trí và thử lại.',
-              data: eventId,
-              isLocationError: true,
-            });
+            showScannerNotice('Cần quyền vị trí', 'Hãy cấp quyền vị trí để ứng dụng xác minh bạn đang có mặt tại sự kiện, sau đó quét mã QR.');
             return;
           }
 
           // Lấy toạ độ GPS thực tế từ máy người dùng
           const loc = await getCurrentPosition(10000);
           if (!loc) {
+            keepLockedForDialogOrNav = true;
             Vibration.vibrate([100, 80, 100]);
-            navigation.navigate('CheckInFailed', {
-              reason:
-                'Không thể xác định vị trí thực tế của thiết bị. Vui lòng bật định vị GPS với độ chính xác cao và thử lại.',
-              data: eventId,
-              isLocationError: true,
-            });
+            showScannerNotice('Chưa lấy được GPS', 'Hãy bật định vị chính xác cao và thử quét lại mã QR.');
             return;
           }
 
           // Anti-Fraud: Kiểm tra tính toàn vẹn vị trí (Fake GPS / Độ chính xác)
           const integrity = inspectLocationIntegrity(loc);
           if (!integrity.isValid) {
+            keepLockedForDialogOrNav = true;
             Vibration.vibrate([100, 80, 100]);
-            navigation.navigate('CheckInFailed', {
-              reason: integrity.riskReason || 'Tín hiệu GPS không đủ độ tin cậy.',
-              data: eventId,
-              isLocationError: true,
-            });
+            showScannerNotice('GPS chưa hợp lệ', integrity.riskReason || 'Tín hiệu GPS không đủ độ tin cậy.');
             return;
           }
 
@@ -577,14 +695,10 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
 
           // Nếu sinh viên ở ngoài bán kính cho phép -> CHẶN NGAY LẬP TỨC
           if (!withinRadius) {
+            keepLockedForDialogOrNav = true;
             Vibration.vibrate([100, 80, 100]);
             const distStr = formatDistance(distanceMeters);
-            navigation.navigate('CheckInFailed', {
-              reason: `Vị trí không hợp lệ! Vị trí thực tế của bạn đang cách địa điểm sự kiện "${eventData.title}" khoảng ${distStr} (vượt quá bán kính cho phép ${eventRadius}m). Hệ thống chống gian lận yêu cầu bạn phải có mặt tại địa điểm.`,
-              data: eventId,
-              distanceMeters,
-              isLocationError: true,
-            });
+            showScannerNotice('Bạn chưa ở trong khu vực', `Bạn đang cách địa điểm sự kiện "${eventData.title}" khoảng ${distStr}; bán kính cho phép là ${eventRadius}m. Hãy đến địa điểm rồi quét lại mã QR.`);
             return;
           }
         }
@@ -594,7 +708,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       setLoadingMessage('Vị trí hợp lệ! Đang ghi nhận điểm danh...');
       const response = await qrCheckIn({
         eventId,
-        userId: currentUser?._id,
+        userId: currentUserId,
         studentId: currentUser?.studentId,
         token,
         method: token ? 'dynamic_qr' : 'qr_scan',
@@ -602,9 +716,10 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
       });
 
       if (response && response.success) {
+        keepLockedForDialogOrNav = true;
         Vibration.vibrate(100);
-        if (currentUser?._id) {
-          await dispatch(fetchMyRegistrations(currentUser._id));
+        if (currentUserId) {
+          await dispatch(fetchMyRegistrations(currentUserId));
         }
 
         const checkInTimeFormatted = response.data?.registration?.checkInTime
@@ -630,15 +745,27 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
           distanceMeters: calculatedDistance,
         });
       } else {
+        keepLockedForDialogOrNav = true;
         Vibration.vibrate([100, 80, 100]);
+        showScannerNotice('Điểm danh chưa thành công', response?.message || 'Vui lòng quét mã QR đang hiển thị tại sự kiện.');
+      }
+    } catch (error: any) {
+      keepLockedForDialogOrNav = true;
+      Vibration.vibrate([100, 80, 100]);
+
+      const isNetworkErr =
+        error?.code === 'ERR_NETWORK' || error?.code === 'ECONNABORTED' || !error?.response;
+
+      if (isNetworkErr) {
         navigation.navigate('CheckInFailed', {
-          reason: response?.message || 'Điểm danh không thành công.',
+          reason:
+            'Mất kết nối mạng khi gửi yêu cầu điểm danh. Vui lòng thử quét lại khi có mạng, nhập mã PIN dự phòng hoặc gửi khiếu nại.',
           data: eventId,
           isLocationError: false,
         });
+        return;
       }
-    } catch (error: any) {
-      Vibration.vibrate([100, 80, 100]);
+
       const errMsg =
         error?.response?.data?.message ||
         error?.message ||
@@ -657,19 +784,53 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
           errMsg.toLowerCase().includes('gps') ||
           errMsg.toLowerCase().includes('khoảng cách'));
 
-      navigation.navigate('CheckInFailed', {
-        reason: errMsg,
-        data: eventId,
-        distanceMeters: error?.response?.data?.distanceMeters,
-        isLocationError: isLocErr,
-      });
+      showScannerNotice(
+        isLocErr ? 'Không thể xác minh vị trí' : 'Điểm danh chưa thành công',
+        errMsg,
+      );
     } finally {
       setLoading(false);
-      setTimeout(() => {
-        setScanned(false);
-      }, 3000);
+      if (!keepLockedForDialogOrNav) {
+        scheduleUnlockScanner(2500);
+      }
     }
-  };
+  }, [
+    loading,
+    myRegistrations,
+    currentUserId,
+    currentUser?.studentId,
+    currentUser?.fullName,
+    dispatch,
+    navigation,
+    showScannerNotice,
+    scheduleUnlockScanner,
+  ]);
+
+  // Hỗ trợ xử lý Deep Link ngoài (`autoCheckIn: true` kèm `eventId` & `token` do App.tsx truyền sang)
+  useEffect(() => {
+    const paramEventId = route.params?.eventId;
+    const paramToken = route.params?.token;
+    const shouldAuto = route.params?.autoCheckIn === true;
+
+    if (!isFocused || !shouldAuto || !paramEventId || !paramToken) return;
+
+    const dedupKey = `${paramEventId}:${paramToken}`;
+    if (consumedDeepLinkRef.current === dedupKey) return;
+
+    consumedDeepLinkRef.current = dedupKey;
+    navigation.setParams({ autoCheckIn: undefined, token: undefined });
+    void handlePerformCheckIn({
+      eventId: paramEventId,
+      token: paramToken,
+    });
+  }, [
+    isFocused,
+    route.params?.autoCheckIn,
+    route.params?.eventId,
+    route.params?.token,
+    navigation,
+    handlePerformCheckIn,
+  ]);
 
   /**
    * Xử lý khi camera In-App đọc được mã QR:
@@ -678,19 +839,21 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
     result: BarcodeScanningResult,
     options: { mockLocation?: boolean } = {},
   ) => {
-    if (scanned || loading) return;
+    if (scanLockRef.current || scanned || loading) return;
 
+    scanLockRef.current = true;
     setScanned(true);
     console.log('[QRScanner] Camera detected QR code:', result.data);
 
     const { eventId, token } = parseQrPayload(result.data ? result.data.trim() : '');
     if (!eventId) {
       Vibration.vibrate([100, 80, 100]);
-      setTimeout(() => setScanned(false), 2500);
-      navigation.navigate('CheckInFailed', {
-        reason: 'Mã QR không đúng định dạng. Vui lòng quét mã do hệ thống sự kiện tạo.',
-        data: result.data,
-      });
+      showScannerNotice('Mã QR không hợp lệ', 'Vui lòng quét mã QR do ban tổ chức hiển thị.');
+      return;
+    }
+    if (!token) {
+      Vibration.vibrate([100, 80, 100]);
+      showScannerNotice('Mã QR không hợp lệ', 'Hãy quét mã QR động đang được ban tổ chức hiển thị. Mã cũ hoặc ảnh chụp không thể dùng để điểm danh.');
       return;
     }
 
@@ -703,11 +866,95 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
 
   /** Quét thử nghiệm 1-Chạm (Dành cho demo trực tiếp) */
   const handleMockScan = () => {
+    if (scanLockRef.current || loading) return;
     void handlePerformCheckIn({
-      eventId: MOCK_EVENT_ID,
+      eventId: route.params?.eventId || MOCK_EVENT_ID,
       mockLocation: true,
     });
   };
+
+  const passcodeModalElement = (
+    <Modal
+      visible={showPasscodeModal}
+      transparent
+      animationType="fade"
+      onRequestClose={() => setShowPasscodeModal(false)}
+    >
+      <View style={styles.modalBackdrop}>
+        <View style={styles.modalCard}>
+          <View style={styles.modalHeader}>
+            <Ionicons name="keypad" size={24} color="#F59E0B" />
+            <Text style={styles.modalTitle}>Điểm danh mã PIN</Text>
+          </View>
+          <Text style={styles.modalSubtitle}>
+            Áp dụng khi hội trường không có sóng GPS hoặc camera bị lỗi. Nhập mã PIN do Ban Tổ Chức công bố trên màn chiếu:
+          </Text>
+
+          {registeredEventOptions.length > 0 ? (
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.modalEventList}
+              contentContainerStyle={styles.modalEventListContent}
+            >
+              {registeredEventOptions.map((opt) => {
+                const isActive = opt.id === passcodeEventId;
+                return (
+                  <TouchableOpacity
+                    key={opt.id}
+                    style={[styles.modalEventPill, isActive && styles.modalEventPillActive]}
+                    onPress={() => setPasscodeEventId(opt.id)}
+                    activeOpacity={0.8}
+                  >
+                    <Text
+                      style={[
+                        styles.modalEventPillText,
+                        isActive && styles.modalEventPillTextActive,
+                      ]}
+                      numberOfLines={1}
+                    >
+                      {opt.title}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </ScrollView>
+          ) : (
+            <Text style={styles.modalNoRegHint}>
+              {route.params?.eventId
+                ? 'Đang điểm danh cho sự kiện được chọn.'
+                : 'Lưu ý: Chỉ sinh viên đã đăng ký chính thức mới điểm danh thành công.'}
+            </Text>
+          )}
+
+          <TextInput
+            style={styles.modalInput}
+            placeholder="VD: 889900"
+            placeholderTextColor="#94A3B8"
+            value={passcodeInput}
+            onChangeText={setPasscodeInput}
+            keyboardType="number-pad"
+            maxLength={8}
+          />
+
+          <View style={styles.modalBtnRow}>
+            <TouchableOpacity
+              style={styles.modalCancelBtn}
+              onPress={() => setShowPasscodeModal(false)}
+            >
+              <Text style={styles.modalCancelText}>Hủy</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.modalConfirmBtn}
+              onPress={handlePasscodeCheckInSubmit}
+            >
+              <Text style={styles.modalConfirmText}>Xác nhận</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
 
   // 1. Trạng thái đang kiểm tra quyền Camera
   if (!cameraPermission) {
@@ -747,6 +994,15 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
           </TouchableOpacity>
         )}
 
+        <TouchableOpacity
+          style={[styles.permissionButton, styles.permissionPasscodeBtn]}
+          onPress={() => setShowPasscodeModal(true)}
+          activeOpacity={0.8}
+        >
+          <Ionicons name="keypad-outline" size={18} color="#FBBF24" style={{ marginRight: 8 }} />
+          <Text style={styles.permissionPasscodeBtnText}>Nhập mã PIN dự phòng (Không cần Camera)</Text>
+        </TouchableOpacity>
+
         {__DEV__ && (
           <TouchableOpacity style={[styles.permissionButton, styles.mockButton]} onPress={handleMockScan}>
             <Text style={styles.permissionButtonText}>Chạy QR mock (Development)</Text>
@@ -756,6 +1012,17 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
         <TouchableOpacity style={styles.backPermissionBtn} onPress={handleGoBack} activeOpacity={0.8}>
           <Text style={styles.backPermissionBtnText}>← Quay lại màn hình trước</Text>
         </TouchableOpacity>
+
+        {passcodeModalElement}
+
+        {loading && (
+          <View style={styles.loadingOverlay}>
+            <View style={styles.loadingCard}>
+              <ActivityIndicator size="large" color="#22C55E" />
+              <Text style={styles.loadingText}>{loadingMessage}</Text>
+            </View>
+          </View>
+        )}
       </View>
     );
   }
@@ -868,8 +1135,8 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
             Hệ thống tự động xác thực sự có mặt của sinh viên tại địa điểm tổ chức
           </Text>
 
-          {/* Thanh công cụ kiểm thử thực tế cho Giảng viên & Hội đồng chấm thi */}
-          <View style={styles.demoButtonsRow}>
+          {/* Công cụ giả lập chỉ xuất hiện trong development, không thể dùng để check-in thực tế. */}
+          {__DEV__ && <View style={styles.demoButtonsRow}>
             <TouchableOpacity
               style={styles.demoSuccessBtn}
               activeOpacity={0.8}
@@ -891,11 +1158,11 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
                 <Text style={styles.demoFailBtnText}>Ngoài trường (&gt;500m)</Text>
               </View>
             </TouchableOpacity>
-          </View>
+          </View>}
 
-          <Text style={styles.demoHintText}>Chạm để đổi địa điểm kiểm thử Anti-Fake GPS</Text>
+          {__DEV__ && <Text style={styles.demoHintText}>Chỉ dùng để kiểm thử Anti-Fake GPS</Text>}
 
-          {/* Nút Fallback: Nhập mã PIN dự phòng */}
+          {/* Nút Fallback: Nhập mã PIN dự phòng (hỗ trợ cả máy thật khi mất GPS / camera lỗi) */}
           <TouchableOpacity
             style={styles.passcodeFallbackBtn}
             onPress={() => setShowPasscodeModal(true)}
@@ -906,7 +1173,7 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
           </TouchableOpacity>
 
           {/* Nút Test Scan 1-Chạm: Giúp sinh viên/thầy test ngay trên 1 máy mà không cần máy chiếu */}
-          <TouchableOpacity
+          {__DEV__ && <TouchableOpacity
             style={styles.mockScanButton}
             onPress={handleMockScan}
             accessibilityRole="button"
@@ -914,54 +1181,12 @@ export default function QRScannerScreen({ navigation, route }: QRScannerScreenPr
           >
             <Ionicons name="flash" size={14} color="#60A5FA" style={{ marginRight: 6 }} />
             <Text style={styles.mockScanButtonText}>Quét Thử Nghiệm Ngay (Mock Scan)</Text>
-          </TouchableOpacity>
+          </TouchableOpacity>}
         </ScrollView>
       </View>
 
       {/* Modal Nhập Passcode Fallback khi GPS hoặc Camera bị lỗi */}
-      <Modal
-        visible={showPasscodeModal}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setShowPasscodeModal(false)}
-      >
-        <View style={styles.modalBackdrop}>
-          <View style={styles.modalCard}>
-            <View style={styles.modalHeader}>
-              <Ionicons name="keypad" size={24} color="#F59E0B" />
-              <Text style={styles.modalTitle}>Điểm danh mã PIN</Text>
-            </View>
-            <Text style={styles.modalSubtitle}>
-              Áp dụng khi hội trường không có sóng GPS hoặc camera bị lỗi. Nhập mã PIN do Ban Tổ Chức công bố trên màn chiếu:
-            </Text>
-
-            <TextInput
-              style={styles.modalInput}
-              placeholder="VD: 889900"
-              placeholderTextColor="#94A3B8"
-              value={passcodeInput}
-              onChangeText={setPasscodeInput}
-              keyboardType="number-pad"
-              maxLength={8}
-            />
-
-            <View style={styles.modalBtnRow}>
-              <TouchableOpacity
-                style={styles.modalCancelBtn}
-                onPress={() => setShowPasscodeModal(false)}
-              >
-                <Text style={styles.modalCancelText}>Hủy</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.modalConfirmBtn}
-                onPress={handlePasscodeCheckInSubmit}
-              >
-                <Text style={styles.modalConfirmText}>Xác nhận</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {passcodeModalElement}
 
       {/* ================= OVERLAY LOADING KHI ĐANG KIỂM TRA & GỌI API ================= */}
       {loading && (
@@ -1030,6 +1255,19 @@ const styles = StyleSheet.create({
   },
   settingsButton: {
     backgroundColor: '#3B82F6',
+  },
+  permissionPasscodeBtn: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    marginTop: 12,
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    borderWidth: 1.5,
+    borderColor: '#F59E0B',
+  },
+  permissionPasscodeBtnText: {
+    color: '#FBBF24',
+    fontSize: 14,
+    fontWeight: '700',
   },
   mockButton: {
     marginTop: 12,
@@ -1376,7 +1614,43 @@ const styles = StyleSheet.create({
     color: '#94A3B8',
     fontSize: 13,
     lineHeight: 18,
-    marginBottom: 16,
+    marginBottom: 12,
+  },
+  modalEventList: {
+    maxHeight: 42,
+    marginBottom: 12,
+  },
+  modalEventListContent: {
+    alignItems: 'center',
+    gap: 8,
+  },
+  modalEventPill: {
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 999,
+    backgroundColor: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#334155',
+    maxWidth: 210,
+  },
+  modalEventPillActive: {
+    backgroundColor: 'rgba(245, 158, 11, 0.18)',
+    borderColor: '#F59E0B',
+  },
+  modalEventPillText: {
+    color: '#94A3B8',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  modalEventPillTextActive: {
+    color: '#FBBF24',
+    fontWeight: '700',
+  },
+  modalNoRegHint: {
+    color: '#FBBF24',
+    fontSize: 12,
+    lineHeight: 16,
+    marginBottom: 12,
   },
   modalInput: {
     backgroundColor: '#0F172A',

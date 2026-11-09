@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,16 +9,16 @@ import {
   ActivityIndicator,
   Alert,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
 import { getEvents, deleteEvent, toggleHideEvent } from '../../services/api';
 import { Event } from '../../types';
 import AdminLocationModal from '../../components/events/AdminLocationModal';
 import { openInGoogleMaps } from '../../utils/permissionHandler';
-import { Colors } from '../../theme';
 import { useAppTheme } from '../../theme/ThemeContext';
 
 type AdminEventsNavProp = NativeStackNavigationProp<AdminStackParamList, 'AdminEvents'>;
@@ -28,26 +28,40 @@ export default function AdminEventsScreen() {
   const navigation = useNavigation<AdminEventsNavProp>();
   const [events, setEvents] = useState<Event[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
   const [search, setSearch] = useState<string>('');
 
   // Quản lý modal sửa GPS
   const [selectedEventForGPS, setSelectedEventForGPS] = useState<Event | null>(null);
 
-  const fetchEvents = async () => {
-    setLoading(true);
+  const fetchEvents = useCallback(async (opts?: { silent?: boolean; refresh?: boolean }) => {
+    if (opts?.refresh) {
+      setRefreshing(true);
+    } else if (!opts?.silent) {
+      setLoading(true);
+    }
     try {
       const data = await getEvents();
       setEvents(data);
     } catch (e) {
-      Alert.alert('Lỗi', 'Không thể tải danh sách sự kiện.');
+      if (!opts?.silent) {
+        Alert.alert('Lỗi', 'Không thể tải danh sách sự kiện.');
+      }
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    fetchEvents();
-  }, []);
+    void fetchEvents();
+  }, [fetchEvents]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void fetchEvents({ silent: true });
+    }, [fetchEvents])
+  );
 
   const handleDelete = (event: Event) => {
     Alert.alert('Xoá sự kiện', `Bạn có chắc muốn xoá sự kiện "${event.title}"?`, [
@@ -56,8 +70,15 @@ export default function AdminEventsScreen() {
         text: 'Xóa',
         style: 'destructive',
         onPress: async () => {
-          await deleteEvent(event._id || (event as any).id);
-          fetchEvents();
+          try {
+            await deleteEvent(event._id || (event as any).id);
+            fetchEvents();
+          } catch (err: any) {
+            Alert.alert(
+              'Lỗi xóa sự kiện',
+              err?.response?.data?.message || err?.message || 'Không thể xóa sự kiện.'
+            );
+          }
         },
       },
     ]);
@@ -78,16 +99,47 @@ export default function AdminEventsScreen() {
           <View style={[styles.categoryBadge, { backgroundColor: isDark ? 'rgba(37,99,235,0.2)' : '#EFF6FF' }]}>
             <Text style={[styles.categoryBadgeText, { color: theme.primary }]}>{item.category || 'Sự kiện'}</Text>
           </View>
-          <View style={[styles.gpsBadge, hasGPS ? styles.gpsBadgeActive : styles.gpsBadgeMissing]}>
-            <Text style={[styles.gpsBadgeText, hasGPS ? styles.gpsBadgeTextActive : styles.gpsBadgeTextMissing]}>
+          <View
+            style={[
+              styles.gpsBadge,
+              hasGPS
+                ? { backgroundColor: isDark ? 'rgba(22,163,74,0.2)' : '#DCFCE7' }
+                : { backgroundColor: isDark ? 'rgba(217,119,6,0.2)' : '#FEF3C7' },
+            ]}
+          >
+            <Text
+              style={[
+                styles.gpsBadgeText,
+                {
+                  color: hasGPS
+                    ? isDark
+                      ? '#4ADE80'
+                      : '#166534'
+                    : isDark
+                    ? '#FBBF24'
+                    : '#92400E',
+                },
+              ]}
+              numberOfLines={1}
+            >
               {hasGPS ? '🔒 XÁC THỰC VỊ TRÍ TỰ ĐỘNG' : 'ℹ️ ĐIỂM DANH TỰ DO'}
             </Text>
           </View>
         </View>
 
         {item.isHidden && (
-          <View style={styles.hiddenNoticeBadge}>
-            <Text style={styles.hiddenNoticeText}>👁️ ĐÃ ẨN — Sinh viên không nhìn thấy sự kiện này</Text>
+          <View
+            style={[
+              styles.hiddenNoticeBadge,
+              {
+                backgroundColor: isDark ? 'rgba(245,158,11,0.16)' : '#FEF3C7',
+                borderColor: isDark ? '#D97706' : '#FDE68A',
+              },
+            ]}
+          >
+            <Text style={[styles.hiddenNoticeText, { color: isDark ? '#FBBF24' : '#B45309' }]}>
+              👁️ ĐÃ ẨN — Sinh viên không nhìn thấy sự kiện này
+            </Text>
           </View>
         )}
 
@@ -101,18 +153,21 @@ export default function AdminEventsScreen() {
           <Text style={[styles.locationValue, { color: theme.textPrimary }]}>{item.location}</Text>
           {hasGPS ? (
             <View style={[styles.coordsRow, { borderTopColor: theme.borderSubtle }]}>
-              <Text style={styles.coordsText}>
+              <Text style={[styles.coordsText, { color: isDark ? '#34D399' : '#059669' }]}>
                 🔒 Phạm vi: Bán kính {item.coordinates?.radiusMeters || 300}m quanh địa điểm
               </Text>
               <TouchableOpacity
                 onPress={() => openInGoogleMaps(item.coordinates!.latitude, item.coordinates!.longitude, item.location)}
-                style={styles.mapLinkBtn}
+                style={[styles.mapLinkBtn, { backgroundColor: isDark ? 'rgba(99,102,241,0.22)' : '#E0E7FF' }]}
+                activeOpacity={0.8}
               >
-                <Text style={styles.mapLinkText}>🗺️ Mở Map</Text>
+                <Text style={[styles.mapLinkText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>🗺️ Mở Map</Text>
               </TouchableOpacity>
             </View>
           ) : (
-            <Text style={styles.noCoordsText}>Sự kiện chưa giới hạn vị trí điểm danh</Text>
+            <Text style={[styles.noCoordsText, { color: isDark ? '#FBBF24' : '#D97706' }]}>
+              Sự kiện chưa giới hạn vị trí điểm danh
+            </Text>
           )}
         </View>
 
@@ -129,72 +184,122 @@ export default function AdminEventsScreen() {
                 })
               }
               style={[styles.manageAttendeesBtn, { backgroundColor: theme.primary }]}
+              activeOpacity={0.85}
             >
               <Text style={styles.manageAttendeesBtnText}>Quản lý SV & Quota</Text>
             </TouchableOpacity>
           </View>
         </View>
 
-        {/* Buttons Row */}
-        <View style={styles.actionsRow}>
-          {/* Cài đặt GPS */}
-          <TouchableOpacity
-            style={[styles.gpsEditBtn, { backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF', borderColor: isDark ? '#818CF8' : '#C7D2FE' }]}
-            onPress={() => setSelectedEventForGPS(item)}
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.gpsEditBtnText, { color: isDark ? '#A5B4FC' : '#4338CA' }]}>📍 Đổi địa điểm</Text>
-          </TouchableOpacity>
+        {/* Responsive 2-row action toolbar */}
+        <View style={styles.actionsStack}>
+          {/* Hàng 1: Hành động chính */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={[
+                styles.gpsEditBtn,
+                {
+                  backgroundColor: isDark ? 'rgba(99,102,241,0.2)' : '#EEF2FF',
+                  borderColor: isDark ? '#818CF8' : '#C7D2FE',
+                },
+              ]}
+              onPress={() => setSelectedEventForGPS(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.gpsEditBtnText, { color: isDark ? '#A5B4FC' : '#4338CA' }]} numberOfLines={1}>
+                📍 Đổi địa điểm
+              </Text>
+            </TouchableOpacity>
 
-          {/* Trình chiếu mã QR */}
-          <TouchableOpacity
-            style={[styles.qrBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
-            onPress={() =>
-              navigation.navigate('AdminQRDisplay', {
-                eventId: item._id || (item as any).id,
-                eventTitle: item.title,
-              })
-            }
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.qrBtnText, { color: theme.textPrimary }]}>📷 QR</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.qrBtn, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
+              onPress={() =>
+                navigation.navigate('AdminQRDisplay', {
+                  eventId: item._id || (item as any).id,
+                  eventTitle: item.title,
+                })
+              }
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.qrBtnText, { color: theme.textPrimary }]} numberOfLines={1}>
+                📷 Chiếu QR
+              </Text>
+            </TouchableOpacity>
+          </View>
 
-          {/* Xem điểm danh */}
-          <TouchableOpacity
-            style={[styles.reportBtn, { backgroundColor: isDark ? 'rgba(168,85,247,0.15)' : '#FAF5FF', borderColor: isDark ? '#C084FC' : '#E9D5FF' }]}
-            onPress={() =>
-              navigation.navigate('AdminCheckInReports', {
-                eventId: item._id || (item as any).id,
-              })
-            }
-            activeOpacity={0.8}
-          >
-            <Text style={[styles.reportBtnText, { color: isDark ? '#C084FC' : '#7E22CE' }]}>📊 Báo cáo</Text>
-          </TouchableOpacity>
+          {/* Hàng 2: Báo cáo, Ẩn/Hiện & Xoá */}
+          <View style={styles.actionsRow}>
+            <TouchableOpacity
+              style={[
+                styles.reportBtn,
+                {
+                  backgroundColor: isDark ? 'rgba(168,85,247,0.16)' : '#FAF5FF',
+                  borderColor: isDark ? '#C084FC' : '#E9D5FF',
+                },
+              ]}
+              onPress={() =>
+                navigation.navigate('AdminCheckInReports', {
+                  eventId: item._id || (item as any).id,
+                })
+              }
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.reportBtnText, { color: isDark ? '#D8B4FE' : '#7E22CE' }]} numberOfLines={1}>
+                📊 Báo cáo
+              </Text>
+            </TouchableOpacity>
 
-          {/* Ẩn / Hiện sự kiện */}
-          <TouchableOpacity
-            style={[styles.hideBtn, item.isHidden ? styles.unhideBtn : null]}
-            onPress={async () => {
-              await toggleHideEvent(item._id || (item as any).id, !!item.isHidden);
-              fetchEvents();
-            }}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.hideBtnText}>
-              {item.isHidden ? '👁️ Hiện' : '👁️ Ẩn'}
-            </Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.hideBtn,
+                item.isHidden
+                  ? {
+                      backgroundColor: isDark ? 'rgba(16,185,129,0.16)' : '#ECFDF5',
+                      borderColor: isDark ? '#34D399' : '#A7F3D0',
+                    }
+                  : {
+                      backgroundColor: isDark ? 'rgba(245,158,11,0.16)' : '#FFFBEB',
+                      borderColor: isDark ? '#F59E0B' : '#FDE68A',
+                    },
+              ]}
+              onPress={async () => {
+                try {
+                  await toggleHideEvent(item._id || (item as any).id, !!item.isHidden);
+                  void fetchEvents({ silent: true });
+                } catch (err: any) {
+                  Alert.alert(
+                    'Lỗi cập nhật',
+                    err?.response?.data?.message || err?.message || 'Không thể cập nhật trạng thái ẩn/hiện.'
+                  );
+                }
+              }}
+              activeOpacity={0.8}
+            >
+              <Text
+                style={[
+                  styles.hideBtnText,
+                  { color: item.isHidden ? (isDark ? '#34D399' : '#047857') : isDark ? '#FBBF24' : '#B45309' },
+                ]}
+                numberOfLines={1}
+              >
+                {item.isHidden ? '👁️ Hiện lại' : '👁️ Ẩn sự kiện'}
+              </Text>
+            </TouchableOpacity>
 
-          {/* Xoá */}
-          <TouchableOpacity
-            style={styles.deleteBtn}
-            onPress={() => handleDelete(item)}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.deleteBtnText}>🗑️</Text>
-          </TouchableOpacity>
+            <TouchableOpacity
+              style={[
+                styles.deleteBtn,
+                {
+                  backgroundColor: isDark ? 'rgba(239,68,68,0.16)' : '#FEF2F2',
+                  borderColor: isDark ? '#F87171' : '#FECACA',
+                },
+              ]}
+              onPress={() => handleDelete(item)}
+              activeOpacity={0.8}
+            >
+              <Text style={styles.deleteBtnText}>🗑️</Text>
+            </TouchableOpacity>
+          </View>
         </View>
       </View>
     );
@@ -206,7 +311,7 @@ export default function AdminEventsScreen() {
       {/* Header */}
       <View style={[styles.header, { backgroundColor: theme.surface, borderBottomColor: theme.border }]}>
         <View style={styles.topTitleRow}>
-          <View style={{ flex: 1 }}>
+          <View style={styles.headerTitleWrap}>
             <Text style={[styles.screenHeading, { color: theme.textPrimary }]}>📍 Quản Lý Sự Kiện & Địa Điểm</Text>
             <Text style={[styles.screenSubheading, { color: theme.textSecondary }]}>
               Cấu hình toạ độ GPS, Quota và hiển thị mã QR
@@ -252,6 +357,14 @@ export default function AdminEventsScreen() {
           renderItem={renderEventItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void fetchEvents({ refresh: true })}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>📭</Text>
@@ -269,7 +382,7 @@ export default function AdminEventsScreen() {
           onClose={() => setSelectedEventForGPS(null)}
           onSuccess={(_newLoc, _newCoords) => {
             setSelectedEventForGPS(null);
-            fetchEvents();
+            void fetchEvents({ silent: true });
           }}
         />
       )}
@@ -291,6 +404,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  headerTitleWrap: {
+    flex: 1,
+    minWidth: 180,
   },
   screenHeading: {
     fontSize: 17,
@@ -314,13 +433,14 @@ const styles = StyleSheet.create({
   createBtn: {
     backgroundColor: '#2563EB',
     paddingHorizontal: 14,
-    height: 42,
+    height: 40,
     borderRadius: 10,
     justifyContent: 'center',
     alignItems: 'center',
+    flexShrink: 0,
   },
   createBtnText: { color: '#FFFFFF', fontSize: 13, fontWeight: '700' },
-  list: { padding: 16, gap: 14 },
+  list: { padding: 16, paddingBottom: 28, gap: 14 },
   card: {
     backgroundColor: '#FFFFFF',
     borderRadius: 14,
@@ -336,6 +456,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 8,
   },
   categoryBadge: {
@@ -345,7 +467,13 @@ const styles = StyleSheet.create({
     borderRadius: 6,
   },
   categoryBadgeText: { color: '#2563EB', fontSize: 11, fontWeight: '700' },
-  gpsBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  gpsBadge: {
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: 6,
+    flexShrink: 1,
+    maxWidth: '100%',
+  },
   gpsBadgeActive: { backgroundColor: '#DCFCE7' },
   gpsBadgeMissing: { backgroundColor: '#FEF3C7' },
   gpsBadgeText: { fontSize: 10, fontWeight: '800' },
@@ -359,7 +487,7 @@ const styles = StyleSheet.create({
     borderRadius: 10,
     borderWidth: 1,
     borderColor: '#E2E8F0',
-    marginBottom: 12,
+    marginBottom: 10,
   },
   locationLabel: { fontSize: 11, fontWeight: '700', color: '#64748B' },
   locationValue: { fontSize: 13, color: '#1E293B', fontWeight: '600', marginTop: 2 },
@@ -367,56 +495,85 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginTop: 6,
-    paddingTop: 6,
+    flexWrap: 'wrap',
+    gap: 8,
+    marginTop: 8,
+    paddingTop: 8,
     borderTopWidth: 1,
     borderTopColor: '#E2E8F0',
   },
-  coordsText: { fontSize: 11, color: '#059669', fontWeight: '600' },
-  mapLinkBtn: { backgroundColor: '#E0E7FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  coordsText: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 155,
+    fontSize: 11.5,
+    lineHeight: 16,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  mapLinkBtn: {
+    backgroundColor: '#E0E7FF',
+    paddingHorizontal: 10,
+    paddingVertical: 5,
+    borderRadius: 6,
+    flexShrink: 0,
+  },
   mapLinkText: { fontSize: 11, color: '#4338CA', fontWeight: '700' },
-  noCoordsText: { fontSize: 11, color: '#D97706', marginTop: 4, fontStyle: 'italic' },
+  noCoordsText: { fontSize: 11.5, color: '#D97706', marginTop: 6, fontStyle: 'italic' },
+  actionsStack: { gap: 8, marginTop: 2 },
   actionsRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
   gpsEditBtn: {
     flex: 1,
+    minHeight: 40,
     backgroundColor: '#EEF2FF',
+    paddingHorizontal: 10,
     paddingVertical: 9,
-    borderRadius: 8,
+    borderRadius: 9,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#C7D2FE',
   },
-  gpsEditBtnText: { color: '#4338CA', fontSize: 12, fontWeight: '700' },
+  gpsEditBtnText: { color: '#4338CA', fontSize: 12.5, fontWeight: '700' },
   qrBtn: {
+    minWidth: 108,
+    minHeight: 40,
     backgroundColor: '#F1F5F9',
     paddingVertical: 9,
-    paddingHorizontal: 10,
-    borderRadius: 8,
+    paddingHorizontal: 14,
+    borderRadius: 9,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#CBD5E1',
   },
-  qrBtnText: { color: '#0F172A', fontSize: 12, fontWeight: '700' },
+  qrBtnText: { color: '#0F172A', fontSize: 12.5, fontWeight: '700' },
   reportBtn: {
+    flex: 1,
+    minHeight: 38,
     backgroundColor: '#FAF5FF',
-    paddingVertical: 9,
+    paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: 9,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#E9D5FF',
   },
   reportBtnText: { color: '#7E22CE', fontSize: 12, fontWeight: '700' },
   deleteBtn: {
+    width: 44,
+    minHeight: 38,
     backgroundColor: '#FEF2F2',
-    paddingVertical: 9,
+    paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: 9,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#FECACA',
   },
-  deleteBtnText: { fontSize: 13 },
+  deleteBtnText: { fontSize: 14 },
   loadingBox: { flex: 1, justifyContent: 'center', alignItems: 'center', gap: 10 },
   loadingText: { color: '#64748B', fontSize: 13 },
   emptyBox: { padding: 40, alignItems: 'center' },
@@ -437,11 +594,14 @@ const styles = StyleSheet.create({
     fontWeight: '700',
   },
   hideBtn: {
+    flex: 1,
+    minHeight: 38,
     backgroundColor: '#FFFBEB',
-    paddingVertical: 9,
+    paddingVertical: 8,
     paddingHorizontal: 10,
-    borderRadius: 8,
+    borderRadius: 9,
     alignItems: 'center',
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: '#FDE68A',
   },
@@ -451,28 +611,35 @@ const styles = StyleSheet.create({
   },
   hideBtnText: {
     color: '#B45309',
-    fontSize: 11.5,
+    fontSize: 12,
     fontWeight: '700',
   },
   quotaBox: {
     borderWidth: 1,
-    borderRadius: 8,
+    borderRadius: 10,
     paddingHorizontal: 12,
-    paddingVertical: 8,
-    marginBottom: 10,
+    paddingVertical: 9,
+    marginBottom: 12,
   },
   quotaRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 8,
   },
   quotaLabel: {
+    flex: 1,
+    flexShrink: 1,
+    minWidth: 150,
     fontSize: 12.5,
+    lineHeight: 18,
   },
   manageAttendeesBtn: {
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 7,
+    borderRadius: 8,
+    flexShrink: 0,
   },
   manageAttendeesBtnText: {
     color: '#FFFFFF',

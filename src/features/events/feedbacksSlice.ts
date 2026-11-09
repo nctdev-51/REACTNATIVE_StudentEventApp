@@ -120,7 +120,20 @@ const feedbacksSlice = createSlice({
       .addCase(submitFeedback.rejected, (state, action) => {
         state.submitting = false;
         state.error = action.payload as string;
-      });
+      })
+      .addMatcher(
+        (action) =>
+          action.type === 'auth/logout' ||
+          action.type === 'auth/login/fulfilled' ||
+          action.type === 'auth/register/fulfilled' ||
+          action.type === 'auth/switchTestAccount/fulfilled',
+        (state) => {
+          state.eventFeedbacks = [];
+          state.loading = false;
+          state.submitting = false;
+          state.error = null;
+        }
+      );
   },
 });
 

@@ -1,4 +1,4 @@
-﻿const Notification = require("../models/Notification");
+const Notification = require("../models/Notification");
 
 // @desc    Get notifications for user
 // @route   GET /api/notifications
@@ -36,6 +36,13 @@ const getNotifications = async (req, res) => {
 // @access  Private
 const markAsRead = async (req, res) => {
   try {
+    if (!String(req.params.id || "").match(/^[0-9a-fA-F]{24}$/)) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid notification ID",
+      });
+    }
+
     const notification = await Notification.findByIdAndUpdate(
       req.params.id,
       { isRead: true },
@@ -66,11 +73,20 @@ const markAsRead = async (req, res) => {
 // @access  Private (System / Admin)
 const createNotification = async (req, res) => {
   try {
-    const { userId, title, body } = req.body;
+    const { userId, title, body, category, isUrgent, eventId } = req.body;
+    if (!userId || !title || !body) {
+      return res.status(400).json({
+        success: false,
+        message: "userId, title and body are required",
+      });
+    }
     const notification = await Notification.create({
       userId,
-      title,
-      body,
+      title: String(title).trim(),
+      body: String(body).trim(),
+      category: category || "reminder",
+      isUrgent: !!isUrgent,
+      eventId: eventId || null,
     });
 
     res.status(201).json({

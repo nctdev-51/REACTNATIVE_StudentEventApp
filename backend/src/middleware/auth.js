@@ -1,4 +1,4 @@
-﻿const jwt = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const User = require("../models/User");
 
 const protect = async (req, res, next) => {
@@ -20,6 +20,13 @@ const protect = async (req, res, next) => {
     }
 
     const decoded = jwt.verify(token, (process.env.JWT_SECRET || "studenteventapp_secret_key_2026"));
+
+    if (decoded.tokenType === "refresh") {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized, refresh token cannot be used for authentication",
+      });
+    }
 
     const user = await User.findById(decoded.id);
     if (!user) {
@@ -60,6 +67,12 @@ const protect = async (req, res, next) => {
 
 const authorize = (...roles) => {
   return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({
+        success: false,
+        message: "Not authorized, user context missing",
+      });
+    }
     if (!roles.includes(req.user.role)) {
       return res.status(403).json({
         success: false,

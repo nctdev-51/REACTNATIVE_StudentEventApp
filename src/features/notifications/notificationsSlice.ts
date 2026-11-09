@@ -77,7 +77,19 @@ const notificationsSlice = createSlice({
       .addCase(markAsRead.fulfilled, (state, action) => {
         const idx = state.list.findIndex((n) => n._id === action.payload._id);
         if (idx !== -1) state.list[idx] = action.payload;
-      });
+      })
+      .addMatcher(
+        (action) =>
+          action.type === 'auth/logout' ||
+          action.type === 'auth/login/fulfilled' ||
+          action.type === 'auth/register/fulfilled' ||
+          action.type === 'auth/switchTestAccount/fulfilled',
+        (state) => {
+          state.list = [];
+          state.loading = false;
+          state.error = null;
+        }
+      );
   },
 });
 

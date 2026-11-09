@@ -62,6 +62,20 @@ app.get(["/api", "/api/health"], (req, res) => {
   });
 });
 
+// A request must never be handled against an unavailable database. Returning
+// an explicit 503 lets every device show a truthful error instead of creating
+// device-local data that cannot be seen by another device.
+app.use((req, res, next) => {
+  if (!isDatabaseConnected()) {
+    return res.status(503).json({
+      success: false,
+      message: "Shared database is unavailable. Please try again later.",
+      code: "DATABASE_UNAVAILABLE",
+    });
+  }
+  next();
+});
+
 // ─── API Routes ───────────────────────────────────────────────────────────────
 // Hỗ trợ cả /api/* và root /* để tránh 404 cho mọi loại client
 app.use("/api/auth", authRoutes);

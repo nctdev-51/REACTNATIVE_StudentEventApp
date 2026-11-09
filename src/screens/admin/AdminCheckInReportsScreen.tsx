@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useFocusEffect, useRoute, RouteProp } from '@react-navigation/native';
 import type { AdminStackParamList } from '../../navigation/types';
 import {
   getAllRegistrations,
@@ -28,6 +29,7 @@ import {
   adminQuickCheckIn,
 } from '../../services/api';
 import { Registration, Event, User } from '../../types';
+import { entityId } from '../../utils/registrations';
 import { getDistanceMeters, formatDistance } from '../../utils/locationUtils';
 import { openInGoogleMaps } from '../../utils/permissionHandler';
 import { useAppTheme } from '../../theme/ThemeContext';
@@ -41,10 +43,17 @@ export default function AdminCheckInReportsScreen() {
   const initialEventId = route.params?.eventId;
 
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [events, setEvents] = useState<Event[]>([]);
   const [users, setUsers] = useState<User[]>([]);
   const [selectedEventId, setSelectedEventId] = useState<string | null>(initialEventId || null);
+
+  useEffect(() => {
+    if (route.params?.eventId) {
+      setSelectedEventId(route.params.eventId);
+    }
+  }, [route.params?.eventId]);
 
   // Bộ lọc & Tìm kiếm
   const [searchQuery, setSearchQuery] = useState('');
@@ -68,8 +77,12 @@ export default function AdminCheckInReportsScreen() {
   const [newStudentName, setNewStudentName] = useState('');
   const [submittingAdd, setSubmittingAdd] = useState(false);
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean; refresh?: boolean }) => {
+    if (opts?.refresh) {
+      setRefreshing(true);
+    } else if (!opts?.silent) {
+      setLoading(true);
+    }
     try {
       const [regs, evts, usrs] = await Promise.all([
         getAllRegistrations(),
@@ -80,19 +93,27 @@ export default function AdminCheckInReportsScreen() {
       setEvents(evts);
       setUsers(usrs);
 
-      if (!selectedEventId && evts.length > 0) {
-        setSelectedEventId(evts[0]._id || (evts[0] as any).id);
-      }
+      setSelectedEventId((prev) => {
+        if (prev) return prev;
+        return evts.length > 0 ? evts[0]._id || (evts[0] as any).id : null;
+      });
     } catch (e) {
       console.warn('Lỗi tải dữ liệu người tham gia:', e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadData({ silent: true });
+    }, [loadData])
+  );
 
   // Sự kiện đang được chọn
   const activeEvent = useMemo(() => {
@@ -112,14 +133,21 @@ export default function AdminCheckInReportsScreen() {
   const currentEventRegistrations = useMemo(() => {
     if (!activeEvent) return [];
     const eventId = activeEvent._id || (activeEvent as any).id;
-    return registrations.filter((r) => r.eventId === eventId);
+    return registrations.filter((r) => entityId(r.eventId) === String(eventId));
   }, [registrations, activeEvent]);
 
   // Thống kê số lượng theo trạng thái
   const quotaStats = useMemo(() => {
     const totalActive = currentEventRegistrations.filter((r) => r.status !== 'cancelled');
-    const checkedInCount = totalActive.filter((r) => r.status === 'checked_in').length;
-    const officialCount = totalActive.filter((r) => r.status === 'registered' || r.status === 'checked_in').length;
+    const checkedInCount = totalActive.filter(
+      (r) => r.status === 'checked_in' || r.status === 'completed'
+    ).length;
+    const officialCount = totalActive.filter(
+      (r) =>
+        r.status === 'registered' ||
+        r.status === 'checked_in' ||
+        r.status === 'completed'
+    ).length;
     const waitlistCount = totalActive.filter((r) => r.status === 'waitlist').length;
     const maxSlots = activeEvent?.maxSlots || 100;
     const waitlistSlots = activeEvent?.waitlistSlots || 20;
@@ -139,7 +167,8 @@ export default function AdminCheckInReportsScreen() {
   const filteredList = useMemo(() => {
     return currentEventRegistrations.filter((item) => {
       // 1. Tìm kiếm MSSV hoặc Họ tên hoặc Email
-      const student = users.find((u) => u._id === item.userId || (u as any).id === item.userId);
+      const targetUserId = entityId(item.userId);
+      const student = users.find((u) => entityId(u) === targetUserId);
       if (searchQuery.trim()) {
         const query = searchQuery.trim().toLowerCase();
         const nameMatch = student?.fullName?.toLowerCase().includes(query);
@@ -149,12 +178,14 @@ export default function AdminCheckInReportsScreen() {
       }
 
       // 2. Lọc theo trạng thái
-      if (filterType === 'checked_in') return item.status === 'checked_in';
+      if (filterType === 'checked_in') {
+        return item.status === 'checked_in' || item.status === 'completed';
+      }
       if (filterType === 'registered') return item.status === 'registered';
       if (filterType === 'waitlist') return item.status === 'waitlist';
 
       if (filterType === 'violation') {
-        if (item.status !== 'checked_in') return false;
+        if (item.status !== 'checked_in' && item.status !== 'completed') return false;
         if (item.checkInMethod === 'admin_manual') return false;
         if (item.checkInLocation && activeEvent?.coordinates) {
           const dist = getDistanceMeters(
@@ -163,7 +194,8 @@ export default function AdminCheckInReportsScreen() {
             activeEvent.coordinates.latitude,
             activeEvent.coordinates.longitude
           );
-          return dist > 500;
+          const limit = activeEvent.coordinates.radiusMeters || 500;
+          return dist > limit;
         }
         return false;
       }
@@ -296,9 +328,10 @@ export default function AdminCheckInReportsScreen() {
 
   // ─── Render Card Mỗi Sinh Viên ───────────────────────────────────────────────
   const renderItem = ({ item }: { item: Registration }) => {
-    const student = users.find((u) => u._id === item.userId || (u as any).id === item.userId);
+    const targetUserId = entityId(item.userId);
+    const student = users.find((u) => entityId(u) === targetUserId);
     const isManual = item.checkInMethod === 'admin_manual';
-    const isCheckedIn = item.status === 'checked_in';
+    const isCheckedIn = item.status === 'checked_in' || item.status === 'completed';
     const isWaitlist = item.status === 'waitlist';
 
     let distance: number | null = null;
@@ -311,10 +344,12 @@ export default function AdminCheckInReportsScreen() {
         activeEvent.coordinates.latitude,
         activeEvent.coordinates.longitude
       );
-      isSafe = distance <= 500;
+      const radiusLimit = activeEvent.coordinates.radiusMeters || 500;
+      isSafe = distance <= radiusLimit;
     }
 
-    const displayName = student?.fullName || `Sinh viên (${student?.studentId || item.userId})`;
+    const displayName =
+      student?.fullName || `Sinh viên (${student?.studentId || targetUserId || 'N/A'})`;
     const displayMssv = student?.studentId || 'SV-N/A';
 
     return (
@@ -322,7 +357,9 @@ export default function AdminCheckInReportsScreen() {
         {/* Top Info */}
         <View style={styles.cardHeader}>
           <View style={styles.studentTitleRow}>
-            <Text style={[styles.studentName, { color: theme.textPrimary }]}>{displayName}</Text>
+            <Text style={[styles.studentName, { color: theme.textPrimary }]} numberOfLines={2}>
+              {displayName}
+            </Text>
             {isManual && (
               <View style={[styles.manualTag, { backgroundColor: isDark ? 'rgba(124,58,237,0.2)' : '#EDE9FE' }]}>
                 <Text style={[styles.manualTagText, { color: isDark ? '#A78BFA' : '#6D28D9' }]}>✍️ BÙ</Text>
@@ -396,7 +433,7 @@ export default function AdminCheckInReportsScreen() {
         {/* GPS Check-in Info */}
         {isCheckedIn && item.checkInLocation?.latitude != null && (
           <View style={[styles.locationBox, { backgroundColor: theme.surfaceSecondary }]}>
-            <Text style={styles.locCoords}>
+            <Text style={[styles.locCoords, { color: isDark ? '#34D399' : '#059669' }]}>
               📍 GPS: {item.checkInLocation.latitude.toFixed(4)}, {item.checkInLocation.longitude.toFixed(4)}
             </Text>
             <TouchableOpacity
@@ -489,8 +526,8 @@ export default function AdminCheckInReportsScreen() {
         {activeEvent && (
           <View style={[styles.quotaSummaryCard, { backgroundColor: isDark ? 'rgba(30,41,59,0.7)' : '#F8FAFC', borderColor: theme.border }]}>
             <View style={styles.quotaHeaderRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.activeEventTitle, { color: theme.textPrimary }]} numberOfLines={1}>
+              <View style={styles.quotaSummaryTextCol}>
+                <Text style={[styles.activeEventTitle, { color: theme.textPrimary }]} numberOfLines={2}>
                   {activeEvent.title}
                 </Text>
                 <Text style={[styles.quotaStatusText, { color: theme.textSecondary }]}>
@@ -624,6 +661,14 @@ export default function AdminCheckInReportsScreen() {
           renderItem={renderItem}
           contentContainerStyle={styles.list}
           showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={() => void loadData({ refresh: true })}
+              tintColor={theme.primary}
+              colors={[theme.primary]}
+            />
+          }
           ListEmptyComponent={
             <View style={styles.emptyBox}>
               <Text style={styles.emptyIcon}>👥</Text>
@@ -912,7 +957,13 @@ const styles = StyleSheet.create({
   quotaHeaderRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
+    alignItems: 'flex-start',
+    flexWrap: 'wrap',
+    gap: 10,
+  },
+  quotaSummaryTextCol: {
+    flex: 1,
+    minWidth: 165,
   },
   activeEventTitle: {
     fontSize: 14,
@@ -921,17 +972,19 @@ const styles = StyleSheet.create({
   },
   quotaStatusText: {
     fontSize: 12,
+    lineHeight: 17,
   },
   quotaActionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: 6,
+    flexShrink: 0,
   },
   quotaEditBtn: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
     borderWidth: 1,
-    marginRight: 6,
   },
   quotaEditBtnText: {
     fontSize: 11.5,
@@ -939,7 +992,7 @@ const styles = StyleSheet.create({
   },
   addStudentBtn: {
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     borderRadius: 8,
   },
   addStudentBtnText: {
@@ -999,18 +1052,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 4,
   },
-  studentTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1 },
-  studentName: { fontSize: 14.5, fontWeight: '700' },
+  studentTitleRow: { flexDirection: 'row', alignItems: 'center', flex: 1, minWidth: 140 },
+  studentName: { fontSize: 14.5, fontWeight: '700', flexShrink: 1 },
   manualTag: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 4,
     marginLeft: 6,
+    flexShrink: 0,
   },
   manualTagText: { fontSize: 9, fontWeight: '800' },
-  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6 },
+  statusBadge: { paddingHorizontal: 8, paddingVertical: 3, borderRadius: 6, flexShrink: 0, alignSelf: 'flex-start' },
   badgeSuccess: { backgroundColor: '#DCFCE7' },
   badgeDanger: { backgroundColor: '#FEE2E2' },
   badgeManual: { backgroundColor: '#EDE9FE' },
@@ -1028,23 +1084,29 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 6,
   },
   timeText: { fontSize: 11 },
   locationBox: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     padding: 8,
     borderRadius: 8,
     marginTop: 8,
   },
-  locCoords: { fontSize: 11, color: '#059669', fontWeight: '600' },
-  mapBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6 },
+  locCoords: { flex: 1, flexShrink: 1, minWidth: 145, fontSize: 11, color: '#059669', fontWeight: '600' },
+  mapBtn: { paddingHorizontal: 8, paddingVertical: 4, borderRadius: 6, flexShrink: 0 },
   mapBtnText: { fontSize: 11, fontWeight: '700' },
   cardActionRow: {
     flexDirection: 'row',
     justifyContent: 'flex-end',
     alignItems: 'center',
+    flexWrap: 'wrap',
+    gap: 8,
     marginTop: 10,
     paddingTop: 8,
     borderTopWidth: 1,
@@ -1053,20 +1115,19 @@ const styles = StyleSheet.create({
   quickCheckInBtn: {
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
-    marginRight: 8,
+    paddingVertical: 6,
+    borderRadius: 7,
   },
   quickCheckInText: {
-    fontSize: 11,
+    fontSize: 11.5,
     fontWeight: '700',
     color: '#059669',
   },
   removeBtn: {
     borderWidth: 1,
     paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 6,
+    paddingVertical: 6,
+    borderRadius: 7,
   },
   removeBtnText: {
     fontSize: 11,
@@ -1096,7 +1157,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     marginBottom: 6,
   },
-  modalTitle: { fontSize: 16.5, fontWeight: '800' },
+  modalTitle: { flex: 1, marginRight: 8, fontSize: 16.5, fontWeight: '800' },
   modalCloseBtn: { fontSize: 18, color: '#94A3B8', padding: 4 },
   modalDesc: { fontSize: 12, lineHeight: 17, marginBottom: 16 },
   fieldGroup: { marginBottom: 14 },

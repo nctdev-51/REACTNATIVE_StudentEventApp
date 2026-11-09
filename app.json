@@ -2,15 +2,11 @@
   "expo": {
     "name": "StudentEventApp",
     "slug": "StudentEventApp",
-
-
     "scheme": "studentevent",
-
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
-
     "ios": {
       "supportsTablet": true,
       "infoPlist": {
@@ -18,7 +14,6 @@
         "NSLocationWhenInUseUsageDescription": "Ứng dụng cần quyền Vị trí để xác thực bạn có mặt tại địa điểm sự kiện (Google Maps GPS) nhằm chống điểm danh giả mạo."
       }
     },
-
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#E6F4FE",
@@ -53,7 +48,6 @@
         }
       ]
     },
-
     "web": {
       "favicon": "./assets/favicon.png"
     },
@@ -66,7 +60,8 @@
           "recordAudioAndroid": false,
           "barcodeScannerEnabled": true
         }
-      ]
+      ],
+      "expo-font"
     ]
   }
 }

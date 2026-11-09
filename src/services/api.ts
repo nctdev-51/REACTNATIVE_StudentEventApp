@@ -17,7 +17,7 @@ import {
   UpdateUserPayload,
 } from "../types";
 import { AISummary } from "../types/event";
-import { mergeRegistrations } from '../utils/registrations';
+import { mergeRegistrations, entityId } from '../utils/registrations';
 
 // ─── Base URL ─────────────────────────────────────────────────────────────────
 
@@ -42,7 +42,10 @@ export const USE_DEV_LAN_IP = !!autoDevIp;
  * tunnels expire and surface as 503 errors for every app user. Expo inlines
  * EXPO_PUBLIC_* values from .env files at build time.
  */
-const rawCloudUrl = process.env.EXPO_PUBLIC_API_URL?.trim()?.replace(/\/+$/, "");
+const rawCloudUrl = process.env.EXPO_PUBLIC_API_URL
+  ?.trim()
+  ?.replace(/^['"]|['"]$/g, "")
+  ?.replace(/\/+$/, "");
 export const CLOUD_API_URL =
   rawCloudUrl && (rawCloudUrl.startsWith("http://") || rawCloudUrl.startsWith("https://"))
     ? (rawCloudUrl.endsWith("/api") ? rawCloudUrl : `${rawCloudUrl}/api`)
@@ -59,17 +62,16 @@ if (typeof __DEV__ !== "undefined" && __DEV__ && rawCloudUrl && !CLOUD_API_URL) 
  * - Nếu = true: Ứng dụng chạy 100% bằng dữ liệu In-Memory ngay trên điện thoại (Expo Go).
  *   Không cần mở server backend, không cần deploy, phản hồi 0ms không bao giờ lỗi Network.
  * - Nếu = false: Ứng dụng gọi API thật qua Cloud URL / Tunnel hoặc LAN IP máy tính.
- *   (Khi server offline, app vẫn tự động fallback an toàn về dữ liệu mock).
+ *   Các thao tác ghi sẽ thất bại rõ ràng nếu API/DB không sẵn sàng, để không
+ *   bao giờ hiển thị một thay đổi cục bộ như thể nó đã được đồng bộ.
  */
 export const USE_STANDALONE_MOCK: boolean =
   process.env.EXPO_PUBLIC_USE_STANDALONE_MOCK === "true";
 
-// `10.0.2.2` only reaches the host from an Android emulator.  A physical
-// phone connected to Expo through a tunnel cannot reach it; force the existing
-// in-memory fallbacks immediately instead of making every action wait 10s and
-// surfacing a misleading Network Error.
-const shouldUseOfflineFallback =
-  USE_STANDALONE_MOCK || (isTunnel && !CLOUD_API_URL);
+// Local mock data is intentionally opt-in. In normal mode every successful
+// write must come from the shared API/database, even when Expo itself runs
+// through a tunnel.
+const shouldUseOfflineFallback = USE_STANDALONE_MOCK;
 
 export const BASE_URL: string =
   CLOUD_API_URL ||
@@ -85,12 +87,16 @@ export const BASE_URL: string =
 
 export const apiClient: AxiosInstance = axios.create({
   baseURL: BASE_URL,
-  timeout: 10000,
+  timeout: 15000,
   headers: {
     "Content-Type": "application/json",
     Accept: "application/json",
   },
 });
+
+if (typeof __DEV__ !== "undefined" && __DEV__ && typeof console?.log === "function") {
+  console.log(`[API] Configured BASE_URL=${BASE_URL} (offlineFallback=${shouldUseOfflineFallback})`);
+}
 
 let _authToken: string | null = null;
 
@@ -304,15 +310,20 @@ export const login = async (
 ): Promise<AuthResponse> => {
   try {
     const res = await apiClient.post("/auth/login", credentials);
-    return mapBackendAuth(res.data);
+    const auth = mapBackendAuth(res.data);
+    if (auth.token) {
+      _authToken = auth.token;
+    }
+    return auth;
   } catch (err: any) {
     const isNetworkError =
       err?.code === "ERR_NETWORK" ||
       err?.code === "ECONNABORTED" ||
       !err?.response;
 
-    // Nếu không phải lỗi mạng (ví dụ mật khẩu sai do server trả về 401), ném lỗi thực tế
-    if (!USE_STANDALONE_MOCK && !isNetworkError) throw err;
+    // Demo accounts only exist in the explicit standalone mode. A network
+    // failure must never make an unavailable shared API look like a login.
+    if (!USE_STANDALONE_MOCK || !isNetworkError) throw err;
 
     // Fallback tài khoản demo khi server offline / mạng chưa thông để không bao giờ bị chặn
     const email = credentials.email?.toLowerCase().trim();
@@ -343,14 +354,18 @@ export const register = async (
       faculty: payload.faculty,
     };
     const res = await apiClient.post("/auth/register", body);
-    return mapBackendAuth(res.data);
+    const auth = mapBackendAuth(res.data);
+    if (auth.token) {
+      _authToken = auth.token;
+    }
+    return auth;
   } catch (err: any) {
     const isNetworkError =
       err?.code === "ERR_NETWORK" ||
       err?.code === "ECONNABORTED" ||
       !err?.response;
 
-    if (USE_STANDALONE_MOCK || isNetworkError) {
+    if (USE_STANDALONE_MOCK && isNetworkError) {
       const newUser: User = {
         _id: "user_" + Date.now(),
         studentId: payload.studentId,
@@ -409,8 +424,8 @@ export const changePassword = async (
       currentPassword,
       newPassword,
     });
-  } catch (e) {
-    // offline pass
+  } catch (error) {
+    if (!shouldUseOfflineFallback) throw error;
   }
 };
 
@@ -430,17 +445,16 @@ export const getEvents = async (params?: {
 }): Promise<Event[]> => {
   try {
     const res = await apiClient.get("/events", { params });
-    const list = unwrapList<Event>(res.data);
-    if (list.length > 0) return list;
-    return inMemoryEvents;
+    return unwrapList<Event>(res.data);
   } catch (err: any) {
     const status = err?.response?.status;
     if (
-      err?.code === "ERR_NETWORK" ||
-      err?.code === "ECONNABORTED" ||
-      !err?.response ||
-      status === 404 ||
-      (status && status >= 500)
+      shouldUseOfflineFallback &&
+      (err?.code === "ERR_NETWORK" ||
+        err?.code === "ECONNABORTED" ||
+        !err?.response ||
+        status === 404 ||
+        (status && status >= 500))
     ) {
       console.warn(
         "[API] Events fallback (server offline/lỗi):",
@@ -459,11 +473,12 @@ export const getEventById = async (id: string): Promise<Event> => {
   } catch (err: any) {
     const status = err?.response?.status;
     if (
-      err?.code === "ERR_NETWORK" ||
-      err?.code === "ERR_INVALID_URL" ||
-      !err?.response ||
-      status === 404 ||
-      (status && status >= 500)
+      shouldUseOfflineFallback &&
+      (err?.code === "ERR_NETWORK" ||
+        err?.code === "ERR_INVALID_URL" ||
+        !err?.response ||
+        status === 404 ||
+        (status && status >= 500))
     ) {
       const found = inMemoryEvents.find(
         (e) => e._id === id || (e as any).id === id,
@@ -497,6 +512,7 @@ export const updateEventCoordinates = async (
     );
     return updated;
   } catch (err: any) {
+    if (!shouldUseOfflineFallback) throw err;
     // Cập nhật local in-memory
     inMemoryEvents = inMemoryEvents.map((e) =>
       e._id === eventId || (e as any).id === eventId
@@ -525,6 +541,24 @@ export const updateEventCoordinates = async (
 export const createEvent = async (
   eventData: Partial<Event> & { bannerUrl?: string },
 ): Promise<Event> => {
+  const start = eventData.time?.start ?? new Date().toISOString();
+  const end = eventData.time?.end ?? new Date(Date.now() + 2 * 3600 * 1000).toISOString();
+  const startTime = new Date(start).getTime();
+  const endTime = new Date(end).getTime();
+
+  if (!Number.isFinite(startTime) || !Number.isFinite(endTime) || endTime <= startTime) {
+    throw new Error('Thời gian kết thúc phải sau thời gian bắt đầu.');
+  }
+
+  const maxSlots = Number(eventData.maxSlots ?? 100);
+  const waitlistSlots = Number(eventData.waitlistSlots ?? 20);
+  if (!Number.isInteger(maxSlots) || maxSlots < 1) {
+    throw new Error('Số lượng tham gia chính thức phải là số nguyên lớn hơn 0.');
+  }
+  if (!Number.isInteger(waitlistSlots) || waitlistSlots < 0) {
+    throw new Error('Số lượng danh sách chờ phải là số nguyên không âm.');
+  }
+
   const newEvent: Event = {
     _id: "evt_" + Date.now(),
     id: "evt_" + Date.now(),
@@ -536,10 +570,7 @@ export const createEvent = async (
       latitude: 10.8221,
       longitude: 106.6876,
     },
-    time: eventData.time || {
-      start: new Date().toISOString(),
-      end: new Date(Date.now() + 2 * 3600 * 1000).toISOString(),
-    },
+    time: { start, end },
     organizer: eventData.organizer || "Ban Chấp hành Đoàn trường",
     faculty: eventData.faculty || "Toàn trường",
     images: [
@@ -547,8 +578,8 @@ export const createEvent = async (
         "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800",
     ],
     trainingPoints: eventData.trainingPoints ?? 5,
-    maxSlots: Number(eventData.maxSlots) || 100,
-    waitlistSlots: Number(eventData.waitlistSlots) || 20,
+    maxSlots,
+    waitlistSlots,
     semesterId: eventData.semesterId,
     status: (eventData.status as any) || "upcoming",
     qrCode: `EVENTMATE:evt_${Date.now()}`,
@@ -580,7 +611,10 @@ export const deleteEvent = async (eventId: string): Promise<boolean> => {
       (e) => e._id !== eventId && (e as any).id !== eventId,
     );
     return true;
-  } catch (e) {
+  } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     inMemoryEvents = inMemoryEvents.filter(
       (e) => e._id !== eventId && (e as any).id !== eventId,
     );
@@ -604,7 +638,10 @@ export const toggleHideEvent = async (
         : e,
     );
     return newHidden;
-  } catch (e) {
+  } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     inMemoryEvents = inMemoryEvents.map((e) =>
       e._id === eventId || (e as any).id === eventId
         ? { ...e, isHidden: newHidden }
@@ -630,7 +667,7 @@ export const isEventPast = (event?: Event | null): boolean => {
   if (
     endTime &&
     !isNaN(endTime.getTime()) &&
-    endTime.getTime() < now.getTime()
+    endTime.getTime() <= now.getTime()
   ) {
     return true;
   }
@@ -642,10 +679,9 @@ export const isEventPast = (event?: Event | null): boolean => {
 export const getAllRegistrations = async (): Promise<Registration[]> => {
   try {
     const res = await apiClient.get("/registrations");
-    const list = unwrapList<Registration>(res.data);
-    if (list.length > 0) return list;
-    return inMemoryRegistrations;
+    return unwrapList<Registration>(res.data);
   } catch (e) {
+    if (!shouldUseOfflineFallback) throw e;
     return inMemoryRegistrations;
   }
 };
@@ -655,15 +691,15 @@ export const getRegistrationsByUser = async (
 ): Promise<Registration[]> => {
   const mergeCheckIns = (list: Registration[]) => mergeRegistrations([
     ...list,
-    ...confirmedQrCheckIns.filter(r => r.userId === userId),
+    ...confirmedQrCheckIns.filter(r => entityId(r.userId) === userId),
   ], inMemoryEvents);
   try {
     const res = await apiClient.get("/registrations", { params: { userId } });
     const list = unwrapList<Registration>(res.data);
-    if (list.length > 0) return mergeCheckIns(list);
-    return mergeCheckIns(inMemoryRegistrations.filter((r) => r.userId === userId));
+    return mergeCheckIns(list);
   } catch (e) {
-    return mergeCheckIns(inMemoryRegistrations.filter((r) => r.userId === userId));
+    if (!shouldUseOfflineFallback) throw e;
+    return mergeCheckIns(inMemoryRegistrations.filter((r) => entityId(r.userId) === userId));
   }
 };
 
@@ -672,58 +708,120 @@ export const getRegistrationsByEvent = async (
 ): Promise<Registration[]> => {
   try {
     const res = await apiClient.get("/registrations", { params: { eventId } });
-    const list = unwrapList<Registration>(res.data);
-    if (list.length > 0) return list;
-    return inMemoryRegistrations.filter((r) => r.eventId === eventId);
+    return unwrapList<Registration>(res.data);
   } catch (e) {
-    return inMemoryRegistrations.filter((r) => r.eventId === eventId);
+    if (!shouldUseOfflineFallback) throw e;
+    return inMemoryRegistrations.filter((r) => entityId(r.eventId) === eventId);
   }
 };
 
 export const registerEvent = async (
   data: CreateRegistrationPayload,
 ): Promise<Registration> => {
-  const isExistingRegistration = (registration: Registration) => {
-    const registrationEventId =
-      typeof registration.eventId === "object" && registration.eventId !== null
-        ? (registration.eventId as { _id?: string; id?: string })._id ??
-          (registration.eventId as { id?: string }).id
-        : registration.eventId;
-    return (
-      registrationEventId === data.eventId &&
-      registration.userId === data.userId &&
-      registration.status !== "cancelled"
+  const targetEventId = entityId(data.eventId);
+  const targetUserId = entityId(data.userId);
+  const isExistingRegistration = (registration: Registration) =>
+    entityId(registration.eventId) === targetEventId &&
+    entityId(registration.userId) === targetUserId &&
+    registration.status !== "cancelled";
+
+  const upsertInMemory = (reg: Registration) => {
+    const idx = inMemoryRegistrations.findIndex(
+      (r) =>
+        entityId(r.eventId) === entityId(reg.eventId || targetEventId) &&
+        entityId(r.userId) === entityId(reg.userId || targetUserId),
     );
+    if (idx !== -1) {
+      inMemoryRegistrations[idx] = reg;
+    } else {
+      inMemoryRegistrations.unshift(reg);
+    }
   };
 
   try {
-    const registrations = await getRegistrationsByUser(data.userId);
+    const registrations = await getRegistrationsByUser(targetUserId);
     if (registrations.some(isExistingRegistration)) {
       throw new Error("Bạn đã đăng ký hoặc check-in sự kiện này rồi.");
     }
     const res = await apiClient.post("/registrations", data);
     const reg = unwrapOne<Registration>(res.data);
-    inMemoryRegistrations.unshift(reg);
+    upsertInMemory(reg);
     return reg;
   } catch (e: any) {
-    // Do not turn an intentional duplicate-registration error into an offline
-    // success. Only transport failures use the in-memory fallback.
-    if (e?.response || e?.message?.includes("đăng ký") || e?.message?.includes("check-in")) {
+    // Do not turn an intentional server/business rejection into an offline
+    // success. Only transport failures in offline mode use the in-memory fallback.
+    const isTransportError =
+      e?.code === "ERR_NETWORK" ||
+      e?.code === "ECONNABORTED" ||
+      (!e?.response && !e?.message?.includes("đăng ký") && !e?.message?.includes("check-in"));
+    if (e?.response || !isTransportError || !shouldUseOfflineFallback) {
       throw e;
     }
-    if (inMemoryRegistrations.some(isExistingRegistration)) {
+    if (
+      confirmedQrCheckIns.some(isExistingRegistration) ||
+      inMemoryRegistrations.some(isExistingRegistration)
+    ) {
       throw new Error("Bạn đã đăng ký hoặc check-in sự kiện này rồi.");
     }
+
+    const matchedEvent = inMemoryEvents.find(
+      (ev) => entityId(ev) === targetEventId,
+    );
+    if (matchedEvent) {
+      if (["draft", "pending_approval"].includes(matchedEvent.status)) {
+        throw new Error("Sự kiện chưa được mở đăng ký.");
+      }
+      if (matchedEvent.status === "cancelled") {
+        throw new Error("Sự kiện đã bị hủy, không thể đăng ký.");
+      }
+      if (matchedEvent.status === "registration_closed") {
+        throw new Error("Sự kiện đã đóng cổng đăng ký.");
+      }
+      if (isEventPast(matchedEvent)) {
+        throw new Error("Sự kiện đã kết thúc, không thể đăng ký.");
+      }
+    }
+
+    const activeEventRegs = inMemoryRegistrations.filter(
+      (r) => entityId(r.eventId) === targetEventId && r.status !== "cancelled",
+    );
+    const maxSlots = typeof matchedEvent?.maxSlots === "number" ? matchedEvent.maxSlots : 100;
+    const waitlistSlots = typeof matchedEvent?.waitlistSlots === "number" ? matchedEvent.waitlistSlots : 20;
+    const officialCount = activeEventRegs.filter((r) =>
+      ["registered", "checked_in", "completed"].includes(r.status),
+    ).length;
+    const waitlistCount = activeEventRegs.filter((r) => r.status === "waitlist").length;
+
+    let offlineStatus: "registered" | "waitlist" = "registered";
+    let waitlistPosition: number | null = null;
+    if (officialCount >= maxSlots) {
+      if (waitlistCount < waitlistSlots) {
+        offlineStatus = "waitlist";
+        waitlistPosition = waitlistCount + 1;
+      } else {
+        throw new Error("Sự kiện đã hết vé chính thức và danh sách chờ!");
+      }
+    }
+
+    const existingCancelled = inMemoryRegistrations.find(
+      (r) =>
+        entityId(r.eventId) === targetEventId &&
+        entityId(r.userId) === targetUserId &&
+        r.status === "cancelled",
+    );
+
     const reg: Registration = {
-      _id: "reg_" + Date.now(),
+      _id: existingCancelled?._id || "reg_" + Date.now(),
       eventId: data.eventId,
       userId: data.userId,
       participantRole: data.participantRole || "attendee",
-      status: "registered",
+      status: offlineStatus,
+      waitlistPosition,
       checkInTime: null,
-      createdAt: new Date().toISOString(),
+      registeredAt: new Date().toISOString(),
+      createdAt: existingCancelled?.createdAt || new Date().toISOString(),
     };
-    inMemoryRegistrations.unshift(reg);
+    upsertInMemory(reg);
     return reg;
   }
 };
@@ -795,7 +893,7 @@ export const qrCheckIn = async (payload: {
     const res = await apiClient.post("/registrations/check-in", payload);
     return rememberQrCheckIn(payload, res.data);
   } catch (err: any) {
-    if (err?.code === "ERR_NETWORK" || !err?.response) {
+    if (USE_STANDALONE_MOCK && (err?.code === "ERR_NETWORK" || !err?.response)) {
       console.warn("[API] Offline QR Check-in Mock Mode");
 
       const matchedEvent = inMemoryEvents.find(
@@ -811,6 +909,27 @@ export const qrCheckIn = async (payload: {
         };
       }
 
+      if (["draft", "pending_approval"].includes(matchedEvent.status)) {
+        return {
+          success: false,
+          message: "Sự kiện chưa được mở điểm danh.",
+        };
+      }
+
+      if (matchedEvent.status === "cancelled") {
+        return {
+          success: false,
+          message: "Sự kiện đã bị hủy, không thể điểm danh.",
+        };
+      }
+
+      if (isEventPast(matchedEvent)) {
+        return {
+          success: false,
+          message: "Sự kiện đã kết thúc, cổng điểm danh đã đóng.",
+        };
+      }
+
       // Kiểm tra Anti-Fake GPS trong chế độ Offline
       if (
         matchedEvent.coordinates &&
@@ -819,7 +938,8 @@ export const qrCheckIn = async (payload: {
       ) {
         if (
           !payload.userLocation ||
-          payload.userLocation.latitude === undefined
+          !Number.isFinite(Number(payload.userLocation.latitude)) ||
+          !Number.isFinite(Number(payload.userLocation.longitude))
         ) {
           return {
             success: false,
@@ -844,13 +964,14 @@ export const qrCheckIn = async (payload: {
         const dist = Math.round(
           R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)),
         );
+        const radiusMeters = matchedEvent.coordinates.radiusMeters || 500;
 
-        if (dist > 500) {
+        if (dist > radiusMeters) {
           const distStr =
             dist < 1000 ? dist + "m" : (dist / 1000).toFixed(1) + "km";
           return {
             success: false,
-            message: `Vị trí không hợp lệ! Bạn đang cách địa điểm sự kiện ${distStr} (vượt quá bán kính cho phép 500m). Vui lòng có mặt tại địa điểm để điểm danh.`,
+            message: `Vị trí không hợp lệ! Bạn đang cách địa điểm sự kiện ${distStr} (vượt quá bán kính cho phép ${radiusMeters}m). Vui lòng có mặt tại địa điểm để điểm danh.`,
             distanceMeters: dist,
           };
         }
@@ -860,8 +981,8 @@ export const qrCheckIn = async (payload: {
       const targetUserId = payload.userId || MOCK_DEFAULT_USER._id;
       const existingReg = inMemoryRegistrations.find(
         (r) =>
-          r.eventId === payload.eventId &&
-          (r.userId === targetUserId || r.userId === payload.userId)
+          entityId(r.eventId) === entityId(payload.eventId) &&
+          (entityId(r.userId) === targetUserId || entityId(r.userId) === payload.userId)
       );
 
       if (!existingReg) {
@@ -910,7 +1031,7 @@ export const qrCheckIn = async (payload: {
         };
       }
 
-      if (existingReg.status === "checked_in") {
+      if (existingReg.status === "checked_in" || existingReg.status === "completed") {
         return rememberQrCheckIn(payload, {
           success: true,
           alreadyCheckedIn: true,
@@ -956,6 +1077,8 @@ export const adminManualCheckIn = async (payload: {
   registration?: Registration;
 }> => {
   const cleanId = payload.studentIdOrEmail.trim().toLowerCase();
+  const noteText =
+    payload.note?.trim() || "Admin xác nhận tham dự thủ công tại hội trường";
 
   let allUsers: User[] = [MOCK_DEFAULT_USER, MOCK_ADMIN_USER];
   try {
@@ -963,33 +1086,40 @@ export const adminManualCheckIn = async (payload: {
     if (fetched && fetched.length > 0) allUsers = fetched;
   } catch (e) {}
 
-  const targetUser = allUsers.find(
+  const matchedUser = allUsers.find(
     (u) =>
       u.studentId?.toLowerCase() === cleanId ||
       u.email?.toLowerCase() === cleanId ||
       u.fullName?.toLowerCase().includes(cleanId),
-  ) || {
+  );
+
+  if (!matchedUser && !shouldUseOfflineFallback) {
+    throw new Error(
+      `Không tìm thấy sinh viên "${payload.studentIdOrEmail.trim()}" trong hệ thống.`,
+    );
+  }
+
+  const targetUser: User = matchedUser || {
     _id: "user_" + Date.now(),
-    studentId: payload.studentIdOrEmail.toUpperCase(),
-    fullName: `Sinh viên ${payload.studentIdOrEmail.toUpperCase()}`,
-    email: `${cleanId}@iuh.edu.vn`,
+    studentId: payload.studentIdOrEmail.trim().toUpperCase(),
+    fullName: `Sinh viên ${payload.studentIdOrEmail.trim().toUpperCase()}`,
+    email: cleanId.includes("@") ? cleanId : `${cleanId}@iuh.edu.vn`,
     point: 100,
     role: "student" as const,
     faculty: "Khoa Công nghệ thông tin",
   };
 
+  const targetEventId = entityId(payload.eventId);
   const existingRegistration = (await getRegistrationsByUser(targetUser._id)).find(
-    (registration) => {
-      const registrationEventId =
-        typeof registration.eventId === "object" && registration.eventId !== null
-          ? (registration.eventId as { _id?: string; id?: string })._id ??
-            (registration.eventId as { id?: string }).id
-          : registration.eventId;
-      return registrationEventId === payload.eventId && registration.status !== "cancelled";
-    },
+    (registration) =>
+      entityId(registration.eventId) === targetEventId &&
+      registration.status !== "cancelled",
   );
 
-  if (existingRegistration?.status === "checked_in") {
+  if (
+    existingRegistration?.status === "checked_in" ||
+    existingRegistration?.status === "completed"
+  ) {
     return {
       success: false,
       message: `${targetUser.fullName} đã check-in sự kiện này trước đó.`,
@@ -1001,52 +1131,76 @@ export const adminManualCheckIn = async (payload: {
   // second registration record.
   if (existingRegistration) {
     const checkedInAt = new Date().toISOString();
-    const updated = {
-      ...existingRegistration,
+    const patchBody = {
       status: "checked_in" as const,
       checkInTime: checkedInAt,
       checkInMethod: "admin_manual" as const,
-      note: payload.note || "Admin xác nhận tham dự thủ công tại hội trường",
+      note: noteText,
     };
-    const registrationId = (existingRegistration as { id?: string }).id || existingRegistration._id;
+    const registrationId =
+      (existingRegistration as { id?: string }).id || existingRegistration._id;
+    let savedReg: Registration = {
+      ...existingRegistration,
+      ...patchBody,
+    };
+
     try {
-      await apiClient.patch(`/registrations/${registrationId}`, updated);
+      const patchRes = await apiClient.patch(
+        `/registrations/${registrationId}`,
+        patchBody,
+      );
+      savedReg = unwrapOne<Registration>(patchRes.data);
     } catch (error: any) {
-      if (error?.response) throw error;
+      if (error?.response || !shouldUseOfflineFallback) throw error;
     }
+
     inMemoryRegistrations = inMemoryRegistrations.map((registration) =>
-      registration._id === existingRegistration._id ? updated : registration,
+      registration._id === existingRegistration._id ? savedReg : registration,
     );
     return {
       success: true,
       message: `Đã xác nhận điểm danh bù cho ${targetUser.fullName} (${targetUser.studentId}).`,
-      registration: updated,
+      registration: savedReg,
     };
   }
 
-  const newReg: Registration = {
+  const checkedInAt = new Date().toISOString();
+  const createBody: Record<string, any> = {
+    eventId: payload.eventId,
+    userId: targetUser._id,
+    studentId: targetUser.studentId,
+    participantRole: "attendee",
+    status: "checked_in",
+    checkInTime: checkedInAt,
+    checkInMethod: "admin_manual",
+    note: noteText,
+  };
+
+  let createdReg: Registration = {
     _id: "reg_manual_" + Date.now(),
     eventId: payload.eventId,
     userId: targetUser._id,
     participantRole: "attendee",
     status: "checked_in",
-    checkInTime: new Date().toISOString(),
+    checkInTime: checkedInAt,
     checkInMethod: "admin_manual",
-    note: payload.note || "Admin xác nhận tham dự thủ công tại hội trường",
-    createdAt: new Date().toISOString(),
+    note: noteText,
+    createdAt: checkedInAt,
   };
 
   try {
-    await apiClient.post("/registrations", newReg);
+    const postRes = await apiClient.post("/registrations", createBody);
+    createdReg = unwrapOne<Registration>(postRes.data);
   } catch (error: any) {
-    if (error?.response) throw error;
+    if (error?.response || !shouldUseOfflineFallback) throw error;
   }
-  inMemoryRegistrations.unshift(newReg);
+
+  inMemoryRegistrations.unshift(createdReg);
 
   return {
     success: true,
     message: `Đã điểm danh bù thành công cho ${targetUser.fullName} (${targetUser.studentId})!`,
-    registration: newReg,
+    registration: createdReg,
   };
 };
 
@@ -1057,10 +1211,20 @@ export const cancelRegistration = async (
     const res = await apiClient.patch(`/registrations/${registrationId}`, {
       status: "cancelled",
     });
-    return unwrapOne<Registration>(res.data);
-  } catch (e) {
+    const updated = unwrapOne<Registration>(res.data);
+    inMemoryRegistrations = inMemoryRegistrations.map((r) =>
+      r._id === registrationId || (r as any).id === registrationId ? updated : r,
+    );
+    confirmedQrCheckIns = confirmedQrCheckIns.filter(
+      (r) => r._id !== registrationId && (r as any).id !== registrationId,
+    );
+    return updated;
+  } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     const existing = inMemoryRegistrations.find(
-      (r) => r._id === registrationId,
+      (r) => r._id === registrationId || (r as any).id === registrationId,
     );
     if (existing) {
       existing.status = "cancelled";
@@ -1089,6 +1253,9 @@ export const updateEventQuota = async (
     });
     return res.data;
   } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     const ev = inMemoryEvents.find(
       (item) => item._id === eventId || (item as any).id === eventId,
     );
@@ -1116,20 +1283,66 @@ export const addEventAttendee = async (
     });
     return res.data;
   } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     const cleanId = studentIdOrEmail.trim().toUpperCase();
+    const targetEventId = entityId(eventId);
+    const localUser = inMemoryUsers.find(
+      (u) =>
+        u.studentId?.toUpperCase() === cleanId ||
+        u.email?.toLowerCase() === studentIdOrEmail.trim().toLowerCase(),
+    );
+    const offlineUserId = localUser?._id || "user_" + cleanId;
+    const duplicate = inMemoryRegistrations.find(
+      (r) =>
+        entityId(r.eventId) === targetEventId &&
+        entityId(r.userId) === offlineUserId &&
+        r.status !== "cancelled",
+    );
+    if (duplicate) {
+      throw new Error(`Sinh viên (${cleanId}) đã có tên trong danh sách sự kiện này.`);
+    }
+
+    const ev = inMemoryEvents.find((item) => entityId(item) === targetEventId);
+    const maxSlots = typeof ev?.maxSlots === "number" ? ev.maxSlots : 100;
+    const waitlistSlots = typeof ev?.waitlistSlots === "number" ? ev.waitlistSlots : 20;
+    const activeRegs = inMemoryRegistrations.filter(
+      (r) => entityId(r.eventId) === targetEventId && r.status !== "cancelled",
+    );
+    const officialCount = activeRegs.filter((r) =>
+      ["registered", "checked_in", "completed"].includes(r.status),
+    ).length;
+    const waitlistCount = activeRegs.filter((r) => r.status === "waitlist").length;
+
+    let assignedStatus: "registered" | "waitlist" = "registered";
+    let waitlistPosition: number | null = null;
+    if (officialCount >= maxSlots) {
+      if (waitlistCount < waitlistSlots) {
+        assignedStatus = "waitlist";
+        waitlistPosition = waitlistCount + 1;
+      } else {
+        throw new Error("Sự kiện đã đầy cả vé chính thức và danh sách chờ!");
+      }
+    }
+
     const newReg: Registration = {
       _id: "reg_" + Date.now(),
       eventId,
-      userId: "user_" + cleanId,
+      userId: offlineUserId,
       participantRole: "attendee",
-      status: "registered",
+      status: assignedStatus,
+      waitlistPosition,
       createdAt: new Date().toISOString(),
       registeredAt: new Date().toISOString(),
     };
     inMemoryRegistrations.unshift(newReg);
     return {
       success: true,
-      message: `Đã thêm thành công sinh viên (${cleanId}) vào danh sách sự kiện!`,
+      message:
+        assignedStatus === "waitlist"
+          ? `Sự kiện đã đủ chỗ chính thức. Đã thêm sinh viên (${cleanId}) vào Waitlist #${waitlistPosition}.`
+          : `Đã thêm thành công sinh viên (${cleanId}) vào danh sách sự kiện!`,
       data: { registration: newReg },
     };
   }
@@ -1142,7 +1355,12 @@ export const removeEventAttendee = async (
     const res = await apiClient.delete(`/admin/registrations/${registrationId}`);
     return res.data;
   } catch (e: any) {
-    const reg = inMemoryRegistrations.find((r) => r._id === registrationId);
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
+    const reg = inMemoryRegistrations.find(
+      (r) => r._id === registrationId || (r as any).id === registrationId,
+    );
     if (reg) {
       reg.status = "cancelled";
     }
@@ -1163,8 +1381,16 @@ export const adminQuickCheckIn = async (
     );
     return res.data;
   } catch (e: any) {
-    const reg = inMemoryRegistrations.find((r) => r._id === registrationId);
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
+    const reg = inMemoryRegistrations.find(
+      (r) => r._id === registrationId || (r as any).id === registrationId,
+    );
     if (reg) {
+      if (reg.status === "waitlist" || reg.status === "cancelled") {
+        throw new Error("Chỉ có thể điểm danh nhanh cho sinh viên trong danh sách chính thức.");
+      }
       reg.status = "checked_in";
       reg.checkInMethod = "admin_manual";
       reg.checkInTime = new Date().toISOString();
@@ -1184,6 +1410,7 @@ export const getAllFeedbacks = async (): Promise<Feedback[]> => {
     const res = await apiClient.get("/feedbacks");
     return unwrapList<Feedback>(res.data);
   } catch (e) {
+    if (!shouldUseOfflineFallback) throw e;
     return [];
   }
 };
@@ -1195,6 +1422,7 @@ export const getFeedbacksByEvent = async (
     const res = await apiClient.get("/feedbacks", { params: { eventId } });
     return unwrapList<Feedback>(res.data);
   } catch (e) {
+    if (!shouldUseOfflineFallback) throw e;
     return [];
   }
 };
@@ -1206,6 +1434,7 @@ export const getFeedbacksByUser = async (
     const res = await apiClient.get("/feedbacks", { params: { userId } });
     return unwrapList<Feedback>(res.data);
   } catch (e) {
+    if (!shouldUseOfflineFallback) throw e;
     return [];
   }
 };
@@ -1226,6 +1455,7 @@ export const getNotificationsByUser = async (
     const res = await apiClient.get("/notifications", { params: { userId } });
     return unwrapList<Notification>(res.data);
   } catch (e) {
+    if (!shouldUseOfflineFallback) throw e;
     return [];
   }
 };
@@ -1245,11 +1475,9 @@ export const getUsers = async (): Promise<User[]> => {
   try {
     const res = await apiClient.get("/users");
     const list = unwrapList<any>(res.data);
-    if (list && list.length > 0) {
-      return list.map(mapBackendUser);
-    }
-    return inMemoryUsers;
+    return list.map(mapBackendUser);
   } catch (e) {
+    if (!shouldUseOfflineFallback) throw e;
     return inMemoryUsers;
   }
 };
@@ -1259,6 +1487,7 @@ export const getUserById = async (id: string): Promise<User> => {
     const res = await apiClient.get(`/users/${id}`);
     return mapBackendUser(res.data);
   } catch (e) {
+    if (!shouldUseOfflineFallback) throw e;
     const found = inMemoryUsers.find(
       (u) => u._id === id || (u as any).id === id,
     );
@@ -1274,7 +1503,10 @@ export const adminUpdateUser = async (
   try {
     const res = await apiClient.patch(`/users/${userId}`, data);
     return mapBackendUser(res.data);
-  } catch (e) {
+  } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     const idx = inMemoryUsers.findIndex(
       (u) => u._id === userId || (u as any).id === userId,
     );
@@ -1307,14 +1539,17 @@ export const adminCreateUser = async (
   };
 
   try {
+    const { _id: _localId, createdAt: _localCreatedAt, ...userBody } = newUser;
     const res = await apiClient.post("/users", {
-      ...newUser,
-      id: newUser._id,
+      ...userBody,
       name: newUser.fullName,
       password: payload.password || "123456",
     });
     return mapBackendUser(res.data);
-  } catch (e) {
+  } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     inMemoryUsers.unshift(newUser);
     return newUser;
   }
@@ -1327,7 +1562,10 @@ export const adminDeleteUser = async (userId: string): Promise<boolean> => {
       (u) => u._id !== userId && (u as any).id !== userId,
     );
     return true;
-  } catch (e) {
+  } catch (e: any) {
+    if (e?.response || !shouldUseOfflineFallback) {
+      throw e;
+    }
     inMemoryUsers = inMemoryUsers.filter(
       (u) => u._id !== userId && (u as any).id !== userId,
     );

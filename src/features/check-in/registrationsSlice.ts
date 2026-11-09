@@ -1,6 +1,7 @@
-import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
+import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
 import { Registration, CreateRegistrationPayload } from '../../types';
 import api from '../../services/api';
+import { entityId } from '../../utils/registrations';
 
 // ─── State ────────────────────────────────────────────────────────────────────
 
@@ -112,7 +113,19 @@ const registrationsSlice = createSlice({
       })
       .addCase(registerForEvent.fulfilled, (state, action) => {
         state.actionLoading = false;
-        state.myRegistrations.push(action.payload);
+        const payload = action.payload;
+        const payloadEventId = entityId(payload.eventId);
+        const payloadUserId = entityId(payload.userId);
+        const idx = state.myRegistrations.findIndex(
+          (r) =>
+            (payload._id && r._id === payload._id) ||
+            (entityId(r.eventId) === payloadEventId && entityId(r.userId) === payloadUserId)
+        );
+        if (idx !== -1) {
+          state.myRegistrations[idx] = payload;
+        } else {
+          state.myRegistrations.unshift(payload);
+        }
       })
       .addCase(registerForEvent.rejected, (state, action) => {
         state.actionLoading = false;
@@ -151,7 +164,20 @@ const registrationsSlice = createSlice({
       .addCase(checkInRegistration.rejected, (state, action) => {
         state.actionLoading = false;
         state.error = action.payload as string;
-      });
+      })
+      .addMatcher(
+        (action) =>
+          action.type === 'auth/logout' ||
+          action.type === 'auth/login/fulfilled' ||
+          action.type === 'auth/register/fulfilled' ||
+          action.type === 'auth/switchTestAccount/fulfilled',
+        (state) => {
+          state.myRegistrations = [];
+          state.loading = false;
+          state.actionLoading = false;
+          state.error = null;
+        }
+      );
   },
 });
 

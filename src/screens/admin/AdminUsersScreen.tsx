@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useCallback, useEffect, useState, useMemo } from 'react';
 import {
   View,
   Text,
@@ -13,9 +13,10 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  RefreshControl,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { useNavigation } from '@react-navigation/native';
+import { useFocusEffect, useNavigation } from '@react-navigation/native';
 import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import type { AdminStackParamList } from '../../navigation/types';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
@@ -49,6 +50,7 @@ export default function AdminUsersScreen() {
 
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [activeFilter, setActiveFilter] = useState('Tất cả');
 
@@ -69,8 +71,12 @@ export default function AdminUsersScreen() {
   const [newRole, setNewRole] = useState<'student' | 'admin'>('student');
   const [newInitialPoint, setNewInitialPoint] = useState('80');
 
-  const loadData = async () => {
-    setLoading(true);
+  const loadData = useCallback(async (opts?: { silent?: boolean; refresh?: boolean }) => {
+    if (opts?.refresh) {
+      setRefreshing(true);
+    } else if (!opts?.silent) {
+      setLoading(true);
+    }
     try {
       const data = await getUsers();
       setUsers(data);
@@ -78,12 +84,19 @@ export default function AdminUsersScreen() {
       console.warn('Lỗi tải danh sách người dùng:', e);
     } finally {
       setLoading(false);
+      setRefreshing(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
-    loadData();
-  }, []);
+    void loadData();
+  }, [loadData]);
+
+  useFocusEffect(
+    useCallback(() => {
+      void loadData({ silent: true });
+    }, [loadData])
+  );
 
   // Lọc và tìm kiếm danh sách người dùng
   const filteredUsers = useMemo(() => {
@@ -305,38 +318,46 @@ export default function AdminUsersScreen() {
       <ScrollView
         contentContainerStyle={styles.scroll}
         showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={() => void loadData({ refresh: true })}
+            tintColor={theme.primary}
+            colors={[theme.primary]}
+          />
+        }
       >
         {/* ── KPI Stats Grid ──────────────────────────────────────────────────── */}
         <View style={styles.kpiGrid}>
           <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#3B82F6' }]}>
             <Text style={styles.kpiIcon}>👥</Text>
-            <View>
-              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : totalCount}</Text>
-              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Tổng tài khoản</Text>
+            <View style={styles.kpiTextWrap}>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]} numberOfLines={1}>{loading ? '...' : totalCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]} numberOfLines={2}>Tổng tài khoản</Text>
             </View>
           </View>
 
           <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#10B981' }]}>
             <Text style={styles.kpiIcon}>🎓</Text>
-            <View>
-              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : studentCount}</Text>
-              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Sinh viên</Text>
+            <View style={styles.kpiTextWrap}>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]} numberOfLines={1}>{loading ? '...' : studentCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]} numberOfLines={2}>Sinh viên</Text>
             </View>
           </View>
 
           <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#EF4444' }]}>
             <Text style={styles.kpiIcon}>🛡️</Text>
-            <View>
-              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : adminCount}</Text>
-              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Quản trị viên</Text>
+            <View style={styles.kpiTextWrap}>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]} numberOfLines={1}>{loading ? '...' : adminCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]} numberOfLines={2}>Quản trị viên</Text>
             </View>
           </View>
 
           <View style={[styles.kpiCard, { backgroundColor: theme.surface, borderColor: theme.border, borderWidth: 1, borderLeftColor: '#F59E0B' }]}>
             <Text style={styles.kpiIcon}>🟢</Text>
-            <View>
-              <Text style={[styles.kpiValue, { color: theme.textPrimary }]}>{loading ? '...' : activeCount}</Text>
-              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]}>Hoạt động</Text>
+            <View style={styles.kpiTextWrap}>
+              <Text style={[styles.kpiValue, { color: theme.textPrimary }]} numberOfLines={1}>{loading ? '...' : activeCount}</Text>
+              <Text style={[styles.kpiLabel, { color: theme.textSecondary }]} numberOfLines={2}>Hoạt động</Text>
             </View>
           </View>
         </View>
@@ -398,7 +419,7 @@ export default function AdminUsersScreen() {
           <Text style={[styles.sectionTitle, { color: theme.textPrimary }]}>
             Danh sách ({filteredUsers.length} người)
           </Text>
-          <TouchableOpacity onPress={loadData} activeOpacity={0.7}>
+          <TouchableOpacity onPress={() => void loadData()} activeOpacity={0.7}>
             <Text style={[styles.reloadText, { color: theme.primary }]}>🔄 Làm mới</Text>
           </TouchableOpacity>
         </View>
@@ -520,7 +541,7 @@ export default function AdminUsersScreen() {
                     onPress={() => handleOpenPointModal(u)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.actionBtnTextPoint, { color: theme.primary }]}>⭐ Sửa ĐRL</Text>
+                    <Text style={[styles.actionBtnTextPoint, { color: theme.primary }]} numberOfLines={1}>⭐ Sửa ĐRL</Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
@@ -528,7 +549,7 @@ export default function AdminUsersScreen() {
                     onPress={() => handleToggleRole(u)}
                     activeOpacity={0.8}
                   >
-                    <Text style={[styles.actionBtnTextRole, { color: theme.textPrimary }]}>
+                    <Text style={[styles.actionBtnTextRole, { color: theme.textPrimary }]} numberOfLines={1}>
                       {isAdmin ? '⬇️ Xuống SV' : '⬆️ Lên Admin'}
                     </Text>
                   </TouchableOpacity>
@@ -536,7 +557,15 @@ export default function AdminUsersScreen() {
                   <TouchableOpacity
                     style={[
                       styles.actionBtnStatus,
-                      isInactive && styles.actionBtnStatusUnlock,
+                      isInactive
+                        ? {
+                            backgroundColor: isDark ? 'rgba(16,185,129,0.16)' : '#F0FDF4',
+                            borderColor: isDark ? '#34D399' : '#BBF7D0',
+                          }
+                        : {
+                            backgroundColor: isDark ? 'rgba(239,68,68,0.16)' : '#FEF2F2',
+                            borderColor: isDark ? '#F87171' : '#FECACA',
+                          },
                     ]}
                     onPress={() => handleToggleStatus(u)}
                     activeOpacity={0.8}
@@ -544,15 +573,16 @@ export default function AdminUsersScreen() {
                     <Text
                       style={[
                         styles.actionBtnTextStatus,
-                        isInactive && styles.actionBtnTextUnlock,
+                        { color: isInactive ? (isDark ? '#34D399' : '#16A34A') : isDark ? '#FCA5A5' : '#DC2626' },
                       ]}
+                      numberOfLines={1}
                     >
                       {isInactive ? '🔓 Mở' : '🔒 Khoá'}
                     </Text>
                   </TouchableOpacity>
 
                   <TouchableOpacity
-                    style={[styles.actionBtnDelete, { backgroundColor: theme.surfaceSecondary }]}
+                    style={[styles.actionBtnDelete, { backgroundColor: theme.surfaceSecondary, borderColor: theme.border }]}
                     onPress={() => handleDeleteUser(u)}
                     activeOpacity={0.8}
                   >
@@ -894,10 +924,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 12,
     flex: 1,
+    minWidth: 0,
     marginRight: 10,
   },
   headerTitleBox: {
     flex: 1,
+    minWidth: 0,
   },
   headerTitle: {
     fontSize: 16,
@@ -917,6 +949,7 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     borderRadius: 10,
     gap: 4,
+    flexShrink: 0,
     ...Shadow.sm,
   },
   addBtnIcon: {
@@ -938,7 +971,8 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   kpiCard: {
-    width: '48.5%',
+    flexBasis: '46%',
+    flexGrow: 1,
     backgroundColor: '#FFFFFF',
     padding: 12,
     borderRadius: 12,
@@ -947,6 +981,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     gap: 10,
     ...Shadow.sm,
+  },
+  kpiTextWrap: {
+    flex: 1,
+    minWidth: 0,
   },
   kpiIcon: {
     fontSize: 22,
@@ -1067,8 +1105,7 @@ const styles = StyleSheet.create({
     ...Shadow.sm,
   },
   userCardInactive: {
-    opacity: 0.65,
-    backgroundColor: '#F8FAFC',
+    opacity: 0.7,
   },
   userMainRow: {
     flexDirection: 'row',
@@ -1083,11 +1120,14 @@ const styles = StyleSheet.create({
   },
   userMeta: {
     flex: 1,
+    minWidth: 0,
   },
   userNameRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
     marginBottom: 3,
   },
   userName: {
@@ -1095,12 +1135,13 @@ const styles = StyleSheet.create({
     fontWeight: '700',
     color: '#0F172A',
     flex: 1,
-    marginRight: 6,
+    minWidth: 120,
   },
   badgeRole: {
     paddingHorizontal: 6,
     paddingVertical: 2,
     borderRadius: 6,
+    flexShrink: 0,
   },
   badgeStudent: {
     backgroundColor: '#EFF6FF',
@@ -1135,6 +1176,8 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    gap: 6,
     backgroundColor: '#F8FAFC',
     borderRadius: 8,
     paddingHorizontal: 10,
@@ -1200,16 +1243,21 @@ const styles = StyleSheet.create({
   actionsRow: {
     flexDirection: 'row',
     alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
   },
   actionBtnPoint: {
-    flex: 1.2,
+    flex: 1,
+    minWidth: 106,
+    minHeight: 36,
     backgroundColor: '#EFF6FF',
     borderWidth: 1,
     borderColor: '#BFDBFE',
-    paddingVertical: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnTextPoint: {
     fontSize: 11.5,
@@ -1217,13 +1265,17 @@ const styles = StyleSheet.create({
     color: '#2563EB',
   },
   actionBtnRole: {
-    flex: 1.1,
+    flex: 1,
+    minWidth: 106,
+    minHeight: 36,
     backgroundColor: '#F1F5F9',
     borderWidth: 1,
     borderColor: '#CBD5E1',
-    paddingVertical: 6,
+    paddingVertical: 7,
+    paddingHorizontal: 10,
     borderRadius: 8,
     alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnTextRole: {
     fontSize: 11,
@@ -1231,12 +1283,15 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   actionBtnStatus: {
+    minHeight: 36,
     paddingHorizontal: 10,
-    paddingVertical: 6,
+    paddingVertical: 7,
     backgroundColor: '#FEF2F2',
     borderWidth: 1,
     borderColor: '#FECACA',
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnStatusUnlock: {
     backgroundColor: '#F0FDF4',
@@ -1251,10 +1306,15 @@ const styles = StyleSheet.create({
     color: '#16A34A',
   },
   actionBtnDelete: {
+    minWidth: 40,
+    minHeight: 36,
     paddingHorizontal: 8,
-    paddingVertical: 6,
+    paddingVertical: 7,
     backgroundColor: '#F1F5F9',
+    borderWidth: 1,
     borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
   actionBtnTextDelete: {
     fontSize: 13,
@@ -1285,6 +1345,8 @@ const styles = StyleSheet.create({
     backgroundColor: '#1E293B',
   },
   modalTitle: {
+    flex: 1,
+    marginRight: 8,
     fontSize: 15,
     fontWeight: '800',
     color: '#FFFFFF',

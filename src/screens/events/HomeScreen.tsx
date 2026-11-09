@@ -117,18 +117,14 @@ export default function HomeScreen() {
   const { featuredEvent, ongoingEvents, upcomingEvents } = useMemo(() => {
     const now = new Date();
 
-    // Thời điểm bắt đầu ngày mai theo giờ địa phương
-    const tomorrow = new Date(
-      now.getFullYear(),
-      now.getMonth(),
-      now.getDate() + 1,
-    );
-
-    // Chỉ lấy sự kiện được phép hiển thị
+    // Chỉ lấy sự kiện được phép hiển thị và chưa kết thúc
     const availableEvents = filteredEvents.filter(
       (event) =>
         !event.isHidden &&
-        !["draft", "pending_approval", "cancelled"].includes(event.status),
+        !["draft", "pending_approval", "cancelled", "completed", "past"].includes(
+          event.status,
+        ) &&
+        !isEventPast(event),
     );
 
     const ongoing: Event[] = [];
@@ -146,12 +142,12 @@ export default function HomeScreen() {
         return;
       }
 
-      // Sự kiện đang diễn ra
-      if (startTime <= now && endTime >= now) {
+      // Sự kiện đang diễn ra (bao gồm hôm nay)
+      if (startTime <= now && endTime > now) {
         ongoing.push(event);
       }
-      // Sự kiện bắt đầu từ ngày mai trở đi
-      else if (startTime >= tomorrow) {
+      // Sự kiện sắp tới (bao gồm cả sự kiện bắt đầu muộn hơn trong hôm nay)
+      else if (startTime > now) {
         upcoming.push(event);
       }
     });

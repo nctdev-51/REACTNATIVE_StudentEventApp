@@ -108,10 +108,56 @@ const getEventById = async (req, res) => {
 // @access  Private (Admin / Organizer)
 const createEvent = async (req, res) => {
   try {
+    // Fail immediately with an actionable response when MongoDB is unavailable.
+    // Without this guard Mongoose buffers the write and the mobile app receives
+    // an unhelpful timeout after several seconds.
+    if (Event.db.readyState !== 1) {
+      return res.status(503).json({
+        success: false,
+        message: "Không thể tạo sự kiện vì cơ sở dữ liệu chưa kết nối. Vui lòng kiểm tra MONGO_URI và khởi động MongoDB.",
+      });
+    }
+
     // Never trust a client-created `_id`; Mongoose must generate the ObjectId.
     // This keeps old Expo bundles from crashing the API with `evt_<timestamp>`.
     const { _id, id, createdAt, updatedAt, aiSummary, ...payload } = req.body;
-    const event = await Event.create(payload);
+    const start = new Date(payload.time?.start);
+    const end = new Date(payload.time?.end);
+    if (Number.isNaN(start.getTime()) || Number.isNaN(end.getTime()) || end <= start) {
+      return res.status(400).json({
+        success: false,
+        message: "Thời gian bắt đầu/kết thúc không hợp lệ.",
+      });
+    }
+
+    const maxSlots = Number(payload.maxSlots ?? 100);
+    const waitlistSlots = Number(payload.waitlistSlots ?? 20);
+    const trainingPoints = Number(payload.trainingPoints ?? 0);
+    if (!Number.isInteger(maxSlots) || maxSlots < 1 || !Number.isInteger(waitlistSlots) || waitlistSlots < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Số lượng chính thức phải lớn hơn 0 và danh sách chờ không được âm.",
+      });
+    }
+    if (!Number.isFinite(trainingPoints) || trainingPoints < 0) {
+      return res.status(400).json({
+        success: false,
+        message: "Điểm rèn luyện không hợp lệ.",
+      });
+    }
+
+    // The authenticated account, rather than a client-supplied string, owns the
+    // organizer field. This also preserves compatibility with older app builds
+    // that did not include the required field.
+    const organizer = req.user?.name || req.user?.fullName || payload.organizer || "Ban Chấp hành Đoàn trường";
+    const event = await Event.create({
+      ...payload,
+      organizer,
+      maxSlots,
+      waitlistSlots,
+      trainingPoints,
+      time: { start, end },
+    });
     res.status(201).json({
       success: true,
       data: event,
@@ -129,16 +175,65 @@ const createEvent = async (req, res) => {
 // @access  Private (Admin / Organizer)
 const updateEvent = async (req, res) => {
   try {
-    const event = await Event.findByIdAndUpdate(req.params.id, req.body, {
-      new: true,
-      runValidators: true,
-    });
-    if (!event) {
+    const existing = await Event.findById(req.params.id);
+    if (!existing) {
       return res.status(404).json({
         success: false,
         message: "Event not found",
       });
     }
+
+    const { _id, id, createdAt, updatedAt, ...updatePayload } = req.body;
+
+    if (updatePayload.time) {
+      const nextStart = new Date(updatePayload.time.start ?? existing.time?.start);
+      const nextEnd = new Date(updatePayload.time.end ?? existing.time?.end);
+      if (Number.isNaN(nextStart.getTime()) || Number.isNaN(nextEnd.getTime()) || nextEnd <= nextStart) {
+        return res.status(400).json({
+          success: false,
+          message: "Thời gian bắt đầu/kết thúc không hợp lệ.",
+        });
+      }
+      updatePayload.time = { start: nextStart, end: nextEnd };
+    }
+
+    if (updatePayload.maxSlots !== undefined) {
+      const maxSlots = Number(updatePayload.maxSlots);
+      if (!Number.isInteger(maxSlots) || maxSlots < 1) {
+        return res.status(400).json({
+          success: false,
+          message: "Số lượng chính thức phải lớn hơn 0.",
+        });
+      }
+      updatePayload.maxSlots = maxSlots;
+    }
+
+    if (updatePayload.waitlistSlots !== undefined) {
+      const waitlistSlots = Number(updatePayload.waitlistSlots);
+      if (!Number.isInteger(waitlistSlots) || waitlistSlots < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Số lượng danh sách chờ không được âm.",
+        });
+      }
+      updatePayload.waitlistSlots = waitlistSlots;
+    }
+
+    if (updatePayload.trainingPoints !== undefined) {
+      const trainingPoints = Number(updatePayload.trainingPoints);
+      if (!Number.isFinite(trainingPoints) || trainingPoints < 0) {
+        return res.status(400).json({
+          success: false,
+          message: "Điểm rèn luyện không được âm.",
+        });
+      }
+      updatePayload.trainingPoints = trainingPoints;
+    }
+
+    const event = await Event.findByIdAndUpdate(req.params.id, updatePayload, {
+      new: true,
+      runValidators: true,
+    });
     res.status(200).json({
       success: true,
       data: event,
@@ -246,7 +341,17 @@ const summarizeEvent = async (req, res) => {
 const getEventQrToken = async (req, res) => {
   try {
     const { id } = req.params;
-    const event = await Event.findById(id);
+    let event = null;
+    if (id && String(id).match(/^[0-9a-fA-F]{24}$/)) {
+      try {
+        event = await Event.findById(id);
+      } catch {}
+    }
+    if (!event && id) {
+      event = seedEvents.find(
+        (e) => String(e._id) === String(id) || String(e.id) === String(id)
+      );
+    }
 
     if (!event) {
       return res.status(404).json({
@@ -299,8 +404,21 @@ const getEventQrToken = async (req, res) => {
 
 const getCalendarIcs = async (req, res) => {
   try {
-    const event = await Event.findById(req.params.id);
+    let event = null;
+    if (req.params.id && String(req.params.id).match(/^[0-9a-fA-F]{24}$/)) {
+      try {
+        event = await Event.findById(req.params.id);
+      } catch {}
+    }
+    if (!event && req.params.id) {
+      event = seedEvents.find(
+        (e) => String(e._id) === String(req.params.id) || String(e.id) === String(req.params.id)
+      );
+    }
     if (!event) return res.status(404).json({ success: false, message: "Event not found" });
+    if (!event.time?.start || !event.time?.end) {
+      return res.status(400).json({ success: false, message: "Event time is missing" });
+    }
     const toIcsDate = (date) => new Date(date).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
     const escapeIcs = (value = "") => String(value).replace(/\\/g, "\\\\").replace(/;/g, "\\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
     const lines = [

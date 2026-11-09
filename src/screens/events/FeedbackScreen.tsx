@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect, useCallback } from "react";
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 import {
   FlatList,
   StyleSheet,
@@ -25,6 +25,7 @@ import { useAppSelector } from "../../hooks/redux";
 import { useAppTheme } from "../../theme";
 import api from "../../services/api";
 import { Feedback } from "../../types";
+import { entityId } from "../../utils/registrations";
 import { getOnlyAttendedEventsFromDb } from "../../data/dbService";
 
 import FeedbackEventCard from "../../components/feedback/FeedbackEventCard";
@@ -61,6 +62,7 @@ export default function FeedbackScreen() {
   const [draftRatings, setDraftRatings] = useState<Record<string, number>>({});
   const [draftComments, setDraftComments] = useState<Record<string, string>>({});
   const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
+  const submitLockRef = useRef<boolean>(false);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
 
@@ -78,12 +80,12 @@ export default function FeedbackScreen() {
       ]);
 
       // Bước A: Lọc ra các sự kiện người dùng ĐÃ THAM DỰ (chỉ tính status: 'checked_in', loại bỏ complete/completed)
-      if (Array.isArray(regList) && regList.length > 0) {
+      if (!currentUserId) {
+        setAttendedEvents([]);
+      } else if (Array.isArray(regList)) {
         const eventsMap = new Map<string, any>();
         for (const r of regList) {
-          const regUserId = typeof r.userId === "object" && r.userId !== null
-            ? (r.userId as any)._id || (r.userId as any).id
-            : r.userId;
+          const regUserId = entityId(r.userId);
           if (regUserId && currentUserId && String(regUserId) !== String(currentUserId)) {
             continue;
           }
@@ -93,27 +95,25 @@ export default function FeedbackScreen() {
           const eventObj: any = (r as any).eventId;
           if (typeof eventObj === "object" && eventObj !== null) {
             const eId = eventObj._id || eventObj.id;
-            if (eId) eventsMap.set(eId, eventObj);
-          } else if (typeof eventObj === "string") {
+            if (eId) eventsMap.set(String(eId), eventObj);
+          } else if (typeof eventObj === "string" && eventObj) {
             const found = Array.isArray(allEvents)
-              ? allEvents.find((e: any) => (e._id || e.id) === eventObj)
+              ? allEvents.find((e: any) => String(e._id || e.id) === String(eventObj))
               : null;
             if (found) {
-              eventsMap.set(eventObj, found);
+              eventsMap.set(String(eventObj), found);
             }
           }
         }
 
         const userEvents = Array.from(eventsMap.values());
-        if (userEvents.length > 0) {
-          // Sắp xếp sự kiện mới nhất lên đầu
-          const sorted = [...userEvents].sort((a, b) => {
-            const timeA = new Date(a.time?.start || a.createdAt || 0).getTime();
-            const timeB = new Date(b.time?.start || b.createdAt || 0).getTime();
-            return timeB - timeA;
-          });
-          setAttendedEvents(sorted);
-        }
+        // Sắp xếp sự kiện mới nhất lên đầu (kể cả khi 0 sự kiện để xoá fallback cũ)
+        const sorted = [...userEvents].sort((a, b) => {
+          const timeA = new Date(a.time?.start || a.createdAt || 0).getTime();
+          const timeB = new Date(b.time?.start || b.createdAt || 0).getTime();
+          return timeB - timeA;
+        });
+        setAttendedEvents(sorted);
       }
 
       // Bước B: Cập nhật danh sách feedbacks trực tiếp từ MongoDB
@@ -253,7 +253,7 @@ export default function FeedbackScreen() {
   // 8. GỬI ĐÁNH GIÁ TRỰC TIẾP VÀO CƠ SỞ DỮ LIỆU MONGODB
   const handleSubmitReview = async (evt: any) => {
     const eventId = evt.id || evt._id;
-    if (submittingEventId || !currentUserId) return;
+    if (submitLockRef.current || submittingEventId || !currentUserId) return;
 
     // Kiểm tra: Mỗi sự kiện chỉ được phép đánh giá 1 lần
     const existing = getMyReview(eventId);
@@ -281,6 +281,7 @@ export default function FeedbackScreen() {
       comment: finalComment,
     };
 
+    submitLockRef.current = true;
     setSubmittingEventId(eventId);
     try {
       // Gửi trực tiếp lên Backend MongoDB qua API
@@ -304,6 +305,7 @@ export default function FeedbackScreen() {
       if (Platform.OS === "web") alert(fullMsg);
       else Alert.alert("Không thể lưu đánh giá", fullMsg);
     } finally {
+      submitLockRef.current = false;
       setSubmittingEventId(null);
     }
   };
