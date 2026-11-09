@@ -1,4 +1,7 @@
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import React from "react";
 import {
   View,
@@ -189,12 +192,15 @@ export default function RegistrationSuccessScreen({
           {/* Subtitle message */}
           <Text style={[styles.message, { color: theme.textSecondary }]}>
 <<<<<<< HEAD
+<<<<<<< HEAD
             Bạn đã đăng ký tham gia{"\n"}
             <Text style={[styles.eventTitleHighlight, { color: theme.primary }]}>
               {title}
             </Text>
             .
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             {isWaitlist ? (
               <>
                 Sự kiện{"\n"}
@@ -216,7 +222,10 @@ export default function RegistrationSuccessScreen({
                 .
               </>
             )}
+<<<<<<< HEAD
 >>>>>>> 40ca2f1 (A)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           </Text>
         </View>
 
@@ -246,7 +255,13 @@ export default function RegistrationSuccessScreen({
             accessibilityRole="button"
             accessibilityLabel="Quay về trang chủ"
           >
+<<<<<<< HEAD
             <Text style={[styles.secondaryButtonText, { color: theme.textPrimary }]}>
+=======
+            <Text
+              style={[styles.secondaryButtonText, { color: theme.textPrimary }]}
+            >
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
               Quay về trang chủ
             </Text>
           </TouchableOpacity>

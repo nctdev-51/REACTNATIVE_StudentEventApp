@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -10,6 +10,7 @@ import {
   StatusBar,
   ActivityIndicator,
   RefreshControl,
+<<<<<<< HEAD
 <<<<<<< HEAD
 } from 'react-native';
 <<<<<<< HEAD
@@ -27,6 +28,8 @@ import { fetchEvents } from '../../features/events/eventsSlice';
 import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
 import { useAppTheme } from '../../theme/ThemeContext';
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useFocusEffect, useNavigation } from "@react-navigation/native";
@@ -40,6 +43,7 @@ import AppBottomTab, { AppTabKey } from "../../components/navigation/AppBottomTa
 import { useAppTheme } from "../../theme/ThemeContext";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
 =======
 import { mergeRegistrations } from '../../utils/registrations';
@@ -47,12 +51,15 @@ import { mergeRegistrations } from '../../utils/registrations';
 =======
 import { mergeRegistrations, hasEventEnded } from '../../utils/registrations';
 >>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
+=======
+import { mergeRegistrations, hasEventEnded } from '../../utils/registrations';
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
 
-export type ScheduleTabFilter = 'upcoming' | 'past';
+export type ScheduleTabFilter = "upcoming" | "past";
 
 export interface RegisteredEvent {
   id: string;
@@ -69,7 +76,7 @@ export interface RegisteredEvent {
   status: ScheduleTabFilter;
 }
 
-export type TabKey = 'home' | 'schedule' | 'checkin' | 'profile';
+export type TabKey = "home" | "schedule" | "checkin" | "profile";
 
 export interface MyScheduleScreenProps {
   events?: RegisteredEvent[];
@@ -83,14 +90,14 @@ export interface MyScheduleScreenProps {
 // Constants
 // ---------------------------------------------------------------------------
 
-const ACCENT_COLOR = '#2563EB';
-const BACKGROUND = '#FFFFFF';
-const SCREEN_BG = '#F8FAFC';
-const TEXT_PRIMARY = '#111827';
-const TEXT_SECONDARY = '#6B7280';
-const BORDER_COLOR = '#F1F5F9';
-const BADGE_BG = '#FEF3C7';
-const BADGE_TEXT = '#D97706';
+const ACCENT_COLOR = "#2563EB";
+const BACKGROUND = "#FFFFFF";
+const SCREEN_BG = "#F8FAFC";
+const TEXT_PRIMARY = "#111827";
+const TEXT_SECONDARY = "#6B7280";
+const BORDER_COLOR = "#F1F5F9";
+const BADGE_BG = "#FEF3C7";
+const BADGE_TEXT = "#D97706";
 
 const DEFAULT_EVENTS: RegisteredEvent[] = [];
 
@@ -99,17 +106,38 @@ const DEFAULT_EVENTS: RegisteredEvent[] = [];
 // ---------------------------------------------------------------------------
 
 /** Filter / Sliders Icon */
-function FilterIcon({ color = '#1E293B' }: { color?: string }) {
+function FilterIcon({ color = "#1E293B" }: { color?: string }) {
   return (
     <View style={iconStyles.filterContainer}>
-      <View style={[iconStyles.filterLine, { backgroundColor: color, top: 4 }]} />
-      <View style={[iconStyles.filterDot, { borderColor: color, top: 1.5, left: 3 }]} />
+      <View
+        style={[iconStyles.filterLine, { backgroundColor: color, top: 4 }]}
+      />
+      <View
+        style={[
+          iconStyles.filterDot,
+          { borderColor: color, top: 1.5, left: 3 },
+        ]}
+      />
 
-      <View style={[iconStyles.filterLine, { backgroundColor: color, top: 11 }]} />
-      <View style={[iconStyles.filterDot, { borderColor: color, top: 8.5, right: 3 }]} />
+      <View
+        style={[iconStyles.filterLine, { backgroundColor: color, top: 11 }]}
+      />
+      <View
+        style={[
+          iconStyles.filterDot,
+          { borderColor: color, top: 8.5, right: 3 },
+        ]}
+      />
 
-      <View style={[iconStyles.filterLine, { backgroundColor: color, top: 18 }]} />
-      <View style={[iconStyles.filterDot, { borderColor: color, top: 15.5, left: 5 }]} />
+      <View
+        style={[iconStyles.filterLine, { backgroundColor: color, top: 18 }]}
+      />
+      <View
+        style={[
+          iconStyles.filterDot,
+          { borderColor: color, top: 15.5, left: 5 },
+        ]}
+      />
     </View>
   );
 }
@@ -135,7 +163,7 @@ function LocationPinIcon({ color = TEXT_SECONDARY }: { color?: string }) {
 }
 
 /** Calendar Icon for Bottom Navigation */
-function CalendarIcon({ color = '#475569' }: { color?: string }) {
+function CalendarIcon({ color = "#475569" }: { color?: string }) {
   return (
     <View style={[iconStyles.calendarContainer, { borderColor: color }]}>
       <View style={[iconStyles.calendarHeader, { backgroundColor: color }]} />
@@ -151,7 +179,7 @@ function CalendarIcon({ color = '#475569' }: { color?: string }) {
 
 /** Home Tab Icon */
 function HomeTabIcon({ active }: { active: boolean }) {
-  const color = active ? ACCENT_COLOR : '#94A3B8';
+  const color = active ? ACCENT_COLOR : "#94A3B8";
   return (
     <View style={iconStyles.homeContainer}>
       <View style={[iconStyles.homeRoof, { borderColor: color }]} />
@@ -162,7 +190,7 @@ function HomeTabIcon({ active }: { active: boolean }) {
 
 /** Check-in Ticket Tab Icon */
 function CheckinTabIcon({ active }: { active: boolean }) {
-  const color = active ? ACCENT_COLOR : '#94A3B8';
+  const color = active ? ACCENT_COLOR : "#94A3B8";
   return (
     <View style={[iconStyles.checkinContainer, { borderColor: color }]}>
       <View style={[iconStyles.checkinLine, { backgroundColor: color }]} />
@@ -173,19 +201,25 @@ function CheckinTabIcon({ active }: { active: boolean }) {
 
 /** Profile Tab Icon */
 function ProfileTabIcon({ active }: { active: boolean }) {
-  const color = active ? ACCENT_COLOR : '#94A3B8';
+  const color = active ? ACCENT_COLOR : "#94A3B8";
   return (
     <View style={iconStyles.userContainer}>
       <View
         style={[
           iconStyles.userHead,
-          { borderColor: color, backgroundColor: active ? color : 'transparent' },
+          {
+            borderColor: color,
+            backgroundColor: active ? color : "transparent",
+          },
         ]}
       />
       <View
         style={[
           iconStyles.userBody,
-          { borderColor: color, backgroundColor: active ? color : 'transparent' },
+          {
+            borderColor: color,
+            backgroundColor: active ? color : "transparent",
+          },
         ]}
       />
     </View>
@@ -197,18 +231,18 @@ const iconStyles = StyleSheet.create({
   filterContainer: {
     width: 22,
     height: 22,
-    position: 'relative',
-    justifyContent: 'center',
+    position: "relative",
+    justifyContent: "center",
   },
   filterLine: {
-    position: 'absolute',
+    position: "absolute",
     left: 0,
     right: 0,
     height: 1.8,
     borderRadius: 1,
   },
   filterDot: {
-    position: 'absolute',
+    position: "absolute",
     width: 7,
     height: 7,
     borderRadius: 3.5,
@@ -221,11 +255,11 @@ const iconStyles = StyleSheet.create({
     height: 14,
     borderRadius: 7,
     borderWidth: 1.4,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   clockHourHand: {
-    position: 'absolute',
+    position: "absolute",
     width: 1.4,
     height: 4,
     top: 2.5,
@@ -233,7 +267,7 @@ const iconStyles = StyleSheet.create({
     borderRadius: 1,
   },
   clockMinuteHand: {
-    position: 'absolute',
+    position: "absolute",
     height: 1.4,
     width: 4,
     top: 5,
@@ -244,7 +278,7 @@ const iconStyles = StyleSheet.create({
   locationContainer: {
     width: 14,
     height: 14,
-    alignItems: 'center',
+    alignItems: "center",
   },
   pinHead: {
     width: 10,
@@ -258,8 +292,8 @@ const iconStyles = StyleSheet.create({
     borderLeftWidth: 3,
     borderRightWidth: 3,
     borderTopWidth: 4,
-    borderLeftColor: 'transparent',
-    borderRightColor: 'transparent',
+    borderLeftColor: "transparent",
+    borderRightColor: "transparent",
     marginTop: -2,
   },
   // Calendar
@@ -268,20 +302,20 @@ const iconStyles = StyleSheet.create({
     height: 20,
     borderWidth: 1.6,
     borderRadius: 4,
-    alignItems: 'center',
-    overflow: 'hidden',
+    alignItems: "center",
+    overflow: "hidden",
   },
   calendarHeader: {
-    width: '100%',
+    width: "100%",
     height: 4,
   },
   calendarGrid: {
     flex: 1,
-    flexDirection: 'row',
-    flexWrap: 'wrap',
+    flexDirection: "row",
+    flexWrap: "wrap",
     gap: 3,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 2,
   },
   calendarDot: {
@@ -293,8 +327,8 @@ const iconStyles = StyleSheet.create({
   userContainer: {
     width: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   userHead: {
     width: 8,
@@ -314,15 +348,15 @@ const iconStyles = StyleSheet.create({
   homeContainer: {
     width: 20,
     height: 20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   homeRoof: {
     width: 12,
     height: 12,
     borderTopWidth: 1.8,
     borderLeftWidth: 1.8,
-    transform: [{ rotate: '45deg' }],
+    transform: [{ rotate: "45deg" }],
     marginTop: -2,
   },
   homeBody: {
@@ -338,13 +372,13 @@ const iconStyles = StyleSheet.create({
     height: 19,
     borderWidth: 1.6,
     borderRadius: 3,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   checkinLine: {
     width: 7,
     height: 1.6,
-    position: 'absolute',
+    position: "absolute",
     top: 2,
   },
   checkinCheck: {
@@ -352,7 +386,7 @@ const iconStyles = StyleSheet.create({
     height: 4,
     borderBottomWidth: 1.6,
     borderLeftWidth: 1.6,
-    transform: [{ rotate: '-45deg' }],
+    transform: [{ rotate: "-45deg" }],
     marginTop: 2,
   },
 });
@@ -367,25 +401,31 @@ interface BottomTabBarProps {
 }
 
 function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
-  const tabs: { key: TabKey; label: string; renderIcon: (active: boolean) => React.ReactNode }[] = [
+  const tabs: {
+    key: TabKey;
+    label: string;
+    renderIcon: (active: boolean) => React.ReactNode;
+  }[] = [
     {
-      key: 'home',
-      label: 'Trang chủ',
+      key: "home",
+      label: "Trang chủ",
       renderIcon: (active) => <HomeTabIcon active={active} />,
     },
     {
-      key: 'schedule',
-      label: 'Lịch của tôi',
-      renderIcon: (active) => <CalendarIcon color={active ? ACCENT_COLOR : '#94A3B8'} />,
+      key: "schedule",
+      label: "Lịch của tôi",
+      renderIcon: (active) => (
+        <CalendarIcon color={active ? ACCENT_COLOR : "#94A3B8"} />
+      ),
     },
     {
-      key: 'checkin',
-      label: 'Check-in',
+      key: "checkin",
+      label: "Check-in",
       renderIcon: (active) => <CheckinTabIcon active={active} />,
     },
     {
-      key: 'profile',
-      label: 'Cá nhân',
+      key: "profile",
+      label: "Cá nhân",
       renderIcon: (active) => <ProfileTabIcon active={active} />,
     },
   ];
@@ -417,15 +457,15 @@ function BottomTabBar({ activeTab, onTabPress }: BottomTabBarProps) {
 
 const tabStyles = StyleSheet.create({
   container: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: BACKGROUND,
     borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
-    paddingBottom: Platform.OS === 'ios' ? 24 : 10,
+    borderTopColor: "#E2E8F0",
+    paddingBottom: Platform.OS === "ios" ? 24 : 10,
     paddingTop: 8,
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: -2 },
         shadowOpacity: 0.05,
         shadowRadius: 6,
@@ -437,23 +477,23 @@ const tabStyles = StyleSheet.create({
   },
   tab: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   iconBox: {
     height: 22,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     marginBottom: 4,
   },
   label: {
     fontSize: 10,
-    color: '#64748B',
-    fontWeight: '400',
+    color: "#64748B",
+    fontWeight: "400",
   },
   labelActive: {
     color: ACCENT_COLOR,
-    fontWeight: '600',
+    fontWeight: "600",
   },
 });
 
@@ -565,17 +605,17 @@ function EventCard({ event, onPress }: EventCardProps) {
 
 const cardStyles = StyleSheet.create({
   card: {
-    flexDirection: 'row',
+    flexDirection: "row",
     backgroundColor: BACKGROUND,
     borderRadius: 16,
     borderWidth: 1,
     borderColor: BORDER_COLOR,
     padding: 12,
     marginBottom: 14,
-    alignItems: 'center',
+    alignItems: "center",
     ...Platform.select({
       ios: {
-        shadowColor: '#000',
+        shadowColor: "#000",
         shadowOffset: { width: 0, height: 2 },
         shadowOpacity: 0.03,
         shadowRadius: 6,
@@ -589,32 +629,32 @@ const cardStyles = StyleSheet.create({
     width: 88,
     height: 88,
     borderRadius: 12,
-    backgroundColor: '#E2E8F0',
+    backgroundColor: "#E2E8F0",
   },
   imageFallback: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#CBD5E1',
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#CBD5E1",
   },
   fallbackText: {
     fontSize: 12,
-    color: '#475569',
-    fontWeight: '600',
+    color: "#475569",
+    fontWeight: "600",
   },
   infoContainer: {
     flex: 1,
     marginLeft: 14,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   title: {
     fontSize: 15,
-    fontWeight: '700',
+    fontWeight: "700",
     color: TEXT_PRIMARY,
     marginBottom: 6,
   },
   metaRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 4,
     gap: 6,
   },
@@ -623,7 +663,7 @@ const cardStyles = StyleSheet.create({
     color: TEXT_SECONDARY,
   },
   badge: {
-    alignSelf: 'flex-start',
+    alignSelf: "flex-start",
     backgroundColor: BADGE_BG,
     paddingHorizontal: 8,
     paddingVertical: 3,
@@ -632,7 +672,7 @@ const cardStyles = StyleSheet.create({
   },
   badgeText: {
     fontSize: 11,
-    fontWeight: '600',
+    fontWeight: "600",
     color: BADGE_TEXT,
   },
 });
@@ -643,20 +683,30 @@ const cardStyles = StyleSheet.create({
 
 export default function MyScheduleScreen({
   events: propEvents,
-  initialFilter = 'upcoming',
-  initialTab = 'schedule',
+  initialFilter = "upcoming",
+  initialTab = "schedule",
   onEventPress,
   onFilterPress,
 }: MyScheduleScreenProps) {
   const { theme } = useAppTheme();
+<<<<<<< HEAD
   const navigation = useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+=======
+  const navigation =
+    useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   const dispatch = useAppDispatch();
 
   const currentUser = useAppSelector((state) => state.auth.user);
-  const { myRegistrations, loading: regLoading } = useAppSelector((state) => state.registrations);
-  const { list: eventsList, loading: eventsLoading } = useAppSelector((state) => state.events);
+  const { myRegistrations, loading: regLoading } = useAppSelector(
+    (state) => state.registrations,
+  );
+  const { list: eventsList, loading: eventsLoading } = useAppSelector(
+    (state) => state.events,
+  );
 
-  const [activeFilter, setActiveFilter] = useState<ScheduleTabFilter>(initialFilter);
+  const [activeFilter, setActiveFilter] =
+    useState<ScheduleTabFilter>(initialFilter);
   const [activeTab, setActiveTab] = useState<TabKey>(initialTab);
   const [refreshing, setRefreshing] = useState<boolean>(false);
   const [showDateFilter, setShowDateFilter] = useState(false);
@@ -671,10 +721,13 @@ export default function MyScheduleScreen({
   }, [dispatch, currentUser?._id]);
 
 <<<<<<< HEAD
+<<<<<<< HEAD
   useFocusEffect(useCallback(() => {
     void loadData();
   }, [loadData]));
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   useFocusEffect(
     useCallback(() => {
       setScheduleNow(Date.now());
@@ -683,7 +736,10 @@ export default function MyScheduleScreen({
       return () => clearInterval(timer);
     }, [loadData]),
   );
+<<<<<<< HEAD
 >>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
   const handleRefresh = async () => {
     setRefreshing(true);
@@ -696,6 +752,7 @@ export default function MyScheduleScreen({
     if (!myRegistrations || myRegistrations.length === 0) return [];
 
 <<<<<<< HEAD
+<<<<<<< HEAD
     return myRegistrations
       .filter((r) => r.status !== 'cancelled')
       .map((r) => {
@@ -703,6 +760,8 @@ export default function MyScheduleScreen({
         const populatedEvent = typeof r.eventId === 'object' && r.eventId !== null ? (r.eventId as any) : null;
         const matchedEvent = populatedEvent || eventsList.find((e) => e._id === rawEventId);
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     return (
       mergeRegistrations(myRegistrations, eventsList)
         .filter((r) => r.status !== "cancelled")
@@ -720,6 +779,7 @@ export default function MyScheduleScreen({
             eventsList.find(
               (e) => e._id === rawEventId || (e as { id?: string }).id === rawEventId,
             );
+<<<<<<< HEAD
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 
 <<<<<<< HEAD
@@ -728,40 +788,51 @@ export default function MyScheduleScreen({
         let daysLeft: number | undefined = undefined;
         let isPast = r.status === 'checked_in';
 =======
+=======
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           let dateStr = "Sắp diễn ra";
           let timeStr = "08:00";
           let daysLeft: number | undefined = undefined;
           const checkedIn = r.status === 'checked_in';
           const checkInClosed = hasEventEnded(matchedEvent, scheduleNow);
           const isPast = checkedIn || checkInClosed;
+<<<<<<< HEAD
 >>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
-        if (matchedEvent?.time?.start) {
-          const startDate = new Date(matchedEvent.time.start);
-          const now = new Date();
-          const diffDays = Math.ceil((startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24));
-          daysLeft = diffDays > 0 ? diffDays : 0;
+          if (matchedEvent?.time?.start) {
+            const startDate = new Date(matchedEvent.time.start);
+            const now = new Date();
+            const diffDays = Math.ceil(
+              (startDate.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+            );
+            daysLeft = diffDays > 0 ? diffDays : 0;
 
-          const day = String(startDate.getDate()).padStart(2, '0');
-          const month = String(startDate.getMonth() + 1).padStart(2, '0');
-          const year = startDate.getFullYear();
-          const hours = String(startDate.getHours()).padStart(2, '0');
-          const minutes = String(startDate.getMinutes()).padStart(2, '0');
+            const day = String(startDate.getDate()).padStart(2, "0");
+            const month = String(startDate.getMonth() + 1).padStart(2, "0");
+            const year = startDate.getFullYear();
+            const hours = String(startDate.getHours()).padStart(2, "0");
+            const minutes = String(startDate.getMinutes()).padStart(2, "0");
 
-          dateStr = `${day}/${month}/${year}`;
-          timeStr = `${hours}:${minutes}`;
+            dateStr = `${day}/${month}/${year}`;
+            timeStr = `${hours}:${minutes}`;
 
+<<<<<<< HEAD
 <<<<<<< HEAD
           if (matchedEvent.time.end && new Date(matchedEvent.time.end) < now) {
             isPast = true;
 =======
 >>>>>>> 3a5da53 (sửa giao diện, xử lý các trường hợp sự kiện đã đăng ký, đồng bộ giao diện lịch sắp diễn ra và notification)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           }
-        }
 
-        const fallbackImage =
-          'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80';
+          const fallbackImage =
+            "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=400&q=80";
 
+<<<<<<< HEAD
 <<<<<<< HEAD
         return {
           id: matchedEvent?._id || rawEventId,
@@ -805,6 +876,31 @@ export default function MyScheduleScreen({
   }, [myRegistrations, eventsList, scheduleNow]);
 
   // Use props if explicitly passed and not empty, otherwise use real backend events
+=======
+          return {
+            id: matchedEvent?._id || rawEventId,
+            title: matchedEvent?.title || "Sự kiện đã đăng ký",
+            date: dateStr,
+            time: timeStr,
+            startAt: matchedEvent?.time?.start,
+            endAt: matchedEvent?.time?.end,
+            checkedIn,
+            checkInClosed,
+            location: matchedEvent?.location || "Trường ĐH Công nghiệp TP.HCM",
+            imageUrl: matchedEvent?.images?.[0] || fallbackImage,
+            daysLeft: isPast ? undefined : daysLeft,
+            status: (isPast ? "past" : "upcoming") as ScheduleTabFilter,
+          };
+        })
+        // Khử trùng lặp theo eventId để tránh lặp card và trùng key
+        .filter(
+          (evt, idx, arr) => arr.findIndex((x) => x.id === evt.id) === idx,
+        )
+    );
+  }, [myRegistrations, eventsList, scheduleNow]);
+
+  // Use props if explicitly passed and not empty, otherwise use real backend events
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   const allEvents =
     propEvents && propEvents.length > 0 ? propEvents : backendEvents;
   const today = new Date();
@@ -819,22 +915,25 @@ export default function MyScheduleScreen({
       if (!Number.isFinite(bStart)) return -1;
       return activeFilter === 'past' ? bStart - aStart : aStart - bStart;
     });
+<<<<<<< HEAD
 >>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
   // Wire up bottom tab navigation
   const handleTabPress = (tab: AppTabKey) => {
     setActiveTab(tab);
     switch (tab) {
-      case 'home':
-        navigation.navigate('Home');
+      case "home":
+        navigation.navigate("Home");
         break;
-      case 'schedule':
+      case "schedule":
         break; // already here
-      case 'checkin':
-        navigation.navigate('CheckIn');
+      case "checkin":
+        navigation.navigate("CheckIn");
         break;
-      case 'profile':
-        navigation.navigate('Profile');
+      case "profile":
+        navigation.navigate("Profile");
         break;
     }
   };
@@ -844,7 +943,10 @@ export default function MyScheduleScreen({
     if (onEventPress) {
       onEventPress(event);
     } else {
-      navigation.navigate('EventDetail', { eventId: event.id, title: event.title });
+      navigation.navigate("EventDetail", {
+        eventId: event.id,
+        title: event.title,
+      });
     }
   };
 
@@ -854,10 +956,14 @@ export default function MyScheduleScreen({
       onFilterPress();
     } else {
 <<<<<<< HEAD
+<<<<<<< HEAD
       Alert.alert('Bộ lọc', 'Lọc sự kiện theo thời gian hoặc khoa viện.');
 =======
       setShowDateFilter(value => !value);
 >>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
+=======
+      setShowDateFilter(value => !value);
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     }
   };
 
@@ -869,10 +975,28 @@ export default function MyScheduleScreen({
 
 <<<<<<< HEAD
       {/* ── Header với nút Left Navbar (☰) ──────────────────────────────────────────────────────── */}
+<<<<<<< HEAD
       <View style={[styles.header, { backgroundColor: theme.background, borderBottomWidth: 1, borderBottomColor: theme.border }]}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 10 }}>
           <LeftNavbarButton />
           <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>Lịch của tôi</Text>
+=======
+      <View
+        style={[
+          styles.header,
+          {
+            backgroundColor: theme.background,
+            borderBottomWidth: 1,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 10 }}>
+          <LeftNavbarButton />
+          <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+            Lịch của tôi
+          </Text>
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         </View>
 =======
       {/* ── Header ──────────────────────────────────────────────────────── */}
@@ -909,17 +1033,42 @@ export default function MyScheduleScreen({
       )}
 
       {/* ── Segmented Control / Filter Tabs ─────────────────────────────── */}
+<<<<<<< HEAD
       <View style={[styles.tabsContainer, { backgroundColor: theme.background, borderBottomColor: theme.border }]}>
         <TouchableOpacity
           style={[styles.tabFilter, activeFilter === 'upcoming' && { borderBottomColor: theme.primary }]}
           onPress={() => setActiveFilter('upcoming')}
+=======
+      <View
+        style={[
+          styles.tabsContainer,
+          {
+            backgroundColor: theme.background,
+            borderBottomColor: theme.border,
+          },
+        ]}
+      >
+        <TouchableOpacity
+          style={[
+            styles.tabFilter,
+            activeFilter === "upcoming" && { borderBottomColor: theme.primary },
+          ]}
+          onPress={() => setActiveFilter("upcoming")}
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           activeOpacity={0.7}
         >
           <Text
             style={[
               styles.tabFilterText,
               { color: theme.textSecondary },
+<<<<<<< HEAD
               activeFilter === 'upcoming' && { color: theme.primary, fontWeight: '600' },
+=======
+              activeFilter === "upcoming" && {
+                color: theme.primary,
+                fontWeight: "600",
+              },
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             ]}
           >
             Sắp diễn ra
@@ -927,15 +1076,30 @@ export default function MyScheduleScreen({
         </TouchableOpacity>
 
         <TouchableOpacity
+<<<<<<< HEAD
           style={[styles.tabFilter, activeFilter === 'past' && { borderBottomColor: theme.primary }]}
           onPress={() => setActiveFilter('past')}
+=======
+          style={[
+            styles.tabFilter,
+            activeFilter === "past" && { borderBottomColor: theme.primary },
+          ]}
+          onPress={() => setActiveFilter("past")}
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           activeOpacity={0.7}
         >
           <Text
             style={[
               styles.tabFilterText,
               { color: theme.textSecondary },
+<<<<<<< HEAD
               activeFilter === 'past' && { color: theme.primary, fontWeight: '600' },
+=======
+              activeFilter === "past" && {
+                color: theme.primary,
+                fontWeight: "600",
+              },
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             ]}
           >
             Đã tham gia
@@ -946,7 +1110,14 @@ export default function MyScheduleScreen({
       {/* ── Event List ─────────────────────────────────────────────────── */}
       <ScrollView
         style={styles.scrollList}
+<<<<<<< HEAD
         contentContainerStyle={[styles.scrollContent, { backgroundColor: theme.background }]}
+=======
+        contentContainerStyle={[
+          styles.scrollContent,
+          { backgroundColor: theme.background },
+        ]}
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
@@ -958,19 +1129,40 @@ export default function MyScheduleScreen({
         }
       >
         {isLoading ? (
+<<<<<<< HEAD
           <View style={{ paddingVertical: 40, alignItems: 'center' }}>
             <ActivityIndicator size="large" color={theme.primary} />
             <Text style={{ marginTop: 12, color: theme.textSecondary, fontSize: 14 }}>
+=======
+          <View style={{ paddingVertical: 40, alignItems: "center" }}>
+            <ActivityIndicator size="large" color={theme.primary} />
+            <Text
+              style={{
+                marginTop: 12,
+                color: theme.textSecondary,
+                fontSize: 14,
+              }}
+            >
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
               Đang tải lịch sự kiện...
             </Text>
           </View>
         ) : filteredEvents.length > 0 ? (
           filteredEvents.map((item, index) => (
+<<<<<<< HEAD
             <EventCard key={`${item.id}-${index}`} event={item} onPress={handleEventPress} />
+=======
+            <EventCard
+              key={`${item.id}-${index}`}
+              event={item}
+              onPress={handleEventPress}
+            />
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           ))
         ) : (
           <View style={styles.emptyState}>
             <Text style={[styles.emptyText, { color: theme.textSecondary }]}>
+<<<<<<< HEAD
 <<<<<<< HEAD
               {activeFilter === 'upcoming'
                 ? 'Bạn chưa có sự kiện nào sắp diễn ra'
@@ -980,6 +1172,11 @@ export default function MyScheduleScreen({
                 ? "Bạn chưa có sự kiện nào sắp diễn ra"
                 : "Bạn chưa tham gia sự kiện nào"}
 >>>>>>> b4ca80a (sửa giao diện, chức năng trang lịch của tôi và Notification)
+=======
+              {dateFilter === 'today' ? 'Bạn không có sự kiện nào hôm nay trong mục này' : activeFilter === "upcoming"
+                ? "Bạn chưa có sự kiện nào sắp diễn ra"
+                : "Bạn chưa tham gia sự kiện nào"}
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             </Text>
           </View>
         )}
@@ -998,16 +1195,20 @@ const styles = StyleSheet.create({
     flex: 1,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: Platform.OS === 'android' ? 12 : 8,
+    paddingTop: Platform.OS === "android" ? 12 : 8,
     paddingBottom: 12,
   },
   headerTitle: {
     fontSize: 22,
+<<<<<<< HEAD
     fontWeight: '700',
+=======
+    fontWeight: "700",
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   },
   filterButton: {
     padding: 6,
@@ -1015,19 +1216,27 @@ const styles = StyleSheet.create({
 
   // Filter Tabs
   tabsContainer: {
-    flexDirection: 'row',
+    flexDirection: "row",
     borderBottomWidth: 1,
   },
   tabFilter: {
     flex: 1,
     paddingVertical: 12,
-    alignItems: 'center',
+    alignItems: "center",
     borderBottomWidth: 2,
+<<<<<<< HEAD
     borderBottomColor: 'transparent',
   },
   tabFilterText: {
     fontSize: 14,
     fontWeight: '500',
+=======
+    borderBottomColor: "transparent",
+  },
+  tabFilterText: {
+    fontSize: 14,
+    fontWeight: "500",
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   },
 
   // List Scroll
@@ -1041,8 +1250,8 @@ const styles = StyleSheet.create({
     flexGrow: 1,
   },
   emptyState: {
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingVertical: 60,
   },
   emptyText: {

@@ -1,6 +1,7 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React, { useState } from 'react';
 =======
 import React, { useState, useMemo, useEffect, useCallback } from "react";
@@ -11,12 +12,16 @@ import React, { useEffect, useMemo, useState } from "react";
 =======
 import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
 >>>>>>> 40ca2f1 (A)
+=======
+import React, { useState, useMemo, useEffect, useCallback, useRef } from "react";
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import {
   FlatList,
   StyleSheet,
   Platform,
   StatusBar,
   Alert,
+<<<<<<< HEAD
 <<<<<<< HEAD
   ActivityIndicator,
 } from 'react-native';
@@ -33,6 +38,14 @@ import { Colors } from '../../theme';
   View,
   Text,
   ActivityIndicator,
+=======
+  Keyboard,
+  TouchableOpacity,
+  RefreshControl,
+  View,
+  Text,
+  ActivityIndicator,
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   NativeSyntheticEvent,
   NativeScrollEvent,
 } from "react-native";
@@ -42,6 +55,7 @@ import { Ionicons } from "@expo/vector-icons";
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
 
 import type { MainStackParamList } from "../../navigation/types";
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
@@ -72,10 +86,20 @@ import { Feedback } from "../../types";
 import { entityId } from "../../utils/registrations";
 import { getOnlyAttendedEventsFromDb } from "../../data/dbService";
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+import { navigate } from "../../navigation/navigationRef";
+import { useAppSelector } from "../../hooks/redux";
+import { useAppTheme } from "../../theme";
+import api from "../../services/api";
+import { Feedback } from "../../types";
+import { entityId } from "../../utils/registrations";
+import { getOnlyAttendedEventsFromDb } from "../../data/dbService";
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
 import FeedbackEventCard from "../../components/feedback/FeedbackEventCard";
 
 type FeedbackNavProp = NativeStackNavigationProp<MainStackParamList>;
+<<<<<<< HEAD
 <<<<<<< HEAD
 type FeedbackRouteProp = RouteProp<MainStackParamList, 'Feedback'>;
 
@@ -219,11 +243,19 @@ type FilterTab = "all" | "reviewed" | "not_reviewed";
 // ---------------------------------------------------------------------------
 // FeedbackScreen Component
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+type FeedbackRouteProp = RouteProp<MainStackParamList, "Feedback">;
+type FilterTab = "all" | "reviewed" | "not_reviewed";
+
+// ---------------------------------------------------------------------------
+// FeedbackScreen Component
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 // ---------------------------------------------------------------------------
 
 export default function FeedbackScreen() {
   const navigation = useNavigation<FeedbackNavProp>();
   const route = useRoute<FeedbackRouteProp>();
+<<<<<<< HEAD
 <<<<<<< HEAD
   const dispatch = useAppDispatch();
 <<<<<<< HEAD
@@ -232,55 +264,193 @@ export default function FeedbackScreen() {
   const user = useAppSelector((s) => s.auth.user);
   const { submitting } = useAppSelector((s) => s.feedbacks);
   const myRegistrations = useAppSelector((s) => s.registrations.myRegistrations);
+=======
+  const { theme, isDark } = useAppTheme();
 
-  const eventId = route.params?.eventId;
-  const eventTitle = route.params?.eventTitle ?? 'Sự kiện';
+  // 1. LẤY USER HIỆN TẠI TỪ REDUX (ĐỒNG BỘ TRỰC TIẾP TỪ MONGODB)
+  const authUser = useAppSelector((s) => s.auth.user);
+  const currentUserId = authUser?._id;
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
-  const [rating, setRating] = useState<number>(4);
-  const [comment, setComment] = useState<string>('');
-  const [isFocused, setIsFocused] = useState<boolean>(false);
+  // 2. KHỞI TẠO STATE SỰ KIỆN ĐÃ THAM DỰ (Dùng fallback khi chưa có kết nối mạng)
+  const [attendedEvents, setAttendedEvents] = useState<any[]>(() => {
+    return getOnlyAttendedEventsFromDb(currentUserId);
+  });
 
-  const handleSubmit = async () => {
-    if (!user || !eventId) {
-      Alert.alert('Lỗi', 'Không thể xác định người dùng hoặc sự kiện.');
-      return;
+  const [filterTab, setFilterTab] = useState<FilterTab>("all");
+  const [visibleLimit, setVisibleLimit] = useState<number>(5);
+
+  const [expandedEventId, setExpandedEventId] = useState<string | null>(
+    route.params?.eventId || (attendedEvents[0]?.id || attendedEvents[0]?._id || null),
+  );
+
+  const [draftRatings, setDraftRatings] = useState<Record<string, number>>({});
+  const [draftComments, setDraftComments] = useState<Record<string, string>>({});
+  const [submittingEventId, setSubmittingEventId] = useState<string | null>(null);
+  const submitLockRef = useRef<boolean>(false);
+  const [refreshing, setRefreshing] = useState<boolean>(false);
+  const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
+
+  // 3. DANH SÁCH TOÀN BỘ FEEDBACK LẤY TRỰC TIẾP TỪ BACKEND MONGODB
+  const [feedbacks, setFeedbacks] = useState<Feedback[]>([]);
+
+  // 4. HÀM TẢI DỮ LIỆU ĐỒNG BỘ TRỰC TIẾP TỪ MONGODB QUA API
+  const loadPersistedData = useCallback(async () => {
+    try {
+      // Gọi song song API: lấy danh sách đăng ký của ĐÚNG sinh viên này, danh sách sự kiện và đánh giá của sinh viên này
+      const [regList, allEvents, apiFeedbacks] = await Promise.all([
+        currentUserId ? api.getRegistrationsByUser(currentUserId) : Promise.resolve([]),
+        api.getEvents(),
+        currentUserId ? api.getFeedbacksByUser(currentUserId) : Promise.resolve([]),
+      ]);
+
+      // Bước A: Lọc ra các sự kiện người dùng ĐÃ THAM DỰ (chỉ tính status: 'checked_in', loại bỏ complete/completed)
+      if (!currentUserId) {
+        setAttendedEvents([]);
+      } else if (Array.isArray(regList)) {
+        const eventsMap = new Map<string, any>();
+        for (const r of regList) {
+          const regUserId = entityId(r.userId);
+          if (regUserId && currentUserId && String(regUserId) !== String(currentUserId)) {
+            continue;
+          }
+          if (r.status !== "checked_in") {
+            continue;
+          }
+          const eventObj: any = (r as any).eventId;
+          if (typeof eventObj === "object" && eventObj !== null) {
+            const eId = eventObj._id || eventObj.id;
+            if (eId) eventsMap.set(String(eId), eventObj);
+          } else if (typeof eventObj === "string" && eventObj) {
+            const found = Array.isArray(allEvents)
+              ? allEvents.find((e: any) => String(e._id || e.id) === String(eventObj))
+              : null;
+            if (found) {
+              eventsMap.set(String(eventObj), found);
+            }
+          }
+        }
+
+        const userEvents = Array.from(eventsMap.values());
+        // Sắp xếp sự kiện mới nhất lên đầu (kể cả khi 0 sự kiện để xoá fallback cũ)
+        const sorted = [...userEvents].sort((a, b) => {
+          const timeA = new Date(a.time?.start || a.createdAt || 0).getTime();
+          const timeB = new Date(b.time?.start || b.createdAt || 0).getTime();
+          return timeB - timeA;
+        });
+        setAttendedEvents(sorted);
+      }
+
+      // Bước B: Cập nhật danh sách feedbacks trực tiếp từ MongoDB
+      if (Array.isArray(apiFeedbacks)) {
+        setFeedbacks(apiFeedbacks);
+      }
+    } catch (err) {
+      console.warn("[FeedbackScreen] Lỗi khi kết nối máy chủ MongoDB:", err);
+      // Fallback an toàn nếu mất mạng
+      setAttendedEvents(getOnlyAttendedEventsFromDb(currentUserId));
     }
-    if (rating === 0) {
-      Alert.alert('Thiếu đánh giá', 'Vui lòng chọn số sao.');
-      return;
+  }, [currentUserId]);
+
+  useEffect(() => {
+    loadPersistedData();
+  }, [loadPersistedData]);
+
+  // Nếu chuyển từ trang chi tiết sự kiện sang và có eventId -> Tự động mở rộng sự kiện đó
+  useEffect(() => {
+    if (route.params?.eventId) {
+      setExpandedEventId(route.params.eventId);
+      const idx = attendedEvents.findIndex(
+        (e) => (e.id || e._id) === route.params?.eventId,
+      );
+      if (idx >= 0 && idx >= visibleLimit) {
+        setVisibleLimit(Math.ceil((idx + 1) / 5) * 5);
+      }
     }
+  }, [route.params?.eventId, attendedEvents, visibleLimit]);
 
-    const result = await dispatch(
-      submitFeedback({
-        eventId,
-        userId: user._id,
-        rating,
-        comment: comment.trim(),
-      })
-    );
+  const onRefresh = async () => {
+    setRefreshing(true);
+    await loadPersistedData();
+    setRefreshing(false);
+  };
 
-    if (submitFeedback.fulfilled.match(result)) {
-      Alert.alert(
-        '✅ Gửi thành công!',
-        `Cảm ơn bạn đã đánh giá "${eventTitle}" với ${rating} sao!`,
-        [
-          {
-            text: 'OK',
-            onPress: () =>
-              navigation.canGoBack()
-                ? navigation.goBack()
-                : navigation.navigate('Home'),
-          },
-        ]
-      );
-    } else {
-      Alert.alert(
-        'Gửi thất bại',
-        (result.payload as string) ?? 'Vui lòng thử lại.'
-      );
+  // 5. HELPER TÌM "ĐÁNH GIÁ CỦA BẠN" (Mỗi sự kiện chỉ được đánh giá 1 lần)
+  const getMyReview = useCallback(
+    (eventId: string) => {
+      return feedbacks.find((f) => {
+        const fEvt: any = f.eventId;
+        const fUser: any = f.userId;
+        const fEvtId =
+          typeof fEvt === "object" && fEvt !== null
+            ? fEvt._id || fEvt.id
+            : fEvt;
+        const fUserId =
+          typeof fUser === "object" && fUser !== null
+            ? fUser._id || fUser.id
+            : fUser;
+        return String(fEvtId) === String(eventId) && String(fUserId) === String(currentUserId);
+      });
+    },
+    [feedbacks, currentUserId],
+  );
+
+  // 6. ĐẾM SỐ LƯỢNG CHO 3 TAB BỘ LỌC
+  const { allCount, reviewedCount, notReviewedCount } = useMemo(() => {
+    let rev = 0;
+    let notRev = 0;
+    for (const evt of attendedEvents) {
+      const id = evt.id || evt._id;
+      if (getMyReview(id)) {
+        rev++;
+      } else {
+        notRev++;
+      }
+    }
+    return {
+      allCount: attendedEvents.length,
+      reviewedCount: rev,
+      notReviewedCount: notRev,
+    };
+  }, [attendedEvents, getMyReview]);
+
+  // 7. LỌC DANH SÁCH THEO TAB (Tất cả, Đã đánh giá, Chưa đánh giá)
+  const filteredEvents = useMemo(() => {
+    return attendedEvents.filter((evt) => {
+      const id = evt.id || evt._id;
+      const isReviewed = !!getMyReview(id);
+      if (filterTab === "reviewed") return isReviewed;
+      if (filterTab === "not_reviewed") return !isReviewed;
+      return true;
+    });
+  }, [attendedEvents, filterTab, getMyReview]);
+
+  // Phân trang danh sách hiển thị
+  const displayedEvents = useMemo(() => {
+    return filteredEvents.slice(0, visibleLimit);
+  }, [filteredEvents, visibleLimit]);
+
+  const hasMore = visibleLimit < filteredEvents.length;
+
+  const handleLoadMore = useCallback(() => {
+    if (!hasMore || isLoadingMore) return;
+    setIsLoadingMore(true);
+    setTimeout(() => {
+      setVisibleLimit((prev) => Math.min(prev + 10, filteredEvents.length));
+      setIsLoadingMore(false);
+    }, 250);
+  }, [hasMore, isLoadingMore, filteredEvents.length]);
+
+  const handleScroll = (event: NativeSyntheticEvent<NativeScrollEvent>) => {
+    const { layoutMeasurement, contentOffset, contentSize } = event.nativeEvent;
+    const isCloseToBottom =
+      layoutMeasurement.height + contentOffset.y >= contentSize.height - 60;
+    if (isCloseToBottom && hasMore && !isLoadingMore) {
+      handleLoadMore();
     }
   };
 
+<<<<<<< HEAD
 =======
   const { theme, isDark, toggleTheme } = useAppTheme();
 =======
@@ -610,10 +780,13 @@ export default function FeedbackScreen() {
     }
   };
 
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   const handleTabChange = (tab: FilterTab) => {
     setFilterTab(tab);
     setVisibleLimit(5);
   };
+<<<<<<< HEAD
 
   const formatEventDate = (timeObj?: { start?: string; end?: string }) => {
     if (!timeObj?.start) return "Sắp diễn ra";
@@ -1132,41 +1305,136 @@ export default function FeedbackScreen() {
             </Text>
           </View>
         </View>
+=======
 
-        {/* ── Rating ── */}
-        <Text style={styles.question}>Bạn thấy sự kiện này thế nào?</Text>
-        <View style={styles.starsWrapper}>
-          <StarRating value={rating} onChange={setRating} size={38} />
-        </View>
+  const formatEventDate = (timeObj?: { start?: string; end?: string }) => {
+    if (!timeObj?.start) return "Sắp diễn ra";
+    try {
+      const d = new Date(timeObj.start);
+      return `Ngày ${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} • ${d.getHours()}:${d.getMinutes() < 10 ? "0" : ""}${d.getMinutes()}`;
+    } catch {
+      return "Sắp diễn ra";
+    }
+  };
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
-        {/* ── Comment ── */}
-        <TextInput
-          style={[styles.commentInput, isFocused && styles.commentInputFocused]}
-          placeholder="Chia sẻ cảm nhận của bạn..."
-          placeholderTextColor={TEXT_SECONDARY}
-          multiline
-          numberOfLines={4}
-          textAlignVertical="top"
-          value={comment}
-          onChangeText={setComment}
-          onFocus={() => setIsFocused(true)}
-          onBlur={() => setIsFocused(false)}
-          maxLength={500}
-          accessibilityLabel="Ô nhập cảm nhận"
-        />
+  const formatReviewDate = (dateStr?: string) => {
+    if (!dateStr) return "Gần đây";
+    try {
+      const d = new Date(dateStr);
+      return `${d.getDate()}/${d.getMonth() + 1}/${d.getFullYear()} lúc ${d.getHours()}:${d.getMinutes() < 10 ? "0" : ""}${d.getMinutes()}`;
+    } catch {
+      return "Gần đây";
+    }
+  };
 
-        {/* ── Submit ── */}
+  // 8. GỬI ĐÁNH GIÁ TRỰC TIẾP VÀO CƠ SỞ DỮ LIỆU MONGODB
+  const handleSubmitReview = async (evt: any) => {
+    const eventId = evt.id || evt._id;
+    if (submitLockRef.current || submittingEventId || !currentUserId) return;
+
+    // Kiểm tra: Mỗi sự kiện chỉ được phép đánh giá 1 lần
+    const existing = getMyReview(eventId);
+    if (existing) {
+      Alert.alert(
+        "Thông báo",
+        "Bạn đã gửi đánh giá cho sự kiện này rồi. Mỗi sự kiện chỉ được phép đánh giá 1 lần.",
+      );
+      return;
+    }
+
+    Keyboard.dismiss();
+    const ratingVal = draftRatings[eventId] || 5;
+    const commentVal = (draftComments[eventId] || "").trim();
+    const finalComment =
+      commentVal ||
+      (ratingVal >= 4
+        ? "Sự kiện rất bổ ích, diễn giả nhiệt tình và ban tổ chức chu đáo!"
+        : "Đã tham gia và đóng góp ý kiến nâng cao chất lượng sự kiện.");
+
+    const payload = {
+      eventId,
+      userId: currentUserId,
+      rating: ratingVal,
+      comment: finalComment,
+    };
+
+    submitLockRef.current = true;
+    setSubmittingEventId(eventId);
+    try {
+      // Gửi trực tiếp lên Backend MongoDB qua API
+      const serverRes: any = await api.createFeedback(payload);
+
+      if (serverRes && (serverRes.id || serverRes._id)) {
+        // Cập nhật ngay đánh giá mới vào danh sách feedbacks hiển thị
+        setFeedbacks((prev) => [serverRes, ...prev]);
+      }
+
+      setDraftComments((prev) => ({ ...prev, [eventId]: "" }));
+      const successMsg = `Đánh giá cho sự kiện "${evt.title}" (${ratingVal} sao) đã được lưu trực tiếp vào cơ sở dữ liệu MongoDB.`;
+      if (Platform.OS === "web") alert(`Đánh giá thành công!\n${successMsg}`);
+      else Alert.alert("Đánh giá thành công!", successMsg);
+    } catch (apiErr: any) {
+      const errMsg =
+        apiErr?.response?.data?.message ||
+        apiErr?.message ||
+        "Không thể kết nối đến máy chủ MongoDB.";
+      const fullMsg = `Lỗi máy chủ MongoDB: ${errMsg}\nVui lòng kiểm tra server Backend.`;
+      if (Platform.OS === "web") alert(fullMsg);
+      else Alert.alert("Không thể lưu đánh giá", fullMsg);
+    } finally {
+      submitLockRef.current = false;
+      setSubmittingEventId(null);
+    }
+  };
+
+  // Cấu hình 3 tab bộ lọc
+  const filterTabsConfig = [
+    {
+      key: "all" as FilterTab,
+      label: `Tất cả (${allCount})`,
+      icon: "apps-outline" as const,
+      color: filterTab === "all" ? "#FFFFFF" : theme.textSecondary,
+    },
+    {
+      key: "reviewed" as FilterTab,
+      label: `Đã đánh giá (${reviewedCount})`,
+      icon: "checkmark-circle" as const,
+      color: filterTab === "reviewed" ? "#FFFFFF" : theme.success,
+    },
+    {
+      key: "not_reviewed" as FilterTab,
+      label: `Chưa đánh giá (${notReviewedCount})`,
+      icon: "time-outline" as const,
+      color: filterTab === "not_reviewed" ? "#FFFFFF" : "#F59E0B",
+    },
+  ];
+
+  // Render Header của danh sách
+  const renderListHeader = () => (
+    <View style={styles.headerContainer}>
+      {/* Nút quay lại */}
+      <View style={styles.navBarRow}>
         <TouchableOpacity
           style={[
-            styles.submitButton,
-            (rating === 0 || submitting) && styles.submitButtonDisabled,
+            styles.backButton,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
           ]}
-          activeOpacity={0.85}
-          disabled={rating === 0 || submitting}
+          onPress={() => {
+            if (navigation.canGoBack()) {
+              navigation.goBack();
+            } else {
+              navigate("Home");
+            }
+          }}
+          activeOpacity={0.7}
           accessibilityRole="button"
-          accessibilityLabel="Gửi đánh giá"
-          onPress={handleSubmit}
+          accessibilityLabel="Quay lại"
         >
+<<<<<<< HEAD
 <<<<<<< HEAD
           {submitting ? (
             <ActivityIndicator color="#fff" />
@@ -1567,112 +1835,346 @@ export default function FeedbackScreen() {
 =======
       />
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+          <View style={styles.backButtonContent}>
+            <Ionicons name="chevron-back" size={20} color={theme.primary} />
+            <Text style={[styles.backButtonText, { color: theme.primary }]}>
+              Quay lại
+            </Text>
+          </View>
+        </TouchableOpacity>
+      </View>
+
+      <Text style={[styles.screenTitle, { color: theme.textPrimary }]}>
+        Góp ý & Đánh giá sự kiện
+      </Text>
+      <Text style={[styles.screenSubtitle, { color: theme.textSecondary }]}>
+        Danh sách sự kiện bạn đã tham dự. Mỗi sự kiện chỉ được phép đánh giá 1 lần. Đánh giá của bạn giúp nâng cao chất lượng các chương trình.
+      </Text>
+
+      {/* 3 Tab bộ lọc: Tất cả, Đã đánh giá, Chưa đánh giá */}
+      <View style={styles.tabsRow}>
+        {filterTabsConfig.map((tab) => {
+          const isSelected = filterTab === tab.key;
+          return (
+            <TouchableOpacity
+              key={tab.key}
+              style={[
+                styles.tabButton,
+                {
+                  backgroundColor: isSelected ? theme.primary : theme.surface,
+                  borderColor: isSelected ? theme.primary : theme.border,
+                },
+              ]}
+              onPress={() => handleTabChange(tab.key)}
+              activeOpacity={0.75}
+              accessibilityRole="tab"
+              accessibilityState={{ selected: isSelected }}
+            >
+              <View style={styles.tabContent}>
+                <Ionicons name={tab.icon} size={16} color={tab.color} />
+                <Text
+                  style={[
+                    styles.tabText,
+                    { color: isSelected ? "#FFFFFF" : theme.textPrimary },
+                  ]}
+                >
+                  {tab.label}
+                </Text>
+              </View>
+            </TouchableOpacity>
+          );
+        })}
+      </View>
+
+      {/* Thống kê số lượng hiển thị */}
+      <View style={styles.countRow}>
+        <Text style={[styles.countText, { color: theme.textTertiary }]}>
+          Hiển thị {displayedEvents.length} / {filteredEvents.length} sự kiện gần nhất
+        </Text>
+        {filterTab !== "all" && (
+          <TouchableOpacity onPress={() => handleTabChange("all")}>
+            <Text style={[styles.viewAllText, { color: theme.primary }]}>
+              Xem tất cả
+            </Text>
+          </TouchableOpacity>
+        )}
+      </View>
+    </View>
+  );
+
+  // Render khi danh sách trống
+  const renderListEmpty = () => (
+    <View
+      style={[
+        styles.emptyCard,
+        {
+          borderColor: theme.border,
+          backgroundColor: theme.surface,
+        },
+      ]}
+    >
+      <Ionicons
+        name={filterTab === "reviewed" ? "checkmark-done-circle-outline" : "file-tray-outline"}
+        size={54}
+        color={theme.primary}
+      />
+      <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+        {filterTab === "reviewed"
+          ? "Chưa có sự kiện nào đã đánh giá"
+          : filterTab === "not_reviewed"
+          ? "Bạn đã hoàn thành đánh giá cho tất cả sự kiện!"
+          : "Không tìm thấy sự kiện đã tham dự"}
+      </Text>
+      <Text style={[styles.emptySubtitle, { color: theme.textSecondary }]}>
+        {filterTab === "not_reviewed"
+          ? "Cảm ơn bạn đã đóng góp ý kiến quý báu cho nhà trường."
+          : "Hãy tham gia các sự kiện để trải nghiệm và gửi đánh giá nhé."}
+      </Text>
+    </View>
+  );
+
+  // Render Footer: tải thêm sự kiện
+  const renderListFooter = () => {
+    if (isLoadingMore) {
+      return (
+        <View style={styles.footerLoading}>
+          <ActivityIndicator size="small" color={theme.primary} />
+          <Text style={[styles.loadingMoreText, { color: theme.primary }]}>
+            Đang tải thêm 10 sự kiện tiếp theo...
+          </Text>
+        </View>
+      );
+    }
+    if (hasMore) {
+      return (
+        <View style={styles.footerPrompt}>
+          <Ionicons name="arrow-down" size={14} color={theme.textTertiary} />
+          <Text style={[styles.footerPromptText, { color: theme.textTertiary }]}>
+            Kéo xuống cuối trang để tải thêm 10 sự kiện (còn {filteredEvents.length - displayedEvents.length} sự kiện)
+          </Text>
+        </View>
+      );
+    }
+    if (displayedEvents.length > 0) {
+      return (
+        <View style={styles.footerEnd}>
+          <View style={styles.footerEndContent}>
+            <Ionicons name="checkmark-done" size={16} color={theme.textTertiary} />
+            <Text style={[styles.footerPromptText, { color: theme.textTertiary }]}>
+              Đã hiển thị tất cả {filteredEvents.length} sự kiện
+            </Text>
+          </View>
+        </View>
+      );
+    }
+    return null;
+  };
+
+  return (
+    <SafeAreaView
+      style={[styles.safe, { backgroundColor: theme.background }]}
+      edges={["top", "bottom"]}
+    >
+      <StatusBar barStyle={theme.statusBarStyle} />
+
+      <FlatList
+        data={displayedEvents}
+        keyExtractor={(item) => item.id || item._id}
+        renderItem={({ item: evt }) => {
+          const eventId = evt.id || evt._id;
+          const myReview = getMyReview(eventId);
+          const isExpanded = expandedEventId === eventId;
+
+          return (
+            <FeedbackEventCard
+              key={eventId}
+              evt={evt}
+              myReview={myReview}
+              isExpanded={isExpanded}
+              onToggleExpand={() => setExpandedEventId(isExpanded ? null : eventId)}
+              draftRating={draftRatings[eventId] || 5}
+              onDraftRatingChange={(val) =>
+                setDraftRatings((prev) => ({ ...prev, [eventId]: val }))
+              }
+              draftComment={draftComments[eventId] || ""}
+              onDraftCommentChange={(txt) =>
+                setDraftComments((prev) => ({ ...prev, [eventId]: txt }))
+              }
+              isSubmitting={submittingEventId === eventId}
+              onSubmitReview={() => handleSubmitReview(evt)}
+              theme={theme}
+              isDark={isDark}
+              formatEventDate={formatEventDate}
+              formatReviewDate={formatReviewDate}
+            />
+          );
+        }}
+        ListHeaderComponent={renderListHeader}
+        ListEmptyComponent={renderListEmpty}
+        ListFooterComponent={renderListFooter}
+        contentContainerStyle={styles.listContent}
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={true}
+        onScroll={handleScroll}
+        scrollEventThrottle={16}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.primary]}
+            tintColor={theme.primary}
+          />
+        }
+      />
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
 <<<<<<< HEAD
+<<<<<<< HEAD
   safe: { flex: 1, backgroundColor: BACKGROUND },
   scroll: {
 <<<<<<< HEAD
     paddingHorizontal: 20,
     paddingTop: 4,
+=======
+  safe: {
+    flex: 1,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingTop: 8,
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     paddingBottom: 40,
   },
-
-  header: {
+  headerContainer: {
+    marginBottom: 4,
+  },
+  navBarRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 14,
+    paddingTop: Platform.OS === "android" ? 10 : 6,
+  },
+  backButton: {
+    borderRadius: 20,
+    borderWidth: 1,
+    paddingHorizontal: 12,
+    height: 36,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  backButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  backButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  screenTitle: {
     fontSize: 22,
-    fontWeight: '700',
-    color: TEXT_PRIMARY,
-    marginBottom: 24,
-    letterSpacing: -0.3,
+    fontWeight: "800",
+    marginBottom: 4,
   },
-  eventRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: 36,
-  },
-  thumbnailFallback: {
-    width: 74,
-    height: 74,
-    borderRadius: 12,
-    backgroundColor: '#0F172A',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  thumbnailFallbackText: { fontSize: 32, color: '#38BDF8' },
-  eventMeta: { flex: 1, marginLeft: 16, justifyContent: 'center' },
-  eventTitle: {
-    fontSize: 16,
-    fontWeight: '700',
-    color: TEXT_PRIMARY,
-    marginBottom: 6,
-    lineHeight: 22,
-  },
-  eventDate: { fontSize: 14, color: TEXT_SECONDARY },
-
-  question: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: TEXT_PRIMARY,
-    textAlign: 'center',
+  screenSubtitle: {
+    fontSize: 14,
+    lineHeight: 20,
     marginBottom: 16,
   },
-  starsWrapper: { alignItems: 'center', marginBottom: 24 },
-
-  commentInput: {
+  tabsRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginBottom: 18,
+  },
+  tabButton: {
+    flex: 1,
+    height: 42,
+    borderRadius: 12,
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
-    borderRadius: 12,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
-    fontSize: 14,
-    color: TEXT_PRIMARY,
-    minHeight: 120,
-    backgroundColor: '#FFFFFF',
-    marginBottom: 28,
+    paddingHorizontal: 6,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  commentInputFocused: { borderColor: ACCENT_COLOR },
-
-  submitButton: {
-    backgroundColor: ACCENT_COLOR,
-    borderRadius: 12,
+  tabContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 4,
+  },
+  tabText: {
+    fontSize: 12.5,
+    fontWeight: "700",
+  },
+  countRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginBottom: 12,
+  },
+  countText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  viewAllText: {
+    fontSize: 12,
+    fontWeight: "600",
+  },
+  emptyCard: {
+    borderRadius: 16,
+    borderWidth: 1,
+    padding: 32,
+    alignItems: "center",
+    justifyContent: "center",
+    marginVertical: 24,
+  },
+  emptyTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginTop: 12,
+    textAlign: "center",
+  },
+  emptySubtitle: {
+    fontSize: 13,
+    textAlign: "center",
+    marginTop: 4,
+    lineHeight: 18,
+  },
+  footerLoading: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 8,
+    paddingVertical: 16,
+  },
+  loadingMoreText: {
+    fontSize: 13,
+    fontWeight: "600",
+  },
+  footerPrompt: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
     paddingVertical: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    ...Platform.select({
-      ios: {
-        shadowColor: ACCENT_COLOR,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.25,
-        shadowRadius: 8,
-      },
-      android: { elevation: 3 },
-    }),
   },
-  submitText: { fontSize: 16, fontWeight: '600', color: '#FFFFFF' },
-  submitButtonDisabled: {
-    backgroundColor: '#94A3B8',
-    elevation: 0,
-    shadowOpacity: 0,
+  footerPromptText: {
+    fontSize: 12,
   },
-
-  topBar: { paddingVertical: 8, marginBottom: 4 },
-  backButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    alignSelf: 'flex-start',
-    paddingVertical: 4,
-    paddingHorizontal: 2,
+  footerEnd: {
+    alignItems: "center",
+    marginVertical: 20,
   },
-  backArrow: {
-    fontSize: 26,
-    color: ACCENT_COLOR,
-    fontWeight: '300',
-    lineHeight: 28,
-    marginRight: 4,
+  footerEndContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
   },
+<<<<<<< HEAD
   backLabel: { fontSize: 15, color: ACCENT_COLOR, fontWeight: '500' },
 =======
 =======
@@ -1810,4 +2312,6 @@ const styles = StyleSheet.create({
     gap: 6,
   },
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 });

@@ -54,20 +54,25 @@ export default function FeaturedEventCard({ event }: FeaturedEventCardProps) {
       <View style={styles.overlay} />
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         <View style={styles.content}>
           <View style={[styles.badge, { backgroundColor: theme.primary }]}>
             <Text style={styles.badgeText}>
               {event.category || "Chung"}
             </Text>
           </View>
+=======
+      <View style={styles.content}>
+        <View style={[styles.badge, { backgroundColor: theme.primary }]}>
+          <Text style={styles.badgeText}>{event.category || "Chung"}</Text>
+        </View>
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
-          <Text
-            style={styles.title}
-            numberOfLines={2}
-          >
-            {event.title}
-          </Text>
+        <Text style={styles.title} numberOfLines={2}>
+          {event.title}
+        </Text>
 
+<<<<<<< HEAD
 <<<<<<< HEAD
           <Text style={styles.info}>
             📅 {formatDate(event.time?.start)}
@@ -101,6 +106,8 @@ export default function FeaturedEventCard({ event }: FeaturedEventCardProps) {
           {event.title}
         </Text>
 
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         <View style={styles.infoRow}>
           <Ionicons name="calendar-outline" size={15} color="#FFFFFF" />
           <Text style={styles.info} numberOfLines={2}>

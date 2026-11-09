@@ -11,6 +11,7 @@ import {
 } from "react-native";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 
 import {
   useNavigation,
@@ -22,6 +23,9 @@ import {
 =======
 import * as Linking from "expo-linking";
 >>>>>>> afdea7c (update event filter search and deep link)
+=======
+import * as Linking from "expo-linking";
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import { useNavigation, useRoute, RouteProp } from "@react-navigation/native";
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
@@ -44,13 +48,17 @@ import AISummary from "../../components/ai/AISummary";
 import AdminLocationModal from "../../components/events/AdminLocationModal";
 import { getDistanceMeters, formatDistance } from "../../utils/locationUtils";
 <<<<<<< HEAD
+<<<<<<< HEAD
 import { getCurrentPosition, openInGoogleMaps } from "../../utils/permissionHandler";
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import { entityId } from "../../utils/registrations";
 import {
   getCurrentPosition,
   openInGoogleMaps,
 } from "../../utils/permissionHandler";
+<<<<<<< HEAD
 >>>>>>> 40ca2f1 (A)
 import { useAppDispatch, useAppSelector } from "../../hooks/redux";
 import { fetchEventById, clearSelectedEvent } from "../../features/events/eventsSlice";
@@ -61,31 +69,42 @@ import {
   useAppSelector,
 } from "../../hooks/redux";
 
+=======
+import { useAppDispatch, useAppSelector } from "../../hooks/redux";
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import {
   fetchEventById,
   clearSelectedEvent,
 } from "../../features/events/eventsSlice";
+<<<<<<< HEAD
 <<<<<<< HEAD
 
 >>>>>>> 8d9ed42 (Update Event)
 import { registerForEvent } from "../../features/check-in/registrationsSlice";
 <<<<<<< HEAD
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import {
   fetchMyRegistrations,
   registerForEvent,
   cancelMyRegistration,
 } from "../../features/check-in/registrationsSlice";
+<<<<<<< HEAD
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
 import { Colors } from "../../theme";
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
 >>>>>>> 83e603c (Tam fix 1 vai cho)
+=======
+import { Colors } from "../../theme";
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import {
   isEventPast,
   toggleHideEvent,
   deleteEvent,
+<<<<<<< HEAD
 <<<<<<< HEAD
 } from "../../services/api";
 =======
@@ -95,11 +114,14 @@ import { useAppTheme } from "../../theme/ThemeContext";
 =======
 import { summarizeEvent } from "../../services/api";
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   summarizeEvent,
   getGoogleCalendarAddUrl,
   getCalendarIcsUrl,
 } from "../../services/api";
 import { useAppTheme } from "../../theme/ThemeContext";
+<<<<<<< HEAD
 >>>>>>> 83e603c (Tam fix 1 vai cho)
 import AILoading from "../../components/ai/AILoading";
 import AIError from "../../components/ai/AIError";
@@ -140,6 +162,23 @@ const DEFAULT_BANNER =
 
   return `${hours}:${minutes} - ${day}/${month}/${year}`;
 =======
+=======
+import AILoading from "../../components/ai/AILoading";
+import AIError from "../../components/ai/AIError";
+import type { AISummary as AISummaryType } from "../../types/event";
+import { findDbEvent, getDefaultDbUser } from "../../data/dbService";
+
+type EventDetailNavProp = NativeStackNavigationProp<
+  MainStackParamList,
+  "EventDetail"
+>;
+
+type EventDetailRouteProp = RouteProp<MainStackParamList, "EventDetail">;
+
+const DEFAULT_BANNER =
+  "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800";
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 function formatDate(dateString?: string) {
   if (!dateString) return "Sắp diễn ra";
   try {
@@ -154,7 +193,10 @@ function formatDate(dateString?: string) {
   } catch {
     return "Sắp diễn ra";
   }
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 }
 
 export default function EventDetailScreen() {
@@ -165,17 +207,24 @@ export default function EventDetailScreen() {
   const navigation = useNavigation<EventDetailNavProp>();
   const { theme, isDark } = useAppTheme();
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
 
   const route =
     useRoute<EventDetailRouteProp>();
 
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   const route = useRoute<EventDetailRouteProp>();
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   const dispatch = useAppDispatch();
 
+<<<<<<< HEAD
     // AI Summary states
+=======
+  // AI Summary states
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   const [aiSummary, setAiSummary] = useState<AISummaryType | null>(null);
   const [aiLoading, setAiLoading] = useState(false);
   const [aiError, setAiError] = useState<string | null>(null);
@@ -187,6 +236,7 @@ export default function EventDetailScreen() {
     list: eventsList,
     loadingDetail,
     error,
+<<<<<<< HEAD
   } = useAppSelector(
     (state) => state.events
   );
@@ -247,6 +297,34 @@ export default function EventDetailScreen() {
         : registration.eventId;
     return registrationEventId === eventId && registration.status !== "cancelled";
 =======
+=======
+  } = useAppSelector((state) => state.events);
+
+  // 1. Tận dụng dữ liệu sự kiện có sẵn từ Redux list hoặc db.json (Instant Cache)
+  const cachedEvent = useMemo(() => {
+    if (!eventId) return null;
+    return (
+      eventsList.find(
+        (e) => e._id === eventId || (e as any).id === eventId,
+      ) || findDbEvent(eventId)
+    );
+  }, [eventId, eventsList]);
+
+  // Ưu tiên: Dữ liệu chi tiết từ backend > Dữ liệu cache
+  const event = selectedEvent || cachedEvent;
+
+  const user = useAppSelector((state) => state.auth.user);
+  const defaultStudent = getDefaultDbUser();
+  const currentUser = user || defaultStudent;
+  const currentUserId = currentUser?._id || (currentUser as any)?.id;
+
+  const { myRegistrations, actionLoading } = useAppSelector(
+    (state) => state.registrations,
+  );
+
+  // 2. Kiểm tra trạng thái đã đăng ký (hỗ trợ cả id, _id và object eventId)
+  const existingReg = myRegistrations.find((registration) => {
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     const regEventId = entityId(registration.eventId);
     const currentIds = new Set(
       [eventId, event?._id, (event as any)?.id]
@@ -258,9 +336,13 @@ export default function EventDetailScreen() {
       currentIds.has(regEventId) &&
       registration.status !== "cancelled"
     );
+<<<<<<< HEAD
 >>>>>>> 40ca2f1 (A)
   });
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
+=======
+  });
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
   const isRegistered = !!existingReg;
   const isPast = isEventPast(event);
@@ -285,6 +367,7 @@ export default function EventDetailScreen() {
     let mounted = true;
     if (event?.coordinates?.latitude && event?.coordinates?.longitude) {
 <<<<<<< HEAD
+<<<<<<< HEAD
       getCurrentPosition(5000).then((loc) => {
         if (loc) {
           const d = getDistanceMeters(
@@ -297,6 +380,8 @@ export default function EventDetailScreen() {
         }
       });
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       getCurrentPosition(5000)
         .then((loc) => {
           if (mounted && loc && event?.coordinates) {
@@ -313,17 +398,23 @@ export default function EventDetailScreen() {
           if (mounted) setUserDistance(null);
         });
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
     } else {
       setUserDistance(null);
 >>>>>>> 40ca2f1 (A)
+=======
+    } else {
+      setUserDistance(null);
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     }
     return () => {
       mounted = false;
     };
   }, [event?.coordinates?.latitude, event?.coordinates?.longitude]);
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   // Lấy chi tiết sự kiện
@@ -333,6 +424,9 @@ export default function EventDetailScreen() {
 =======
   // 4. Đồng bộ dữ liệu mới nhất từ backend trong nền & reset state cũ khi đổi eventId
 >>>>>>> 40ca2f1 (A)
+=======
+  // 4. Đồng bộ dữ liệu mới nhất từ backend trong nền & reset state cũ khi đổi eventId
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   useEffect(() => {
     setAiSummary(null);
     setAiError(null);
@@ -398,24 +492,33 @@ export default function EventDetailScreen() {
       Alert.alert(
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         "Đã đăng ký",
         "Bạn đã đăng ký sự kiện này rồi."
 =======
         existingReg?.status === "checked_in" ? "Đã check-in" : "Đã đăng ký",
         existingReg?.status === "checked_in"
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         existingReg?.status === "checked_in" || existingReg?.status === "completed"
           ? "Đã check-in"
           : "Đã đăng ký",
         existingReg?.status === "checked_in" || existingReg?.status === "completed"
+<<<<<<< HEAD
 >>>>>>> 40ca2f1 (A)
           ? "Bạn đã check-in sự kiện này, không thể đăng ký lại."
           : "Bạn đã đăng ký sự kiện này rồi.",
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
+=======
+          ? "Bạn đã check-in sự kiện này, không thể đăng ký lại."
+          : "Bạn đã đăng ký sự kiện này rồi.",
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       );
       return;
     }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
     const result = await dispatch(
       registerForEvent({
@@ -446,6 +549,8 @@ export default function EventDetailScreen() {
         (result.payload as string) ?? "Đăng ký thất bại",
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     registerLockRef.current = true;
     try {
       const targetId = event?._id || (event as any)?.id || eventId;
@@ -456,7 +561,10 @@ export default function EventDetailScreen() {
           participantRole: "attendee",
           status: "registered",
         }),
+<<<<<<< HEAD
 >>>>>>> 40ca2f1 (A)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       );
 
       if (registerForEvent.fulfilled.match(result)) {
@@ -483,6 +591,7 @@ export default function EventDetailScreen() {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
   // Chia sẻ Deep Link sự kiện
   const handleShare = async () => {
     if (!event) return;
@@ -498,6 +607,8 @@ export default function EventDetailScreen() {
   // Loading
 =======
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   // Hủy đăng ký sự kiện (trước hạn hủy vé / khi chưa điểm danh)
   const handleCancelRegistration = () => {
     if (!existingReg || registerLockRef.current || actionLoading) return;
@@ -549,7 +660,10 @@ export default function EventDetailScreen() {
     );
   };
 
+<<<<<<< HEAD
 >>>>>>> 40ca2f1 (A)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   const handleSummarize = async () => {
     if (!eventId || aiLoading) return;
 
@@ -570,6 +684,7 @@ export default function EventDetailScreen() {
     }
   };
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> 5723ff0 (AI event)
   if (loadingDetail) {
@@ -665,6 +780,65 @@ const handleShare = async () => {
   if (loadingDetail) {
 >>>>>>> afdea7c (update event filter search and deep link)
     return (
+=======
+  // Chia sẻ Deep Link sự kiện
+  const handleShare = async () => {
+    if (!event) return;
+    const targetId = event._id || (event as any).id || eventId;
+    const link = Linking.createURL(`/events/${targetId}`);
+
+    await Share.share({
+      message: `${event.title}\n${link}`,
+    });
+  };
+
+  // Thêm vào Google Calendar
+  const handleAddToGoogleCalendar = () => {
+    if (!event) return;
+    const url = getGoogleCalendarAddUrl(event as any);
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Lỗi", "Không thể mở ứng dụng Lịch.");
+    });
+  };
+
+  // Tải file iCalendar (.ics)
+  const handleDownloadIcs = () => {
+    if (!event) return;
+    const targetId = event._id || (event as any).id || eventId;
+    const url = getCalendarIcsUrl(targetId);
+    Linking.openURL(url).catch(() => {
+      Alert.alert("Lỗi", "Không thể tải file iCalendar.");
+    });
+  };
+
+  // Mở bản đồ chỉ đường
+  const handleOpenDirections = () => {
+    if (!event) return;
+    if (event.coordinates?.latitude && event.coordinates?.longitude) {
+      openInGoogleMaps(
+        event.coordinates.latitude,
+        event.coordinates.longitude,
+        event.location || event.title
+      );
+    } else {
+      const query = encodeURIComponent(event.location || "Trường Đại học Công nghiệp TP.HCM");
+      Linking.openURL(`https://www.google.com/maps/search/?api=1&query=${query}`);
+    }
+  };
+
+  // Mở Livestream
+  const handleOpenLivestream = () => {
+    if (event?.livestreamUrl) {
+      Linking.openURL(event.livestreamUrl).catch(() => {
+        Alert.alert("Lỗi", "Không thể mở liên kết livestream.");
+      });
+    }
+  };
+
+  // Trạng thái đang tải (chỉ khi không có cả dữ liệu cache)
+  if (loadingDetail && !event) {
+    return (
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       <YStack
         flex={1}
         justifyContent="center"
@@ -678,7 +852,10 @@ const handleShare = async () => {
           Đang tải thông tin sự kiện...
         </Paragraph>
       </YStack>
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     );
   }
 
@@ -693,6 +870,7 @@ const handleShare = async () => {
         paddingHorizontal={30}
       >
         <StatusBar barStyle={theme.statusBarStyle} />
+<<<<<<< HEAD
 <<<<<<< HEAD
         <View style={styles.emptyState}>
 <<<<<<< HEAD
@@ -729,6 +907,8 @@ const handleShare = async () => {
         </View>
       </View>
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         <YStack
           width={70}
           height={70}
@@ -773,7 +953,10 @@ const handleShare = async () => {
           </XStack>
         </Button>
       </YStack>
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     );
   }
 
@@ -783,14 +966,18 @@ const handleShare = async () => {
   return (
     <ScrollView
 <<<<<<< HEAD
+<<<<<<< HEAD
       style={styles.container}
       showsVerticalScrollIndicator={false}
     >
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       style={[styles.container, { backgroundColor: theme.background }]}
       showsVerticalScrollIndicator={false}
     >
       <StatusBar barStyle={theme.statusBarStyle} />
+<<<<<<< HEAD
 <<<<<<< HEAD
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
       {/* Ảnh sự kiện */}
@@ -1007,6 +1194,123 @@ const handleShare = async () => {
             </TamaguiText>
           </XStack>
 
+=======
+
+      {/* Ảnh sự kiện */}
+      <Image
+        source={{ uri: bannerUri }}
+        style={styles.bannerImage}
+        resizeMode="cover"
+        onError={() => setBannerError(true)}
+      />
+
+      <YStack padding={16} paddingBottom={40}>
+        {/* Chủ đề + Điểm rèn luyện */}
+        <XStack
+          justifyContent="space-between"
+          alignItems="center"
+          marginBottom={8}
+        >
+          <XStack
+            backgroundColor={isDark ? "rgba(37,99,235,0.2)" : "#DBEAFE"}
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+          >
+            <TamaguiText
+              fontSize={13}
+              fontWeight="600"
+              color={theme.primary}
+            >
+              {event.category || "Học thuật"}
+            </TamaguiText>
+          </XStack>
+
+          <XStack
+            backgroundColor={isDark ? "rgba(16,185,129,0.2)" : "#DCFCE7"}
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+          >
+            <TamaguiText
+              fontSize={13}
+              fontWeight="700"
+              color={isDark ? "#34D399" : "#16A34A"}
+            >
+              +{event.trainingPoints ?? 5} điểm rèn luyện
+            </TamaguiText>
+          </XStack>
+        </XStack>
+
+        {/* State Machine Status & Quota */}
+        <XStack justifyContent="space-between" alignItems="center" marginBottom={12} flexWrap="wrap" gap={8}>
+          <XStack
+            backgroundColor={
+              isCancelled || isRegClosed
+                ? "rgba(239,68,68,0.15)"
+                : isPast
+                ? "rgba(100,116,139,0.15)"
+                : isUnpublished
+                ? "rgba(245,158,11,0.15)"
+                : event.status === "ongoing"
+                ? "rgba(16,185,129,0.15)"
+                : "rgba(37,99,235,0.15)"
+            }
+            paddingHorizontal={10}
+            paddingVertical={4}
+            borderRadius={8}
+            alignItems="center"
+            gap={6}
+          >
+            <View
+              style={{
+                width: 8,
+                height: 8,
+                borderRadius: 4,
+                backgroundColor:
+                  isCancelled || isRegClosed
+                    ? "#EF4444"
+                    : isPast
+                    ? "#64748B"
+                    : isUnpublished
+                    ? "#F59E0B"
+                    : event.status === "ongoing"
+                    ? "#10B981"
+                    : "#2563EB",
+              }}
+            />
+            <TamaguiText
+              fontSize={12}
+              fontWeight="700"
+              color={
+                isCancelled || isRegClosed
+                  ? "#EF4444"
+                  : isPast
+                  ? "#64748B"
+                  : isUnpublished
+                  ? "#D97706"
+                  : event.status === "ongoing"
+                  ? "#10B981"
+                  : "#2563EB"
+              }
+            >
+              {isCancelled
+                ? "Sự kiện đã bị hủy"
+                : isPast
+                ? "Sự kiện đã hoàn tất"
+                : isRegClosed
+                ? "Đã đóng đăng ký"
+                : event.status === "draft"
+                ? "Bản nháp"
+                : event.status === "pending_approval"
+                ? "Chờ duyệt"
+                : event.status === "ongoing"
+                ? "Đang diễn ra (Check-in active)"
+                : "Đang mở đăng ký"}
+            </TamaguiText>
+          </XStack>
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           <XStack alignItems="center" gap={4}>
             <Ionicons name="ticket-outline" size={14} color={theme.textTertiary} />
             <TamaguiText fontSize={12} fontWeight="600" color={theme.textSecondary}>
@@ -1079,6 +1383,7 @@ const handleShare = async () => {
                     paddingHorizontal={8}
                     backgroundColor={isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF"}
                     borderColor={isDark ? "#818CF8" : "#C7D2FE"}
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
                     onPress={() => setAdminModalVisible(true)}
                     pressStyle={{ opacity: 0.7 }}
@@ -1104,6 +1409,19 @@ const handleShare = async () => {
                     </XStack>
                   </Button>
                 ) : (
+=======
+                    onPress={() => setAdminModalVisible(true)}
+                    pressStyle={{ opacity: 0.7 }}
+                  >
+                    <XStack alignItems="center" gap={4}>
+                      <Ionicons name="create-outline" size={13} color={isDark ? "#A5B4FC" : "#4338CA"} />
+                      <TamaguiText fontSize={11} fontWeight="700" color={isDark ? "#A5B4FC" : "#4338CA"}>
+                        Đổi vị trí (Admin)
+                      </TamaguiText>
+                    </XStack>
+                  </Button>
+                ) : (
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                   <Button
                     size="$2"
                     borderRadius={6}
@@ -1112,14 +1430,22 @@ const handleShare = async () => {
                     paddingHorizontal={8}
                     backgroundColor={isDark ? "rgba(99,102,241,0.2)" : "#EEF2FF"}
                     borderColor={isDark ? "#818CF8" : "#C7D2FE"}
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                     onPress={() => {
                       if (event.coordinates) {
-                        openInGoogleMaps(event.coordinates.latitude, event.coordinates.longitude, event.location);
+                        openInGoogleMaps(
+                          event.coordinates.latitude,
+                          event.coordinates.longitude,
+                          event.location,
+                        );
                       }
                     }}
                     pressStyle={{ opacity: 0.7 }}
                   >
+<<<<<<< HEAD
 <<<<<<< HEAD
                     <Text style={[styles.mapLinkBtnText, { color: isDark ? "#A5B4FC" : "#4338CA" }]}>🗺️ Chỉ đường Map</Text>
                   </TouchableOpacity>
@@ -1151,6 +1477,23 @@ const handleShare = async () => {
               </TamaguiText>
 
               {event.coordinates ? (
+=======
+                    <XStack alignItems="center" gap={4}>
+                      <Ionicons name="navigate-outline" size={13} color={isDark ? "#A5B4FC" : "#4338CA"} />
+                      <TamaguiText fontSize={11} fontWeight="700" color={isDark ? "#A5B4FC" : "#4338CA"}>
+                        Chỉ đường Map
+                      </TamaguiText>
+                    </XStack>
+                  </Button>
+                )}
+              </XStack>
+
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                {event.location}
+              </TamaguiText>
+
+              {event.coordinates ? (
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                 <YStack marginTop={4} gap={2}>
                   <TamaguiText
                     fontSize={12}
@@ -1159,7 +1502,10 @@ const handleShare = async () => {
                   >
                     Bán kính hợp lệ: {event.coordinates.radiusMeters || 300}m quanh địa điểm
                   </TamaguiText>
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                   {userDistance !== null && (
                     <TamaguiText
                       fontSize={12}
@@ -1177,6 +1523,7 @@ const handleShare = async () => {
                   )}
                 </YStack>
               ) : (
+<<<<<<< HEAD
 <<<<<<< HEAD
                 <Text style={[styles.coordsWarning, { color: isDark ? "#FCD34D" : "#D97706" }]}>
                   ℹ️ Điểm danh tự do (Không giới hạn vị trí)
@@ -1321,6 +1668,70 @@ const handleShare = async () => {
 =======
         </YStack>
 
+=======
+                <TamaguiText
+                  fontSize={12}
+                  fontStyle="italic"
+                  marginTop={4}
+                  color={isDark ? "#FCD34D" : "#D97706"}
+                >
+                  Điểm danh tự do (Không giới hạn vị trí)
+                </TamaguiText>
+              )}
+            </YStack>
+          </XStack>
+
+          <View style={[styles.divider, { backgroundColor: theme.borderSubtle }]} />
+
+          {/* Ban tổ chức */}
+          <XStack alignItems="flex-start">
+            <XStack width={28} alignItems="center" justifyContent="center" marginRight={10} marginTop={2}>
+              <Ionicons name="business-outline" size={20} color={theme.primary} />
+            </XStack>
+            <YStack flex={1}>
+              <Paragraph size="$2" color={theme.textTertiary} marginBottom={2}>
+                Ban tổ chức
+              </Paragraph>
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                {event.organizer || "Đoàn Thanh niên IUH"}
+              </TamaguiText>
+            </YStack>
+          </XStack>
+        </Card>
+
+        {/* Khối AI Tóm Tắt */}
+        <YStack marginBottom={16}>
+          <Button
+            height={48}
+            borderRadius={12}
+            backgroundColor="#7C3AED"
+            alignItems="center"
+            justifyContent="center"
+            marginBottom={12}
+            disabled={aiLoading}
+            onPress={handleSummarize}
+            pressStyle={{ opacity: 0.85 }}
+          >
+            {aiLoading ? (
+              <Spinner color="#FFFFFF" />
+            ) : (
+              <XStack alignItems="center" gap={8}>
+                <Ionicons name="sparkles" size={17} color="#FFFFFF" />
+                <TamaguiText fontSize={15} fontWeight="700" color="#FFFFFF">
+                  {aiSummary ? "Tóm tắt lại bằng AI" : "Tóm tắt sự kiện bằng AI"}
+                </TamaguiText>
+              </XStack>
+            )}
+          </Button>
+
+          {aiLoading && <AILoading />}
+          {!aiLoading && aiError && (
+            <AIError message={aiError} onRetry={handleSummarize} />
+          )}
+          {!aiLoading && aiSummary && <AISummary summary={aiSummary} />}
+        </YStack>
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         {/* Khối Mô Tả */}
         <Card
           backgroundColor={theme.surface}
@@ -1347,6 +1758,7 @@ const handleShare = async () => {
             {event.description || "Không có mô tả chi tiết cho sự kiện này."}
           </Paragraph>
         </Card>
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 
 <<<<<<< HEAD
@@ -1448,6 +1860,82 @@ const handleShare = async () => {
           </XStack>
         )}
 
+=======
+
+        {/* Banner thông báo trạng thái sự kiện (Hủy / Chưa mở / Đóng đăng ký / Đã kết thúc) */}
+        {(isCancelled || isPast || isUnpublished || (isRegClosed && !isRegistered)) && (
+          <XStack
+            alignItems="center"
+            backgroundColor={
+              isUnpublished
+                ? isDark ? "rgba(245,158,11,0.15)" : "#FEF3C7"
+                : isDark ? "rgba(239,68,68,0.15)" : "#FEF2F2"
+            }
+            borderColor={
+              isUnpublished
+                ? isDark ? "#F59E0B" : "#FDE68A"
+                : isDark ? "#F87171" : "#FECACA"
+            }
+            borderWidth={1}
+            borderRadius={14}
+            padding={14}
+            marginBottom={16}
+            gap={12}
+          >
+            <Ionicons
+              name={
+                isCancelled
+                  ? "ban-outline"
+                  : isUnpublished
+                  ? "alert-circle-outline"
+                  : isRegClosed
+                  ? "lock-closed-outline"
+                  : "time-outline"
+              }
+              size={26}
+              color={isUnpublished ? "#D97706" : "#DC2626"}
+            />
+            <YStack flex={1}>
+              <TamaguiText
+                fontSize={14}
+                fontWeight="700"
+                marginBottom={2}
+                color={
+                  isUnpublished
+                    ? isDark ? "#FCD34D" : "#92400E"
+                    : isDark ? "#FCA5A5" : "#991B1B"
+                }
+              >
+                {isCancelled
+                  ? "Sự kiện đã bị hủy"
+                  : isPast
+                  ? "Sự kiện đã kết thúc"
+                  : isUnpublished
+                  ? "Sự kiện chưa mở công khai"
+                  : "Đã đóng cổng đăng ký"}
+              </TamaguiText>
+              <Paragraph
+                size="$2"
+                lineHeight={18}
+                color={
+                  isUnpublished
+                    ? isDark ? "#FDE68A" : "#B45309"
+                    : isDark ? "#FCD5D5" : "#7F1D1D"
+                }
+              >
+                {isCancelled
+                  ? "Ban tổ chức đã hủy sự kiện này. Bạn không thể đăng ký hoặc điểm danh."
+                  : isPast
+                  ? "Sự kiện này đã kết thúc thời gian tổ chức. Bạn chỉ có thể xem lại thông tin lưu trữ và không thể đăng ký hoặc điểm danh được nữa."
+                  : isUnpublished
+                  ? "Sự kiện hiện đang ở trạng thái bản nháp hoặc chờ duyệt."
+                  : "Cổng đăng ký mới cho sự kiện này đã đóng. Sinh viên đã đăng ký chính thức vẫn có thể điểm danh theo lịch."}
+              </Paragraph>
+            </YStack>
+          </XStack>
+        )}
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         {/* Banner thông báo sinh viên đang ở trong Danh sách chờ (Waitlist) */}
         {existingReg?.status === "waitlist" && (
           <XStack
@@ -1588,6 +2076,7 @@ const handleShare = async () => {
             height={46}
             borderRadius={12}
             backgroundColor={isDark ? "rgba(37,99,235,0.15)" : "#EFF6FF"}
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
             onPress={handleShare}
             pressStyle={{ opacity: 0.85 }}
@@ -1653,10 +2142,41 @@ const handleShare = async () => {
             onPress={handleRegister}
             pressStyle={{ opacity: 0.85 }}
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+            onPress={handleShare}
+            pressStyle={{ opacity: 0.85 }}
+          >
+            <XStack alignItems="center" gap={8}>
+              <Ionicons name="share-social-outline" size={18} color={theme.primary} />
+              <TamaguiText fontSize={14} fontWeight="600" color={theme.primary}>
+                Chia sẻ sự kiện
+              </TamaguiText>
+            </XStack>
+          </Button>
+
+          {/* Nút Đăng Ký Tham Gia */}
+          <Button
+            height={50}
+            borderRadius={12}
+            backgroundColor={
+              cannotRegister
+                ? "#94A3B8"
+                : existingReg?.status === "waitlist"
+                ? "#F59E0B"
+                : isRegistered
+                ? "#10B981"
+                : theme.primary
+            }
+            opacity={actionLoading || cannotRegister ? 0.75 : 1}
+            disabled={actionLoading || isRegistered || cannotRegister}
+            onPress={handleRegister}
+            pressStyle={{ opacity: 0.85 }}
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           >
             {actionLoading ? (
               <Spinner color="#FFFFFF" />
             ) : (
+<<<<<<< HEAD
 <<<<<<< HEAD
               <Text
 <<<<<<< HEAD
@@ -1689,11 +2209,14 @@ const handleShare = async () => {
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
               </Text>
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
               <XStack alignItems="center" gap={8}>
                 <Ionicons
                   name={
                     cannotRegister
                       ? "close-circle-outline"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -1706,6 +2229,13 @@ const handleShare = async () => {
                       : existingReg?.status === "waitlist"
                       ? "hourglass-outline"
 >>>>>>> 83e603c (Tam fix 1 vai cho)
+=======
+                      : existingReg?.status === "checked_in" ||
+                        existingReg?.status === "completed"
+                      ? "checkmark-done-circle"
+                      : existingReg?.status === "waitlist"
+                      ? "hourglass-outline"
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                       : isRegistered
                       ? "checkmark-circle"
                       : "clipboard-outline"
@@ -1720,6 +2250,7 @@ const handleShare = async () => {
                     ? "Chưa mở đăng ký"
                     : isPast
                     ? "Đã hết hạn đăng ký"
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 =======
@@ -1906,6 +2437,122 @@ const handleShare = async () => {
             </XStack>
           </Button>
 
+=======
+                    : existingReg?.status === "checked_in" ||
+                      existingReg?.status === "completed"
+                    ? "Đã check-in"
+                    : existingReg?.status === "waitlist"
+                    ? "Đang ở danh sách chờ"
+                    : isRegistered
+                    ? "Đã đăng ký"
+                    : isRegClosed
+                    ? "Đã đóng cổng đăng ký"
+                    : "Đăng ký tham gia"}
+                </TamaguiText>
+              </XStack>
+            )}
+          </Button>
+
+          {/* Nút Hủy Đăng Ký (khi đang ở danh sách chính thức/chờ & chưa điểm danh) */}
+          {(existingReg?.status === "registered" ||
+            existingReg?.status === "waitlist") &&
+            !isPast &&
+            !isCancelled && (
+              <Button
+                height={44}
+                borderRadius={12}
+                borderWidth={1}
+                backgroundColor={
+                  isPastCancelDeadline
+                    ? theme.surfaceSecondary
+                    : isDark
+                    ? "rgba(239,68,68,0.12)"
+                    : "#FEF2F2"
+                }
+                borderColor={isPastCancelDeadline ? theme.border : "#EF4444"}
+                opacity={actionLoading || isPastCancelDeadline ? 0.6 : 1}
+                disabled={actionLoading || isPastCancelDeadline}
+                onPress={handleCancelRegistration}
+                pressStyle={{ opacity: 0.85 }}
+              >
+                <XStack alignItems="center" gap={8}>
+                  <Ionicons
+                    name="close-circle-outline"
+                    size={18}
+                    color={isPastCancelDeadline ? theme.textTertiary : "#EF4444"}
+                  />
+                  <TamaguiText
+                    fontSize={14}
+                    fontWeight="600"
+                    color={isPastCancelDeadline ? theme.textTertiary : "#EF4444"}
+                  >
+                    {isPastCancelDeadline
+                      ? "Đã quá hạn hủy đăng ký"
+                      : existingReg.status === "waitlist"
+                      ? "Rời danh sách chờ"
+                      : "Hủy đăng ký tham gia"}
+                  </TamaguiText>
+                </XStack>
+              </Button>
+            )}
+
+          {/* Nút Quét QR Điểm Danh */}
+          <Button
+            height={48}
+            borderRadius={12}
+            borderWidth={1}
+            backgroundColor={theme.surface}
+            borderColor={theme.border}
+            opacity={cannotCheckIn ? 0.6 : 1}
+            disabled={cannotCheckIn}
+            onPress={() => {
+              if (cannotCheckIn) {
+                Alert.alert(
+                  "Không thể điểm danh",
+                  isCancelled
+                    ? "Sự kiện này đã bị hủy."
+                    : isUnpublished
+                    ? "Sự kiện chưa được mở chính thức."
+                    : "Sự kiện này đã kết thúc thời gian diễn ra. Cổng điểm danh đã đóng.",
+                );
+                return;
+              }
+              const targetEventId = event._id || (event as any).id || eventId;
+              try {
+                navigation.navigate("CheckIn", {
+                  screen: "QRScanner",
+                  params: {
+                    eventId: targetEventId,
+                  },
+                } as any);
+              } catch {
+                navigate("CheckIn", {
+                  screen: "QRScanner",
+                  params: {
+                    eventId: targetEventId,
+                  },
+                });
+              }
+            }}
+            pressStyle={{ opacity: 0.85 }}
+          >
+            <XStack alignItems="center" gap={8}>
+              <Ionicons
+                name={cannotCheckIn ? "lock-closed-outline" : "qr-code-outline"}
+                size={18}
+                color={cannotCheckIn ? "#94A3B8" : theme.textPrimary}
+              />
+              <TamaguiText
+                fontSize={14}
+                fontWeight="600"
+                color={cannotCheckIn ? "#94A3B8" : theme.textPrimary}
+              >
+                {cannotCheckIn ? "Cổng điểm danh đã đóng" : "Quét QR Điểm Danh Ngay"}
+              </TamaguiText>
+            </XStack>
+          </Button>
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           {/* Nút Gửi Phản Hồi (Sau khi đã điểm danh) */}
           {(existingReg?.status === "checked_in" ||
             existingReg?.status === "completed") && (
@@ -1924,6 +2571,7 @@ const handleShare = async () => {
               }
               pressStyle={{ opacity: 0.85 }}
             >
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
               <Text
@@ -1965,6 +2613,21 @@ const handleShare = async () => {
             </Button>
           )}
 
+=======
+              <XStack alignItems="center" gap={8}>
+                <Ionicons
+                  name="chatbubble-ellipses-outline"
+                  size={18}
+                  color={theme.primary}
+                />
+                <TamaguiText fontSize={14} fontWeight="600" color={theme.textPrimary}>
+                  Gửi phản hồi sự kiện
+                </TamaguiText>
+              </XStack>
+            </Button>
+          )}
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           {/* Bảng điều khiển quản trị Admin */}
           {currentUser?.role === "admin" && (
             <Card
@@ -1988,7 +2651,10 @@ const handleShare = async () => {
                   height={40}
                   borderRadius={10}
                   backgroundColor={event.isHidden ? "#10B981" : "#F59E0B"}
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                   onPress={async () => {
                     const targetId = event._id || (event as any).id || eventId;
                     if (!targetId) return;
@@ -2046,6 +2712,7 @@ const handleShare = async () => {
                           onPress: async () => {
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
                             await deleteEvent(event._id);
 =======
                             await deleteEvent(targetId);
@@ -2056,6 +2723,8 @@ const handleShare = async () => {
                             } else {
                               navigate("Home");
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                             try {
                               await deleteEvent(targetId);
                               Alert.alert("Đã xóa", "Sự kiện đã được xóa thành công.");
@@ -2071,7 +2740,10 @@ const handleShare = async () => {
                                   err?.message ||
                                   "Không thể xóa sự kiện.",
                               );
+<<<<<<< HEAD
 >>>>>>> 40ca2f1 (A)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                             }
                           },
                         },
@@ -2120,6 +2792,7 @@ const styles = StyleSheet.create({
     height: 1,
     marginVertical: 12,
   },
+<<<<<<< HEAD
 <<<<<<< HEAD
 
   aiSection: {
@@ -2440,3 +3113,6 @@ const styles = StyleSheet.create({
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 });
 >>>>>>> 5723ff0 (AI event)
+=======
+});
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103

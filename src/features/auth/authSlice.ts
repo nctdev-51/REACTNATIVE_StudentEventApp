@@ -2,9 +2,13 @@ import { createSlice, createAsyncThunk, PayloadAction } from '@reduxjs/toolkit';
 import { User, AuthCredentials, RegisterPayload } from '../../types';
 import api from '../../services/api';
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 import { loadAuthSession } from '../../services/authSession';
 >>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
+=======
+import { loadAuthSession } from '../../services/authSession';
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
 // ─── State ──────────────────────────────────────────────────────────────────
 
@@ -37,10 +41,14 @@ export const hydrateSession = createAsyncThunk(
 /**
  * Đăng nhập: POST /auth/login → { token, user }
 <<<<<<< HEAD
+<<<<<<< HEAD
  * Nếu backend chưa có /auth, tạm fallback GET /users?email=...
 =======
  * Credentials are always validated by the configured API (or explicit mock mode).
 >>>>>>> 92595a1 (feat(auth): implement session hydration and async storage for authentication)
+=======
+ * Credentials are always validated by the configured API (or explicit mock mode).
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
  */
 export const loginUser = createAsyncThunk(
   'auth/login',

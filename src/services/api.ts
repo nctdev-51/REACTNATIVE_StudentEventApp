@@ -23,8 +23,11 @@ import { mergeRegistrations, entityId } from '../utils/registrations';
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 const debuggerHost = Constants.expoConfig?.hostUri;
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 // `hostUri` is supplied by Expo Go only while developing.  In an Expo tunnel
 // it names the Metro tunnel, not this API, so it must never be used as an API
 // host.  SDK 58 also exposes it through expoGoConfig on some Expo Go builds.
@@ -33,7 +36,10 @@ const expoConstants = Constants as typeof Constants & {
 };
 const debuggerHost =
   Constants.expoConfig?.hostUri ?? expoConstants.expoGoConfig?.debuggerHost;
+<<<<<<< HEAD
 >>>>>>> d3ca778 (Tata)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 const isTunnel =
   debuggerHost?.includes("ngrok") || debuggerHost?.includes("exp.direct");
 const autoDevIp = !isTunnel && debuggerHost ? debuggerHost.split(":")[0] : null;
@@ -1710,6 +1716,119 @@ export default {
   updateNotificationPreferences,
   getCalendarIcsUrl,
   getGoogleCalendarAddUrl,
+<<<<<<< HEAD
+=======
+};
+
+function formatViDateTime(dateStr?: string): string {
+  if (!dateStr) return "";
+  try {
+    const d = new Date(dateStr);
+    if (isNaN(d.getTime())) return "";
+    const hours = String(d.getHours()).padStart(2, "0");
+    const minutes = String(d.getMinutes()).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    const month = String(d.getMonth() + 1).padStart(2, "0");
+    const year = d.getFullYear();
+    return `${hours}:${minutes} ngày ${day}/${month}/${year}`;
+  } catch {
+    return "";
+  }
+}
+
+export const generateLocalAISummary = (event?: Partial<Event> | null): AISummary => {
+  const start = formatViDateTime(event?.time?.start);
+  const end = formatViDateTime(event?.time?.end);
+  let whenText = "Thời gian chi tiết xem tại thông tin sự kiện";
+  if (start && end) {
+    whenText = `${start} — ${end}`;
+  } else if (start) {
+    whenText = `Bắt đầu lúc ${start}`;
+  }
+
+  let whatText = "";
+  if (event?.description && event.description.trim().length > 10) {
+    const clean = event.description.trim().replace(/\s+/g, " ");
+    whatText = clean.length > 250 ? `${clean.slice(0, 247)}...` : clean;
+  } else {
+    whatText = `Sự kiện "${event?.title || "Sự kiện sinh viên"}" do ${
+      event?.organizer || event?.faculty || "Trường Đại học Công nghiệp TP.HCM (IUH)"
+    } tổ chức thuộc danh mục ${event?.category || "hoạt động phong trào"}.`;
+  }
+
+  const whereText =
+    event?.location || "Khuôn viên Trường Đại học Công nghiệp TP.HCM (IUH)";
+
+  const points = event?.trainingPoints
+    ? `+${event.trainingPoints} điểm rèn luyện (ĐRL)`
+    : "Ghi nhận tham gia tích cực";
+  const benefitsText = `${points}, trau dồi kiến thức thực tế, nâng cao kỹ năng mềm và mở rộng cơ hội kết nối cộng đồng sinh viên IUH.`;
+
+  return {
+    what: whatText,
+    when: whenText,
+    where: whereText,
+    benefits: benefitsText,
+  };
+};
+
+// Bộ nhớ cache riêng biệt cho AI Summary (tránh ghi đè trực tiếp lên frozen Redux object)
+const aiSummaryCache = new Map<string, AISummary>();
+
+// AI Summary
+export const summarizeEvent = async (
+  eventId: string,
+  eventData?: Partial<Event> | null
+): Promise<AISummary> => {
+  if (eventId && aiSummaryCache.has(eventId)) {
+    return aiSummaryCache.get(eventId)!;
+  }
+
+  const resolvedEvent =
+    eventData ||
+    inMemoryEvents.find(
+      (e) => e._id === eventId || (e as any).id === eventId
+    ) ||
+    eventsData.find(
+      (e) => e._id === eventId || (e as any).id === eventId
+    );
+
+  // 1. Thử gọi backend API để lấy tóm tắt từ Gemini AI
+  try {
+    const res = await apiClient.post(
+      `/events/${eventId}/summarize`,
+      { event: resolvedEvent },
+      { timeout: 8000 }
+    );
+    if (res.data?.data && res.data.data.what) {
+      const summary: AISummary = res.data.data;
+      if (eventId) {
+        aiSummaryCache.set(eventId, summary);
+      }
+      return summary;
+    }
+  } catch (err: any) {
+    console.warn(
+      "[AI] Gọi backend tóm tắt thất bại hoặc offline, tự động kích hoạt bộ tóm tắt thông minh trên máy:",
+      err?.message || err
+    );
+  }
+
+  // 2. Dự phòng 1: Nếu sự kiện đã có sẵn aiSummary
+  if (resolvedEvent?.aiSummary?.what) {
+    if (eventId) {
+      aiSummaryCache.set(eventId, resolvedEvent.aiSummary);
+    }
+    return resolvedEvent.aiSummary;
+  }
+
+  // 3. Dự phòng 2: Tự động tổng hợp tóm tắt chất lượng cao từ metadata sự kiện
+  const localSummary = generateLocalAISummary(resolvedEvent);
+  if (eventId) {
+    aiSummaryCache.set(eventId, localSummary);
+  }
+  return localSummary;
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 };
 
 <<<<<<< HEAD

@@ -5,6 +5,7 @@
       "name": "Nguyễn Văn A",
       "email": "sv01@iuh.edu.vn",
       "password": "$2a$12$E4bslbFMrY9HrlhZgRpFC.6fbC0t7naJs6by/0729GEQK988apiPG",
+<<<<<<< HEAD
       "role": "student",
       "studentId": "SV01",
       "faculty": "Khoa Công nghệ thông tin",
@@ -20,6 +21,13 @@
       "role": "student",
       "phone": "0901234567",
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
+=======
+      "role": "student",
+      "studentId": "SV01",
+      "faculty": "Khoa Công nghệ thông tin",
+      "point": 38,
+      "phone": null,
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       "avatar": "https://i.pravatar.cc/300?img=12",
       "avatarUrl": "https://i.pravatar.cc/300?img=12",
       "status": "active",
@@ -405,16 +413,20 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
       "checkInTime": null,
+<<<<<<< HEAD
 =======
       "checkInTime": "2026-10-15T08:30:00.000Z",
 >>>>>>> e99db1b (feat: cap nhat font trang ca nhan & feedback, sua hien thi QR admin va tinh dong diem ren luyen tich luy)
 =======
       "checkInTime": null,
 >>>>>>> 9b1bdab (fix: chi dem su kien checked_in va tach biet danh gia dung theo tung sinh vien)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       "checkOutTime": null,
       "createdAt": "2026-11-06T17:45:43.736Z",
       "updatedAt": "2026-11-06T17:45:43.736Z",
       "id": "66f1b3010000000000000001"
+<<<<<<< HEAD
 =======
       "checkInTime": "2026-11-06T16:18:59.074Z",
       "checkOutTime": null,
@@ -423,6 +435,8 @@
         "longitude": 106.6876
       }
 >>>>>>> 42418ae (feat: enhance event registration handling and UI components for better user experience)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     },
     {
       "_id": "66f1b3020000000000000002",
@@ -448,13 +462,21 @@
       "registeredAt": "2026-08-01T09:30:00.000Z",
       "checkInTime": "2026-08-10T08:15:30.000Z",
 <<<<<<< HEAD
+<<<<<<< HEAD
       "checkOutTime": "2026-08-20T16:55:00.000Z"
+=======
+      "checkOutTime": "2026-08-20T16:55:00.000Z",
+      "createdAt": "2026-11-06T17:45:43.736Z",
+      "updatedAt": "2026-11-06T17:45:43.736Z",
+      "id": "66f1b3030000000000000003"
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     },
     {
-      "eventId": "66f1e2020000000000000002",
+      "eventId": "evt_1794148384806",
       "userId": "66f1a1010000000000000001",
       "participantRole": "attendee",
       "status": "registered",
+<<<<<<< HEAD
 <<<<<<< HEAD
       "id": "6ae03e31060e337a59925c69",
       "_id": "6ae03e31060e337a59925c69",
@@ -514,6 +536,8 @@
       "userId": "66f1a1010000000000000001",
       "participantRole": "attendee",
       "status": "registered",
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       "id": "6af08843d9f7ff3b27d510b6",
       "_id": "6af08843d9f7ff3b27d510b6",
       "createdAt": "2026-11-08T14:33:39.426Z"
@@ -527,7 +551,10 @@
       "id": "6af0892592604a208de2cf56",
       "_id": "6af0892592604a208de2cf56",
       "createdAt": "2026-11-08T14:37:25.521Z"
+<<<<<<< HEAD
 >>>>>>> d3ca778 (Tata)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     }
   ],
   "feedbacks": [

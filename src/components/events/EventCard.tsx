@@ -74,6 +74,7 @@ export default function EventCard({ event }: EventCardProps) {
         </Text>
 
 <<<<<<< HEAD
+<<<<<<< HEAD
         <Text style={[styles.info, { color: theme.textSecondary }]}>
           📅 {formatDate(event.time?.start)}
         </Text>
@@ -105,6 +106,19 @@ export default function EventCard({ event }: EventCardProps) {
           </Text>
         </View>
 
+=======
+        <View style={styles.infoRow}>
+          <Ionicons
+            name="calendar-outline"
+            size={14}
+            color={theme.textSecondary}
+          />
+          <Text style={[styles.info, { color: theme.textSecondary }]}>
+            {formatEventDateTime(event.time?.start, event.time?.end)}
+          </Text>
+        </View>
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         <View style={styles.infoRow}>
           <Ionicons
             name="location-outline"
@@ -117,9 +131,13 @@ export default function EventCard({ event }: EventCardProps) {
           >
             {event.location || "Đang cập nhật địa điểm"}
           </Text>
+<<<<<<< HEAD
 >>>>>>> d397c6d (update home and event card)
         </View>
 >>>>>>> 2fec513 (feat: enhance event registration handling and UI components for better user experience)
+=======
+        </View>
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
         <View style={styles.bottomRow}>
           <View

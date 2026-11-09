@@ -1,5 +1,6 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 import React, { useState, useEffect, useCallback } from 'react';
 =======
 import React, { useState, useEffect, useCallback } from "react";
@@ -7,6 +8,9 @@ import React, { useState, useEffect, useCallback } from "react";
 =======
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 >>>>>>> 9b1bdab (fix: chi dem su kien checked_in va tach biet danh gia dung theo tung sinh vien)
+=======
+import React, { useState, useEffect, useCallback, useMemo } from "react";
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import {
   Image,
   ScrollView,
@@ -14,6 +18,7 @@ import {
   Platform,
   StatusBar,
   Alert,
+<<<<<<< HEAD
 <<<<<<< HEAD
   Modal,
   KeyboardAvoidingView,
@@ -33,6 +38,11 @@ import LeftNavbarButton from '../../components/navigation/LeftNavbarButton';
   Text,
   TouchableOpacity,
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+  View,
+  Text,
+  TouchableOpacity,
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
@@ -46,6 +56,7 @@ import { fetchMyRegistrations } from "../../features/check-in/registrationsSlice
 import api, { setAuthToken } from "../../services/api";
 import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
 import { useAppTheme } from "../../theme";
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 import { getDefaultDbUser } from "../../data/dbService";
@@ -67,6 +78,8 @@ import NotificationPreferencesModal from "../../components/notifications/Notific
 >>>>>>> 83e603c (Tam fix 1 vai cho)
 =======
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
 import ActivityStatItem from "../../components/profile/ActivityStatItem";
 import MenuItem from "../../components/profile/MenuItem";
@@ -88,9 +101,12 @@ export interface UserProfile {
   studentId: string;
   faculty: string;
   avatarUrl?: string;
-  stats: ActivityStats;
+  email?: string;
+  phone?: string;
+  stats?: ActivityStats;
 }
 
+<<<<<<< HEAD
 <<<<<<< HEAD
 export type TabKey = 'home' | 'schedule' | 'checkin' | 'profile';
 
@@ -719,10 +735,25 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
   const navigation =
     useNavigation<NativeStackNavigationProp<MainStackParamList>>();
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+export interface ProfileScreenProps {
+  profile?: UserProfile;
+}
+
+// ---------------------------------------------------------------------------
+// ProfileScreen Component
+// ---------------------------------------------------------------------------
+
+export default function ProfileScreen({ profile }: ProfileScreenProps) {
+  const navigation =
+    useNavigation<NativeStackNavigationProp<MainStackParamList>>();
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   const dispatch = useAppDispatch();
+  const { theme, isDark, mode, toggleTheme } = useAppTheme();
 
   // 1. LẤY THÔNG TIN NGƯỜI DÙNG TỪ REDUX (DỮ LIỆU ĐỒNG BỘ TỪ MONGODB KHI LOGIN)
   const currentUser = useAppSelector((state) => state.auth.user);
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
   const myRegistrations = useAppSelector((state) => state.registrations.myRegistrations);
@@ -785,6 +816,34 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 
   const eventsAttendedCount = attendedRegistrations.length;
 
+=======
+  const currentUserId = currentUser?._id;
+
+  // 2. LẤY DANH SÁCH ĐĂNG KÝ VÀ SỰ KIỆN TỪ REDUX
+  const myRegistrations = useAppSelector(
+    (state) => state.registrations.myRegistrations,
+  );
+  const eventsList = useAppSelector((state) => state.events.list);
+
+  const [imageError, setImageError] = useState<boolean>(false);
+  const [editModalVisible, setEditModalVisible] = useState(false);
+  const [logoutModalVisible, setLogoutModalVisible] = useState(false);
+
+  // 3. TÍNH TOÁN CHỈ SỐ SỰ KIỆN ĐÃ THAM GIA THÀNH CÔNG (CỦA ĐÚNG SINH VIÊN ĐANG ĐĂNG NHẬP)
+  // Chỉ lấy đăng ký của đúng sinh viên hiện tại có trạng thái checked_in
+  const attendedRegistrations = useMemo(() => {
+    return myRegistrations.filter((r) => {
+      const regUserId = typeof r.userId === "object" && r.userId !== null
+        ? (r.userId as any)._id || (r.userId as any).id
+        : r.userId;
+      const isOwner = !regUserId || !currentUserId || String(regUserId) === String(currentUserId);
+      return isOwner && r.status === "checked_in";
+    });
+  }, [myRegistrations, currentUserId]);
+
+  const eventsAttendedCount = attendedRegistrations.length;
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   // Tập hợp ID các sự kiện sinh viên này đã tham gia thành công
   const attendedEventIdSet = useMemo(() => {
     return new Set(
@@ -796,6 +855,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
         .filter(Boolean),
     );
   }, [attendedRegistrations]);
+<<<<<<< HEAD
 
   // 4. ĐẾM SỐ LƯỢNG ĐÁNH GIÁ CỦA CHÍNH SINH VIÊN NÀY CHO CÁC SỰ KIỆN ĐÃ THAM GIA (checked_in)
   const [personalReviewsCount, setPersonalReviewsCount] = useState<number>(0);
@@ -951,14 +1011,19 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 >>>>>>> e79c48e (abc)
     setEditModalVisible(true);
   };
+=======
 
-  const handleSaveProfile = async () => {
-    if (!editFullName.trim()) {
-      Alert.alert('Lỗi', 'Họ tên không được để trống.');
+  // 4. ĐẾM SỐ LƯỢNG ĐÁNH GIÁ CỦA CHÍNH SINH VIÊN NÀY CHO CÁC SỰ KIỆN ĐÃ THAM GIA (checked_in)
+  const [personalReviewsCount, setPersonalReviewsCount] = useState<number>(0);
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
+
+  const loadPersonalReviews = useCallback(async () => {
+    if (!currentUserId) {
+      setPersonalReviewsCount(0);
       return;
     }
-    setSavingProfile(true);
     try {
+<<<<<<< HEAD
       await api.updateProfile({
         fullName: editFullName.trim(),
         phone: editPhone.trim(),
@@ -1101,6 +1166,120 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
     }
   };
 
+=======
+      // Chỉ lấy đúng đánh giá của sinh viên này
+      const userFeedbacks = await api.getFeedbacksByUser(currentUserId);
+      if (Array.isArray(userFeedbacks)) {
+        // CHỈ ĐẾM những đánh giá thuộc sự kiện sinh viên này ĐÃ THAM GIA THÀNH CÔNG (checked_in)
+        const validAttendedReviews = userFeedbacks.filter((f: any) => {
+          const fUser = f.userId;
+          const fUserId = typeof fUser === "object" && fUser !== null ? fUser._id || fUser.id : fUser;
+          if (fUserId && String(fUserId) !== String(currentUserId)) return false;
+
+          const e = f.eventId;
+          const fEventId = String(typeof e === "object" && e !== null ? e._id || e.id : e);
+          return attendedEventIdSet.has(fEventId);
+        });
+
+        const reviewedEventIds = new Set(
+          validAttendedReviews
+            .map((f: any) => {
+              const e = f.eventId;
+              return String(typeof e === "object" && e !== null ? e._id || e.id : e);
+            })
+            .filter(Boolean),
+        );
+        setPersonalReviewsCount(reviewedEventIds.size);
+      } else {
+        setPersonalReviewsCount(0);
+      }
+    } catch (err) {
+      console.warn("[ProfileScreen] Không thể tải số lượt đánh giá:", err);
+      setPersonalReviewsCount(0);
+    }
+  }, [currentUserId, attendedEventIdSet]);
+
+  // Đồng bộ lại danh sách đăng ký và số lượt đánh giá khi vào màn hình
+  useEffect(() => {
+    if (currentUserId) {
+      dispatch(fetchMyRegistrations(currentUserId));
+    }
+    loadPersonalReviews();
+  }, [dispatch, currentUserId, loadPersonalReviews]);
+
+  useFocusEffect(
+    useCallback(() => {
+      loadPersonalReviews();
+    }, [loadPersonalReviews]),
+  );
+
+  // 5. THÔNG TIN CÁ NHÂN LẤY TRỰC TIẾP TỪ MONGODB (state.auth.user)
+  const displayName =
+    currentUser?.fullName || profile?.displayName || "Sinh viên IUH";
+  const studentId =
+    currentUser?.studentId || profile?.studentId || "20000001";
+  const faculty =
+    currentUser?.faculty || profile?.faculty || "Khoa Công nghệ thông tin";
+  const avatarUrl =
+    currentUser?.avatarUrl || profile?.avatarUrl;
+  const email =
+    currentUser?.email || profile?.email || "student@iuh.edu.vn";
+  const phone =
+    currentUser?.phone || profile?.phone || "";
+
+  // - Chỉ số 2: Điểm rèn luyện tích lũy từ các sự kiện đã tham gia hoặc điểm lưu trên MongoDB
+  const calculatedPointsFromEvents = attendedRegistrations.reduce((sum, r) => {
+    const eventObj: any = r.eventId;
+    let pts = 0;
+    if (typeof eventObj === "object" && eventObj !== null) {
+      pts = Number(eventObj.trainingPoints) || 0;
+    } else if (typeof eventObj === "string") {
+      const found = eventsList.find((e: any) => (e._id || e.id) === eventObj);
+      pts = Number(found?.trainingPoints) || 0;
+    }
+    return sum + pts;
+  }, 0);
+
+  const pointsAccumulated =
+    calculatedPointsFromEvents > 0
+      ? calculatedPointsFromEvents
+      : (currentUser?.point ?? 0);
+
+  // 6. CẬP NHẬT THÔNG TIN CÁ NHÂN LÊN MONGODB QUA API
+  const handleSaveProfile = async (data: {
+    fullName: string;
+    phone: string;
+    faculty: string;
+  }) => {
+    await api.updateProfile(data);
+    dispatch(updateUser(data));
+    Alert.alert("Thành công", "Thông tin cá nhân đã được lưu thành công.");
+  };
+
+  // 7. THỰC HIỆN ĐĂNG XUẤT TÀI KHOẢN
+  const confirmLogout = async () => {
+    setLogoutModalVisible(false);
+    try {
+      setAuthToken(null);
+    } catch {
+      // ignore
+    }
+    dispatch(logout());
+    try {
+      await api.logout();
+    } catch {
+      // Bỏ qua lỗi kết nối khi đăng xuất
+    }
+  };
+
+  const switchToAdmin = async () => {
+    const result = await dispatch(switchTestAccount("admin"));
+    if (switchTestAccount.rejected.match(result)) {
+      Alert.alert("Không thể chuyển tài khoản", result.payload as string);
+    }
+  };
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   return (
     <SafeAreaView
       style={[styles.safe, { backgroundColor: theme.background }]}
@@ -1114,13 +1293,32 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
       >
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         {/* ── Top row với nút Left Navbar (☰) & Tùy chọn ──────────────────── */}
         <View style={styles.topRow}>
           <LeftNavbarButton />
           <View style={{ flex: 1 }} />
+=======
+        {/* Top Header */}
+        <View style={styles.headerRow}>
+          <View style={styles.headerLeft}>
+            <LeftNavbarButton />
+            <Text style={[styles.headerTitle, { color: theme.textPrimary }]}>
+              Hồ sơ cá nhân
+            </Text>
+          </View>
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           <TouchableOpacity
-            style={styles.optionsButton}
+            style={[
+              styles.moreButton,
+              {
+                backgroundColor: theme.surface,
+                borderColor: theme.border,
+              },
+            ]}
             activeOpacity={0.7}
+<<<<<<< HEAD
 <<<<<<< HEAD
 =======
 =======
@@ -1167,18 +1365,31 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
             ]}
             activeOpacity={0.7}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             onPress={() => {
               Alert.alert(
                 "Thông tin tài khoản",
                 `Người dùng hiện tại: ${displayName}\nMSSV: ${studentId}\nKhoa: ${faculty}\nĐiểm rèn luyện: ${pointsAccumulated} đ\nChế độ màu: ${mode}`,
               );
             }}
+<<<<<<< HEAD
 >>>>>>> c4f94b6 (Refactor check-in screens to enhance UI and UX with theme support)
             accessibilityRole="button"
             accessibilityLabel="Tùy chọn khác"
           >
 <<<<<<< HEAD
             <Text style={styles.optionsDots}>•••</Text>
+=======
+            accessibilityRole="button"
+            accessibilityLabel="Tùy chọn khác"
+          >
+            <Ionicons
+              name="ellipsis-horizontal"
+              size={18}
+              color={theme.textSecondary}
+            />
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           </TouchableOpacity>
         </View>
 =======
@@ -1201,13 +1412,14 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           {avatarUrl && !imageError ? (
             <Image
               source={{ uri: avatarUrl }}
-              style={styles.avatarImage}
+              style={[styles.avatarImage, { borderColor: theme.surface }]}
               resizeMode="cover"
               onError={() => setImageError(true)}
               accessible
               accessibilityLabel={`Ảnh đại diện của ${displayName}`}
             />
           ) : (
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
             <View style={styles.avatarFallback}>
@@ -1226,6 +1438,8 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
               <TamaguiText fontSize={36} fontWeight="700" color="#FFFFFF">
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             <View
               style={[
                 styles.avatarFallback,
@@ -1236,7 +1450,10 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
               ]}
             >
               <Text style={styles.avatarFallbackText}>
+<<<<<<< HEAD
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
                 {displayName.charAt(0).toUpperCase()}
               </Text>
             </View>
@@ -1245,31 +1462,75 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
         {/* ── Student info ─────────────────────────────────────────────────── */}
 <<<<<<< HEAD
         <Text style={styles.displayName}>{displayName}</Text>
         <Text style={styles.studentId}>MSSV: {studentId}</Text>
         <Text style={styles.faculty}>{faculty}</Text>
+=======
+        {/* Thông tin sinh viên */}
+        <Text style={[styles.nameText, { color: theme.textPrimary }]}>
+          {displayName}
+        </Text>
+        <Text style={[styles.subText, { color: theme.textSecondary }]}>
+          MSSV: {studentId}
+        </Text>
+        <Text
+          style={[
+            styles.subText,
+            styles.facultyText,
+            { color: theme.textSecondary },
+          ]}
+        >
+          {faculty}
+        </Text>
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
-        {/* ── Activity stats card ─────────────────────────────────────────── */}
-        <View style={styles.statsCard}>
-          <ActivityStatItem
-            value={eventsAttendedCount}
-            label="Sự kiện tham gia"
-          />
-          <ActivityStatItem
-            value={pointsAccumulated}
-            label="Điểm tích lũy"
-          />
-          <ActivityStatItem
-            value={reviewsCount}
-            label="Đánh giá"
-          />
+        {/* 3 Thẻ thống kê hoạt động */}
+        <View
+          style={[
+            styles.statsCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
+          <View style={styles.statsRow}>
+            <ActivityStatItem
+              value={eventsAttendedCount}
+              label="Sự kiện đã tham gia"
+              accentColor={theme.primary}
+              labelColor={theme.textSecondary}
+            />
+            <ActivityStatItem
+              value={pointsAccumulated}
+              label="Điểm tích lũy"
+              accentColor={theme.primary}
+              labelColor={theme.textSecondary}
+            />
+            <ActivityStatItem
+              value={personalReviewsCount}
+              label="Đã đánh giá"
+              accentColor={theme.primary}
+              labelColor={theme.textSecondary}
+            />
+          </View>
         </View>
 
-        {/* ── Menu list ───────────────────────────────────────────────────── */}
-        <View style={styles.menuCard}>
+        {/* Menu điều hướng */}
+        <View
+          style={[
+            styles.menuCard,
+            {
+              backgroundColor: theme.surface,
+              borderColor: theme.border,
+            },
+          ]}
+        >
           <MenuItem
+<<<<<<< HEAD
             icon={<CalendarIcon color="#334155" />}
 =======
         <Heading
@@ -1348,6 +1609,8 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 <<<<<<< HEAD
 =======
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             icon={
               <Ionicons
                 name="calendar-outline"
@@ -1356,24 +1619,48 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
               />
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
 =======
             icon={<Ionicons name="calendar-outline" size={20} color={theme.textSecondary} />}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 =======
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             label="Lịch sử tham gia"
-            onPress={() => navigation.navigate('MySchedule')}
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => navigation.navigate("MySchedule")}
           />
+
           <MenuItem
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
             icon={<UserOutlineIcon color="#334155" />}
+=======
+            icon={
+              <Ionicons
+                name="person-outline"
+                size={20}
+                color={theme.textSecondary}
+              />
+            }
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             label="Thông tin cá nhân"
-            onPress={handleOpenEditProfile}
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            onPress={() => setEditModalVisible(true)}
           />
+
           <MenuItem
+<<<<<<< HEAD
 <<<<<<< HEAD
             icon={<SettingsCogIcon color="#334155" />}
             label="Cài đặt"
@@ -1398,10 +1685,15 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
             label="Thông tin cá nhân"
+=======
+            icon={<Ionicons name="mail-outline" size={20} color={theme.textSecondary} />}
+            label="Đổi email"
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             textColor={theme.textPrimary}
             bgColor={theme.surface}
             borderSubtle={theme.borderSubtle}
             chevronColor={theme.textTertiary}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
             onPress={() =>
@@ -1417,8 +1709,13 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
             onPress={() => setEditModalVisible(true)}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+            onPress={() => navigation.navigate("ChangeEmail")}
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           />
+
           <MenuItem
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
@@ -1433,10 +1730,21 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 =======
             icon={<Ionicons name="mail-outline" size={20} color={theme.textSecondary} />}
             label="Đổi email"
+=======
+            icon={
+              <Ionicons
+                name="star-outline"
+                size={20}
+                color={theme.textSecondary}
+              />
+            }
+            label="Góp ý & Đánh giá sự kiện"
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             textColor={theme.textPrimary}
             bgColor={theme.surface}
             borderSubtle={theme.borderSubtle}
             chevronColor={theme.textTertiary}
+<<<<<<< HEAD
             onPress={() => navigation.navigate("ChangeEmail")}
           />
 
@@ -1486,6 +1794,12 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           <MenuItem
 =======
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+            onPress={() => navigation.navigate("Feedback")}
+          />
+
+          <MenuItem
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             icon={
               <Ionicons
                 name="settings-outline"
@@ -1494,11 +1808,14 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
               />
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
             icon={<Ionicons name="settings-outline" size={20} color={theme.textSecondary} />}
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
 =======
 >>>>>>> 9a0e146 (sua trang ca nhan va trang feedback)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             label="Cài đặt ứng dụng"
             textColor={theme.textPrimary}
             bgColor={theme.surface}
@@ -1510,6 +1827,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
                 "Ứng dụng Quản lý Sự kiện Sinh viên IUH v1.0.0",
               )
             }
+<<<<<<< HEAD
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
           />
 <<<<<<< HEAD
@@ -1554,6 +1872,40 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
             onPress={() => void switchToAdmin()}
           />
         </View>
+=======
+          />
+
+          <MenuItem
+            icon={
+              <Ionicons
+                name={isDark ? "sunny-outline" : "moon-outline"}
+                size={20}
+                color={theme.primary}
+              />
+            }
+            label="Đổi theme (Sáng / Tối)"
+            badge={mode}
+            badgeBg={theme.badgeBackground}
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            isLast={true}
+            onPress={toggleTheme}
+          />
+
+          <MenuItem
+            icon={<Ionicons name="shield-checkmark-outline" size={20} color="#7E22CE" />}
+            label="Chuyển nhanh sang Admin (demo)"
+            textColor={theme.textPrimary}
+            bgColor={theme.surface}
+            borderSubtle={theme.borderSubtle}
+            chevronColor={theme.textTertiary}
+            isLast={true}
+            onPress={() => void switchToAdmin()}
+          />
+        </View>
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
         {/* Nút Đăng xuất */}
         <TouchableOpacity
@@ -1574,6 +1926,7 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
             <Text style={[styles.logoutText, { color: theme.danger }]}>
               Đăng xuất tài khoản
 <<<<<<< HEAD
+<<<<<<< HEAD
             </TamaguiText>
           </XStack>
         </Button>
@@ -1583,11 +1936,17 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
           </View>
         </TouchableOpacity>
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+            </Text>
+          </View>
+        </TouchableOpacity>
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       </ScrollView>
 
       {/* Modal Chỉnh Sửa Thông Tin Cá Nhân */}
       <EditProfileModal
         visible={editModalVisible}
+<<<<<<< HEAD
 <<<<<<< HEAD
         transparent
         animationType="slide"
@@ -1987,6 +2346,18 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
         onSave={handleSaveProfile}
       />
 
+=======
+        onClose={() => setEditModalVisible(false)}
+        studentId={studentId}
+        email={email}
+        initialFullName={displayName}
+        initialPhone={phone || "0912345678"}
+        initialFaculty={faculty}
+        pointsAccumulated={pointsAccumulated}
+        onSave={handleSaveProfile}
+      />
+
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       {/* Modal Xác nhận Đăng xuất */}
       <LogoutConfirmModal
         visible={logoutModalVisible}
@@ -1995,7 +2366,10 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
         displayName={displayName}
         theme={theme}
         isDark={isDark}
+<<<<<<< HEAD
 >>>>>>> bc9cb42 (refactor: chuyen profile va feedback sang React Native thuan, ap dung FlatList va tach component theo chuan)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
       />
     </SafeAreaView>
   );
@@ -2004,11 +2378,11 @@ export default function ProfileScreen({ profile }: ProfileScreenProps) {
 const styles = StyleSheet.create({
   safe: {
     flex: 1,
-    backgroundColor: SCREEN_BG,
   },
   scroll: {
     paddingBottom: 24,
   },
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 
@@ -2016,125 +2390,116 @@ const styles = StyleSheet.create({
   topRow: {
     flexDirection: 'row',
     alignItems: 'center',
+=======
+  headerRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     paddingHorizontal: 20,
-    paddingTop: 10,
-    paddingBottom: 2,
+    paddingTop: Platform.OS === "android" ? 12 : 8,
+    paddingBottom: 8,
   },
-  optionsButton: {
-    padding: 6,
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
   },
-  optionsDots: {
-    fontSize: 18,
-    color: '#64748B',
-    letterSpacing: 2,
-    fontWeight: '700',
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: "700",
   },
-
-  // Avatar
-  avatarWrapper: {
-    alignItems: 'center',
-    marginTop: 4,
+  moreButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    borderWidth: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  avatarContainer: {
+    alignItems: "center",
+    marginTop: 8,
     marginBottom: 12,
   },
 =======
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)
   avatarImage: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: '#E2E8F0',
-    borderWidth: 2,
-    borderColor: BACKGROUND,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    backgroundColor: "#E2E8F0",
+    borderWidth: 3,
   },
 <<<<<<< HEAD
   avatarFallback: {
-    width: 86,
-    height: 86,
-    borderRadius: 43,
-    backgroundColor: ACCENT_COLOR,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 2,
-    borderColor: BACKGROUND,
+    width: 90,
+    height: 90,
+    borderRadius: 45,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 3,
   },
-  avatarFallbackInitial: {
-    fontSize: 34,
-    fontWeight: '700',
-    color: '#FFFFFF',
+  avatarFallbackText: {
+    fontSize: 36,
+    fontWeight: "700",
+    color: "#FFFFFF",
   },
-
-  // User info
-  displayName: {
+  nameText: {
     fontSize: 20,
-    fontWeight: '700',
-    color: TEXT_PRIMARY,
-    textAlign: 'center',
+    fontWeight: "700",
+    textAlign: "center",
     marginBottom: 4,
   },
-  studentId: {
-    fontSize: 13,
-    color: TEXT_SECONDARY,
-    textAlign: 'center',
+  subText: {
+    fontSize: 14,
+    textAlign: "center",
     marginBottom: 2,
   },
-  faculty: {
-    fontSize: 13,
-    color: TEXT_SECONDARY,
-    textAlign: 'center',
+  facultyText: {
     marginBottom: 20,
   },
-
-  // Stats card
   statsCard: {
-    flexDirection: 'row',
-    backgroundColor: BACKGROUND,
     marginHorizontal: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
     paddingVertical: 14,
     paddingHorizontal: 12,
     marginBottom: 20,
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 1.5,
-      },
-    }),
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
-
-  // Menu Card
+  statsRow: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+  },
   menuCard: {
-    backgroundColor: BACKGROUND,
     marginHorizontal: 20,
     borderRadius: 16,
     borderWidth: 1,
-    borderColor: BORDER_COLOR,
-    overflow: 'hidden',
-    ...Platform.select({
-      ios: {
-        shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.04,
-        shadowRadius: 6,
-      },
-      android: {
-        elevation: 1.5,
-      },
-    }),
+    overflow: "hidden",
+    elevation: 2,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.08,
+    shadowRadius: 3,
   },
+<<<<<<< HEAD
 
   // Standalone Logout Button
   standaloneLogoutBtn: {
+=======
+  logoutButton: {
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
     marginHorizontal: 20,
     marginTop: 14,
     borderRadius: 14,
     borderWidth: 1,
+<<<<<<< HEAD
     paddingVertical: 14,
     alignItems: "center",
     justifyContent: "center",
@@ -2243,15 +2608,18 @@ const editStyles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     padding: 16,
+=======
+    height: 52,
+    justifyContent: "center",
+    alignItems: "center",
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   },
-  card: {
-    width: '100%',
-    maxWidth: 420,
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    overflow: 'hidden',
-    maxHeight: '85%',
+  logoutContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
   },
+<<<<<<< HEAD
   header: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -2468,6 +2836,11 @@ const editStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
     color: '#FFFFFF',
+=======
+  logoutText: {
+    fontSize: 15,
+    fontWeight: "700",
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   },
 =======
 >>>>>>> b60e34b (chỉnh tại tab và stack, sửa lại trang cá nhân và trang đánh giá)

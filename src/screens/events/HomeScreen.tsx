@@ -40,6 +40,7 @@ import FeaturedEventCard from "../../components/events/FeaturedEventCard";
 import EventCard from "../../components/events/EventCard";
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 import { navigate } from "../../navigation/navigationRef";
 >>>>>>> d3ca778 (Tata)
@@ -60,13 +61,20 @@ import { Colors, Typography } from "../../theme";
 import { useAppTheme } from "../../theme/ThemeContext";
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
 =======
+=======
+import { navigate } from "../../navigation/navigationRef";
+import LeftNavbarButton from "../../components/navigation/LeftNavbarButton";
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 import AppBottomTab, {
   AppTabKey,
 } from "../../components/navigation/AppBottomTab";
 import { Colors, Typography } from "../../theme";
 import { useAppTheme } from "../../theme/ThemeContext";
 import type { Event } from "../../types/event";
+<<<<<<< HEAD
 >>>>>>> d397c6d (update home and event card)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
 
 type NavigationProp = NativeStackNavigationProp<MainStackParamList, "Home">;
 
@@ -550,6 +558,7 @@ export default function HomeScreen() {
   return (
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
     <SafeAreaView style={styles.safeArea}>
 <<<<<<< HEAD
       <StatusBar barStyle="dark-content" />
@@ -578,6 +587,14 @@ export default function HomeScreen() {
       <FlatList
         style={[styles.container, { backgroundColor: theme.background }]}
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
+=======
+    <SafeAreaView
+      style={[styles.safeArea, { backgroundColor: theme.background }]}
+    >
+      <StatusBar barStyle={theme.statusBarStyle} />
+      <FlatList
+        style={[styles.container, { backgroundColor: theme.background }]}
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
         data={visibleEvents}
         keyExtractor={(item, index) =>
           `${item._id || item.id || "evt"}-${index}`
@@ -595,6 +612,7 @@ export default function HomeScreen() {
             tintColor={theme.primary}
           />
         }
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
       >
@@ -627,6 +645,12 @@ export default function HomeScreen() {
         renderItem={({ item }) => (
           <TouchableOpacity
 >>>>>>> e79c48e (abc)
+=======
+        onEndReached={loadMore}
+        onEndReachedThreshold={0.4}
+        renderItem={({ item }) => (
+          <TouchableOpacity
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
             activeOpacity={0.9}
             onPress={() =>
               navigation.navigate("EventDetail", {
@@ -635,13 +659,17 @@ export default function HomeScreen() {
               })
             }
 <<<<<<< HEAD
+<<<<<<< HEAD
 >>>>>>> 8d9ed42 (Update Event)
 =======
 >>>>>>> e79c48e (abc)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           >
             <EventCard event={item} />
           </TouchableOpacity>
         )}
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
 
@@ -917,6 +945,39 @@ export default function HomeScreen() {
                 hoặc đổi bộ lọc.
               </Text>
             </View>
+=======
+        ListHeaderComponent={renderListHeader()}
+        ListEmptyComponent={
+          !loading && !error && !featuredEvent ? (
+            <View
+              style={[
+                styles.emptyBox,
+                {
+                  backgroundColor: theme.surface,
+                  borderColor: theme.border,
+                },
+              ]}
+            >
+              <Ionicons
+                name="calendar-clear-outline"
+                size={32}
+                color={theme.textTertiary}
+                style={styles.emptyIcon}
+              />
+              <Text style={[styles.emptyTitle, { color: theme.textPrimary }]}>
+                Không tìm thấy sự kiện
+              </Text>
+              <Text
+                style={[
+                  styles.emptyDescription,
+                  { color: theme.textSecondary },
+                ]}
+              >
+                Học kỳ này chưa có hoạt động phù hợp. Hãy thử chọn học kỳ khác
+                hoặc đổi bộ lọc.
+              </Text>
+            </View>
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
           ) : undefined
         }
         ListFooterComponent={
@@ -973,7 +1034,10 @@ const styles = StyleSheet.create({
   },
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   adminSwitchBanner: {
     flexDirection: "row",
     alignItems: "center",
@@ -988,7 +1052,10 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: "600",
   },
+<<<<<<< HEAD
 >>>>>>> d3ca778 (Tata)
+=======
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   headerLeft: {
     flexDirection: "row",
     alignItems: "center",
@@ -1002,6 +1069,7 @@ const styles = StyleSheet.create({
   greetingBox: {
     flex: 1,
   },
+<<<<<<< HEAD
 <<<<<<< HEAD
   hello: { fontSize: 13, color: "#64748B", marginBottom: 2 },
   userName: { fontSize: 20, fontWeight: "700", color: "#111827" },
@@ -1024,6 +1092,10 @@ const styles = StyleSheet.create({
   hello: { fontSize: 13, marginBottom: 2 },
   userName: { fontSize: 20, fontWeight: "700" },
 >>>>>>> 6a72187 (Ver1_NguyenNhiTam)
+=======
+  hello: { fontSize: 13, marginBottom: 2 },
+  userName: { fontSize: 20, fontWeight: "700" },
+>>>>>>> b7e173633c3070070c82170d45aeead4b5764103
   avatar: {
     width: 46,
     height: 46,
